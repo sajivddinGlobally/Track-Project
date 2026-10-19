@@ -1,0 +1,125 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:retrofit/retrofit.dart';
+import 'package:track_loved/core/Data/BodyModel/ForgetPasswordOtpBodyModel.dart';
+import 'package:track_loved/core/Data/BodyModel/ForgotPasswordBodyModel.dart';
+import 'package:track_loved/core/Data/BodyModel/LoginBodyModel.dart';
+import 'package:track_loved/core/Data/BodyModel/OtpVerifyBodyModel.dart';
+import 'package:track_loved/core/Data/BodyModel/RegisterBodyModel.dart';
+import 'package:track_loved/core/Data/BodyModel/ResetPasswordBodyModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/AddNetworkSearchResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/ForgetPasswordResMode.dart';
+import 'package:track_loved/core/Data/ResponseModel/ForgotPasswordOtpResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/LoginResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/NetworkRequestResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/OtpVerifyResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/RegisterResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
+import '../Data/BodyModel/MatchContactsBodyModel.dart';
+import '../Data/BodyModel/UpdateProfileBodyModel.dart';
+import '../Data/BodyModel/locationSharingBodyModel.dart';
+import '../Data/BodyModel/UpdateLocationBodyModel.dart';
+import '../Data/ResponseModel/MatchContactsResModel.dart';
+import '../Data/ResponseModel/acceptResModel.dart';
+import '../Data/ResponseModel/getMyProfileModel.dart';
+import '../Data/ResponseModel/rejectResModel.dart';
+import '../Data/ResponseModel/sendReqeustResModel.dart';
+import '../Data/ResponseModel/updateProfileResModel.dart';
+import '../Data/ResponseModel/uploadImageResModel.dart';
+import '../Data/ResponseModel/LocationSharingReceivedResModel.dart';
+
+part 'ApiStateNetwork.g.dart';
+
+// @RestApi(baseUrl: "https://grhdxh1f-3002.inc1.devtunnels.ms")
+@RestApi(baseUrl: "https://loveable-backend-5qi0.onrender.com")
+// @RestApi(baseUrl: "https://grhdxh1f-3002.inc1.devtunnels.ms")
+abstract class ApiStateNetwork {
+  factory ApiStateNetwork(Dio dio, {String baseUrl}) = _ApiStateNetwork;
+
+  @POST("/api/v1/auth/login")
+  Future<LoginResModel> login(@Body() LoginBodyModel body);
+
+  @POST("/api/v1/auth/register")
+  Future<RegisterResModel> register(@Body() RegisterBodyModel body);
+
+  @POST("/api/v1/auth/verify-otp")
+  Future<OtpVerifyResModel> otp(@Body() OtpVerifyBodyModel body);
+
+  @POST("/api/v1/auth/forgot-password")
+  Future<ForgetPasswordResModel> forgetPassword(
+    @Body() ForgetPasswordBodyModel body,
+  );
+
+  @POST("/api/v1/auth/verify-reset-otp")
+  Future<ForgetPasswordOtpResModel> forgetPasswordOtp(
+    @Body() ForgetPasswordOtpBodyModel body,
+  );
+
+  @POST("/api/v1/auth/reset-password")
+  Future<ResetPasswordResModel> resetPassword(
+    @Body() ResetPasswordBodyModel body,
+  );
+
+  @GET("/api/v1/auth/searchUsers")
+  Future<AddNetworkSearchResModel> getAddNetworkSearch(
+    @Query("search") String search,
+  );
+
+  @GET("/api/v1/network/requests")
+  Future<NetworkRequestResModel> getNetworkRequest();
+
+  @MultiPart()
+  @POST("/api/v1/uploadImage")
+  Future<UploadImageResModel> uploadImage(@Part() File? file);
+
+  @GET("/api/v1/auth/get_my_profile")
+  Future<GetMyProfileModel> getMyProfile();
+
+  @PATCH("/api/v1/auth/userprofile_update")
+  Future<UpdateProfileResModel> updateUserProfile(
+    @Body() UpdateProfileBodyModel body,
+  );
+
+  @POST("/api/v1/network/contacts/match")
+  Future<MatchContactsResModel> matchContacts(
+    @Body() MatchContactsBodyModel body,
+  );
+
+  @POST("/api/v1/network//request/{id}")
+  Future<SendRequest> sendRequest(@Path("id") String id);
+
+  @PATCH("/api/v1/network/request/{id}/reject")
+  Future<RejectResModel> rejectRequest(@Path("id") String id);
+
+  @PATCH("/api/v1/network/request/{id}/accept")
+  Future<AcceptResModel> acceptRequest(@Path("id") String id);
+
+  @GET("/api/v1/network/friends")
+  Future<TrackFriendModel> trackFriend([
+    @Query("search") String? search,
+    @Query("page") int page = 1,
+    @Query("limit") int limit = 10,
+  ]);
+
+  @GET("/api/v1/network/friend/{id}/location")
+  Future<dynamic> getLocation(@Path("id") String id);
+
+  @PATCH("/api/v1/network/friend/{id}/location-sharing")
+  Future<dynamic> locationSharing(
+    @Path("id") String id,
+    @Body() LocationSharingBodyModel body,
+  );
+
+  @GET("/api/v1/network/location-sharing/received")
+  Future<LocationSharingReceivedResModel> getLocationSharingReceived();
+
+  @GET("/api/v1/network/contacts/match")
+  Future<MatchContactsResModel> getMatchContacts();
+
+  @POST("/api/v1/sos/update-location")
+  Future<dynamic> updateLocation(@Body() UpdateLocationBodyModel body);
+
+  @GET("/api/v1/law-content")
+  Future<dynamic> getLawContent();
+}
