@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
+import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 
@@ -177,6 +179,11 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     }
   }
 
+  String _profileInitial() {
+    final name = Hive.box('userdata').get('name')?.toString().trim() ?? '';
+    return name.isEmpty ? '?' : name[0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -216,6 +223,49 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                 ),
               );
             },
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Profile',
+            offset: const Offset(0, 44),
+            constraints: const BoxConstraints(minWidth: 0),
+            padding: EdgeInsets.zero,
+            onSelected: (value) {
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'edit',
+                height: 36,
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, size: 16),
+                    SizedBox(width: 6),
+                    Text('Edit Profile', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4, right: 12),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: Colors.white,
+                child: Text(
+                  _profileInitial(),
+                  style: const TextStyle(
+                    color: Color(0xFF0B4F4A),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

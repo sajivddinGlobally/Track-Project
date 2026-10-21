@@ -45,6 +45,11 @@ class _AddNetworkSearchScreenState
   List<mcr.InviteItem>? _matchedInviteList;
   bool _isMatchedViewActive = false;
 
+  bool _selectMode = false;
+  bool _isDeleting = false;
+  final Set<String> _selectedPhones = {};
+  final Map<String, String> _phoneByUserId = {};
+
   void _validatePincode(String pincode) {
     final cleanPin = pincode.trim();
     if (cleanPin.isEmpty) {
@@ -230,6 +235,14 @@ class _AddNetworkSearchScreenState
       if (!mounted) return;
       if (setModalState != null) {
         Navigator.pop(context);
+      }
+
+      for (final c in contacts) {
+        final uid = c.user?.userId;
+        final ph = c.matchedPhone;
+        if (uid != null && ph != null && ph.isNotEmpty) {
+          _phoneByUserId[uid] = ph;
+        }
       }
 
       final matchedUsers = contacts
@@ -497,6 +510,13 @@ class _AddNetworkSearchScreenState
         )
         .toList();
     final apiInviteList = matchData?.inviteList ?? [];
+    for (final c in matchData?.contacts ?? <mcr.Contact>[]) {
+      final uid = c.user?.userId;
+      final ph = c.matchedPhone;
+      if (uid != null && ph != null && ph.isNotEmpty) {
+        _phoneByUserId[uid] = ph;
+      }
+    }
 
     final effectiveMatchedUsers = _matchedContactsUsers ?? apiContacts;
     final effectiveInviteList = _matchedInviteList ?? apiInviteList;
@@ -895,34 +915,71 @@ class _AddNetworkSearchScreenState
                 color: Colors.white,
               ),
             ),
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _isMatchedViewActive = false;
-                });
-              },
-              borderRadius: BorderRadius.circular(8.r),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.close, size: 16.sp, color: Colors.white70),
-                    SizedBox(width: 4.w),
-                    Text(
-                      _isHindi ? 'बंद करें' : 'Close',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.w600,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (totalCount > 0)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectMode = !_selectMode;
+                        _selectedPhones.clear();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8.r),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
+                      child: Text(
+                        _selectMode
+                            ? (_isHindi ? 'रद्द करें' : 'Cancel')
+                            : (_isHindi ? 'चुनें' : 'Select'),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isMatchedViewActive = false;
+                      _selectMode = false;
+                      _selectedPhones.clear();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close, size: 16.sp, color: Colors.white70),
+                        SizedBox(width: 4.w),
+                        Text(
+                          _isHindi ? 'बंद करें' : 'Close',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12.5.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
+        if (_selectMode) _buildSelectionBar(users, inviteList),
         SizedBox(height: 14.h),
         Expanded(
           child: (users.isEmpty && inviteList.isEmpty)
@@ -978,21 +1035,162 @@ class _AddNetworkSearchScreenState
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: users.length + inviteList.length,
                     itemBuilder: (context, index) {
-                      if (index < users.length) {
-                        return _buildMemberCard(
-                          users[index],
-                          isContactMatched: true,
-                        );
-                      } else {
-                        final inviteIndex = index - users.length;
-                        return _buildInviteCard(inviteList[inviteIndex]);
-                      }
+                      final String? phone = index < users.length
+                          ? _phoneByUserId[users[index].id]
+                          : inviteList[index - users.length].phone;
+                      final Widget card = index < users.length
+                          ? _buildMemberCard(
+                              users[index],
+                              isContactMatched: true,
+                            )
+                          : _buildInviteCard(inviteList[index - users.length]);
+                      if (!_selectMode) return card;
+                      final bool checked =
+                          phone != null && _selectedPhones.contains(phone);
+                      return Row(
+                        children: [
+                          Checkbox(
+                            value: checked,
+                            activeColor: const Color(0xFF2E7D32),
+                            side: const BorderSide(color: Colors.white70),
+                            onChanged: phone == null
+                                ? null
+                                : (v) => setState(() {
+                                    v == true
+                                        ? _selectedPhones.add(phone)
+                                        : _selectedPhones.remove(phone);
+                                  }),
+                          ),
+                          Expanded(child: card),
+                        ],
+                      );
                     },
                   ),
                 ),
         ),
       ],
     );
+  }
+
+  Widget _buildSelectionBar(List<User> users, List<mcr.InviteItem> inviteList) {
+    final allPhones = <String>{
+      for (final u in users)
+        if (_phoneByUserId[u.id] != null) _phoneByUserId[u.id]!,
+      for (final i in inviteList)
+        if (i.phone != null && i.phone!.isNotEmpty) i.phone!,
+    };
+    final allSelected =
+        allPhones.isNotEmpty && _selectedPhones.containsAll(allPhones);
+
+    return Padding(
+      padding: EdgeInsets.only(top: 8.h),
+      child: Row(
+        children: [
+          Checkbox(
+            value: allSelected,
+            activeColor: const Color(0xFF2E7D32),
+            side: const BorderSide(color: Colors.white70),
+            onChanged: (v) => setState(() {
+              _selectedPhones
+                ..clear()
+                ..addAll(v == true ? allPhones : <String>{});
+            }),
+          ),
+          Expanded(
+            child: Text(
+              _isHindi
+                  ? 'सभी चुनें (${_selectedPhones.length} चयनित)'
+                  : 'Select all (${_selectedPhones.length} selected)',
+              style: TextStyle(color: Colors.white, fontSize: 13.sp),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: _selectedPhones.isEmpty || _isDeleting
+                ? null
+                : _confirmAndDeleteSelected,
+            icon: _isDeleting
+                ? SizedBox(
+                    width: 14.sp,
+                    height: 14.sp,
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.delete_outline, size: 16.sp),
+            label: Text(_isHindi ? 'हटाएं' : 'Delete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              minimumSize: Size.zero,
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: TextStyle(fontSize: 12.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmAndDeleteSelected() async {
+    final count = _selectedPhones.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(_isHindi ? 'संपर्क हटाएं?' : 'Remove contacts?'),
+        content: Text(
+          _isHindi
+              ? '$count संपर्क हटाए जाएंगे।'
+              : '$count contact(s) will be removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_isHindi ? 'रद्द करें' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              _isHindi ? 'हटाएं' : 'Delete',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      final res = await ref
+          .read(authServiceProvider)
+          .deleteContacts(_selectedPhones.toList());
+      if (!mounted) return;
+      setState(() {
+        _matchedContactsUsers = null;
+        _matchedInviteList = null;
+        _selectedPhones.clear();
+        _selectMode = false;
+      });
+      ref.invalidate(getMatchContactProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            res.message ??
+                (_isHindi ? 'संपर्क हटा दिए गए' : 'Contacts removed'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isHindi ? 'संपर्क हटाने में विफल' : 'Failed to remove contacts',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
   }
 
   Widget _buildDynamicFilterChips(

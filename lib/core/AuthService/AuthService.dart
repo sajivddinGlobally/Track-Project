@@ -20,6 +20,8 @@ import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResMo
 import 'package:track_loved/core/Network/ApiStateNetwork.dart';
 
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
+import '../Data/BodyModel/deleteContactBodyModel.dart';
+import '../Data/ResponseModel/deleteContactResModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
@@ -183,6 +185,14 @@ class Authservice {
     try {
       final response = await api.getMatchContacts();
       return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DeleteContactResModel> deleteContacts(List<String> phones) async {
+    try {
+      return await api.deleteContact(DeleteContactBodyModel(phones: phones));
     } catch (e) {
       rethrow;
     }

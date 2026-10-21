@@ -14,6 +14,7 @@ import 'package:track_loved/DrawerScreen/PostJobOpprtunities.dart';
 import 'package:track_loved/DrawerScreen/SearchLovedOnseScreen.dart';
 import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
+import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/Utils/key.dart';
@@ -162,6 +163,31 @@ class AppDrawer extends StatelessWidget {
                 color: Colors.white70,
               ),
             ),
+            otherAccountsPictures: [
+              Tooltip(
+                message: isHindi ? 'प्रोफ़ाइल संपादित करें' : 'Edit Profile',
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    child: Icon(
+                      Icons.edit_outlined,
+                      color: Colors.white,
+                      size: 20.sp,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             currentAccountPicture: CircleAvatar(
               radius: 32.r,
               backgroundColor: Colors.white,
