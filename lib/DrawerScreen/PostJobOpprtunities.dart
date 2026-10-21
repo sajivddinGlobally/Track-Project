@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hive/hive.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
+import 'package:track_loved/core/Utils/key.dart';
 
 class PostJobOpportunitiesScreen extends StatefulWidget {
   const PostJobOpportunitiesScreen({super.key});
@@ -32,6 +35,94 @@ class _PostJobOpportunitiesScreenState
     'Remote / Work from Home',
     'Internship',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    final box = Hive.box('userdata');
+    final savedCompanyName = box.get('companyName', defaultValue: '');
+    if (savedCompanyName.toString().trim().isNotEmpty) {
+      _employerController.text = savedCompanyName.toString().trim();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkCompanyProfile();
+    });
+  }
+
+  void _checkCompanyProfile() {
+    final box = Hive.box('userdata');
+    final isCompanyComplete =
+        box.get('isCompanyProfileComplete', defaultValue: false) == true;
+    if (!isCompanyComplete) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            _isHindi ? 'कंपनी प्रोफ़ाइल अधूरी है' : 'Company Profile Required',
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          content: Text(
+            _isHindi
+                ? 'नौकरी पोस्ट करने के लिए कृपया पहले अपनी कंपनी प्रोफ़ाइल और KYC विवरण पूरा करें।'
+                : 'Please complete your Company Profile and corporate KYC details before posting job opportunities.',
+            style: TextStyle(
+              fontSize: 13.5.sp,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+                Navigator.pop(context);
+              },
+              child: Text(
+                _isHindi ? 'रद्द करें' : 'Cancel',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B4F4A),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+                navigatorKey.currentState?.pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const CompanyProfileScreen(),
+                  ),
+                );
+              },
+              child: Text(
+                _isHindi ? 'कंपनी प्रोफ़ाइल पूरी करें' : 'Complete Company Profile',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {

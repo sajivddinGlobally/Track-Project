@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/AddNetworkScreen/Provider/AddNetoworkserachProvider.dart';
 import 'package:track_loved/DrawerScreen/AddNetworkScreen/Provider/getMatchContactProvider.dart';
+import 'package:track_loved/MessageScreen/MessageScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/MatchContactsBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/AddNetworkSearchResModel.dart';
@@ -458,7 +459,8 @@ class _AddNetworkSearchScreenState
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MemberChatScreen(
+        builder: (context) => MessageScreen(
+          receiverId: member.id ?? '',
           name: name,
           initials: initials,
           profileImage: member.profileImage ?? '',
@@ -482,16 +484,18 @@ class _AddNetworkSearchScreenState
     final contactState = ref.watch(getMatchContactProvider);
 
     final matchData = contactState.asData?.value.data;
-    final apiContacts = (matchData?.contacts ?? []).map(
-      (c) => User(
-        id: c.user?.userId,
-        name: (c.user?.name != null && c.user!.name!.isNotEmpty)
-            ? c.user!.name
-            : (c.contactName ?? 'Unknown User'),
-        profileImage: c.user?.profileImage?.toString(),
-        requestStatus: c.connectionStatus,
-      ),
-    ).toList();
+    final apiContacts = (matchData?.contacts ?? [])
+        .map(
+          (c) => User(
+            id: c.user?.userId,
+            name: (c.user?.name != null && c.user!.name!.isNotEmpty)
+                ? c.user!.name
+                : (c.contactName ?? 'Unknown User'),
+            profileImage: c.user?.profileImage?.toString(),
+            requestStatus: c.connectionStatus,
+          ),
+        )
+        .toList();
     final apiInviteList = matchData?.inviteList ?? [];
 
     final effectiveMatchedUsers = _matchedContactsUsers ?? apiContacts;
@@ -581,8 +585,11 @@ class _AddNetworkSearchScreenState
                       onTap: _showImportContactsModal,
                       borderRadius: BorderRadius.circular(12.r),
                       child: Container(
-                        height: 45.h,
-                        padding: EdgeInsets.symmetric(horizontal: 12.w),
+                        constraints: BoxConstraints(minHeight: 45.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0B4F4A),
                           borderRadius: BorderRadius.circular(24.r),
@@ -669,9 +676,12 @@ class _AddNetworkSearchScreenState
                               ],
                             ),
                           ),
-                          SizedBox(
-                            width: 115.w,
-                            height: 38.h,
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: 100.w,
+                              maxWidth: 125.w,
+                              minHeight: 38.h,
+                            ),
                             child: TextField(
                               controller: _pincodeController,
                               keyboardType: TextInputType.number,
@@ -681,10 +691,11 @@ class _AddNetworkSearchScreenState
                                 fontWeight: FontWeight.bold,
                               ),
                               decoration: InputDecoration(
+                                isDense: true,
                                 counterText: '',
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 8.w,
-                                  vertical: 0,
+                                  vertical: 8.h,
                                 ),
                                 hintText: _isHindi ? 'पिनकोड' : 'Pincode',
                                 filled: true,
@@ -717,54 +728,54 @@ class _AddNetworkSearchScreenState
                 Expanded(
                   child:
                       _isMatchedViewActive &&
-                              (effectiveMatchedUsers.isNotEmpty ||
-                                  effectiveInviteList.isNotEmpty)
-                          ? _buildMatchedContactsView(
-                              effectiveMatchedUsers,
-                              effectiveInviteList,
-                            )
-                          : addNetwork.when(
-                              data: (data) {
-                                final allUsers = data.data?.users ?? [];
-                                final filteredMembers = allUsers.where((member) {
-                                  if (_activePincode.isEmpty) return true;
-                                  final memberPin = member.pincode ?? '';
-                                  if (memberPin.isNotEmpty) {
-                                    return memberPin.contains(_activePincode);
-                                  }
-                                  return true;
-                                }).toList();
+                          (effectiveMatchedUsers.isNotEmpty ||
+                              effectiveInviteList.isNotEmpty)
+                      ? _buildMatchedContactsView(
+                          effectiveMatchedUsers,
+                          effectiveInviteList,
+                        )
+                      : addNetwork.when(
+                          data: (data) {
+                            final allUsers = data.data?.users ?? [];
+                            final filteredMembers = allUsers.where((member) {
+                              if (_activePincode.isEmpty) return true;
+                              final memberPin = member.pincode ?? '';
+                              if (memberPin.isNotEmpty) {
+                                return memberPin.contains(_activePincode);
+                              }
+                              return true;
+                            }).toList();
 
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildDynamicFilterChips(
-                                      filteredMembers,
-                                      effectiveMatchedUsers,
-                                      effectiveInviteList,
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    Expanded(
-                                      child: RefreshIndicator(
-                                        color: const Color(0xFF0B4F4A),
-                                        onRefresh: () async {
-                                          ref.invalidate(addNetworkSerachProvider);
-                                          ref.invalidate(getMatchContactProvider);
-                                          await Future.wait([
-                                            ref.read(
-                                              addNetworkSerachProvider(
-                                                _effectiveQuery,
-                                              ).future,
-                                            ),
-                                            ref.read(
-                                              getMatchContactProvider.future,
-                                            ),
-                                          ]);
-                                        },
-                                        child: filteredMembers.isEmpty
-                                            ? LayoutBuilder(
-                                                builder: (context, constraints) =>
-                                                    SingleChildScrollView(
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDynamicFilterChips(
+                                  filteredMembers,
+                                  effectiveMatchedUsers,
+                                  effectiveInviteList,
+                                ),
+                                SizedBox(height: 12.h),
+                                Expanded(
+                                  child: RefreshIndicator(
+                                    color: const Color(0xFF0B4F4A),
+                                    onRefresh: () async {
+                                      ref.invalidate(addNetworkSerachProvider);
+                                      ref.invalidate(getMatchContactProvider);
+                                      await Future.wait([
+                                        ref.read(
+                                          addNetworkSerachProvider(
+                                            _effectiveQuery,
+                                          ).future,
+                                        ),
+                                        ref.read(
+                                          getMatchContactProvider.future,
+                                        ),
+                                      ]);
+                                    },
+                                    child: filteredMembers.isEmpty
+                                        ? LayoutBuilder(
+                                            builder: (context, constraints) =>
+                                                SingleChildScrollView(
                                                   physics:
                                                       const AlwaysScrollableScrollPhysics(),
                                                   child: ConstrainedBox(
@@ -803,42 +814,42 @@ class _AddNetworkSearchScreenState
                                                     ),
                                                   ),
                                                 ),
-                                              )
-                                            : ListView.builder(
-                                                physics:
-                                                    const AlwaysScrollableScrollPhysics(),
-                                                itemCount: filteredMembers.length,
-                                                itemBuilder: (context, index) {
-                                                  return _buildMemberCard(
-                                                    filteredMembers[index],
-                                                  );
-                                                },
-                                              ),
-                                      ),
+                                          )
+                                        : ListView.builder(
+                                            physics:
+                                                const AlwaysScrollableScrollPhysics(),
+                                            itemCount: filteredMembers.length,
+                                            itemBuilder: (context, index) {
+                                              return _buildMemberCard(
+                                                filteredMembers[index],
+                                              );
+                                            },
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                          loading: () {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDynamicFilterChips(
+                                  [],
+                                  effectiveMatchedUsers,
+                                  effectiveInviteList,
+                                ),
+                                SizedBox(height: 12.h),
+                                const Expanded(
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
                                     ),
-                                  ],
-                                );
-                              },
-                              loading: () {
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildDynamicFilterChips(
-                                      [],
-                                      effectiveMatchedUsers,
-                                      effectiveInviteList,
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    const Expanded(
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                           error: (error, stackTrace) {
                             return Center(
                               child: Text(
@@ -1227,8 +1238,8 @@ class _AddNetworkSearchScreenState
               Row(
                 children: [
                   Expanded(
-                    child: SizedBox(
-                      height: 40.h,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: 40.h),
                       child: isConnected
                           ? Container(
                               decoration: BoxDecoration(
@@ -1406,8 +1417,8 @@ class _AddNetworkSearchScreenState
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: SizedBox(
-                      height: 40.h,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: 40.h),
                       child: isConnected
                           ? ElevatedButton.icon(
                               onPressed: () {
@@ -1519,13 +1530,17 @@ class _AddNetworkSearchScreenState
   Future<void> _sendWhatsAppInvite({
     required String contactName,
     required String phone,
+    String? inviteMessage,
   }) async {
-    const String dummyPlayStoreUrl =
+    const String defaultLink =
         'https://play.google.com/store/apps/details?id=com.trackloved.app';
 
-    final String message = _isHindi
-        ? 'नमस्ते $contactName! मैं Track Loved One ऐप का उपयोग कर रहा हूँ ताकि हम अपने प्रियजनों और समुदाय से जुड़े रह सकें। आप भी इस ऐप को डाउनलोड करें और मुझसे जुड़ें:\n$dummyPlayStoreUrl'
-        : 'Hello $contactName! I am using the Track Loved One app to stay connected with family, friends, and community. Download the app today and connect with me:\n$dummyPlayStoreUrl';
+    final String textToSend =
+        (inviteMessage != null && inviteMessage.trim().isNotEmpty)
+        ? inviteMessage
+        : (_isHindi
+              ? 'नमस्ते $contactName! मैं Track Loved One ऐप का उपयोग कर रहा हूँ ताकि हम अपने प्रियजनों और समुदाय से जुड़े रह सकें। आप भी इस ऐप को डाउनलोड करें और मुझसे जुड़ें:\n$defaultLink'
+              : 'Hello $contactName! I am using the Track Loved One app to stay connected with family, friends, and community. Download the app today and connect with me:\n$defaultLink');
 
     // Normalize phone number (keep digits only)
     String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -1533,17 +1548,15 @@ class _AddNetworkSearchScreenState
       cleanPhone = '91$cleanPhone';
     }
 
-    final String encodedText = Uri.encodeComponent(message);
+    final String encodedText = Uri.encodeComponent(textToSend);
     final Uri waMeUri = cleanPhone.isNotEmpty
         ? Uri.parse('https://wa.me/$cleanPhone?text=$encodedText')
         : Uri.parse('https://wa.me/?text=$encodedText');
 
     try {
-      final bool launched = await launchUrl(
-        waMeUri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) {
+      if (await canLaunchUrl(waMeUri)) {
+        await launchUrl(waMeUri, mode: LaunchMode.externalApplication);
+      } else {
         final Uri whatsappSchemeUri = Uri.parse(
           cleanPhone.isNotEmpty
               ? 'whatsapp://send?phone=$cleanPhone&text=$encodedText'
@@ -1705,8 +1718,8 @@ class _AddNetworkSearchScreenState
             ),
           ),
           SizedBox(width: 8.w),
-          SizedBox(
-            height: 36.h,
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: 36.h),
             child: isInvited
                 ? Container(
                     padding: EdgeInsets.symmetric(horizontal: 14.w),
@@ -1740,6 +1753,7 @@ class _AddNetworkSearchScreenState
                       await _sendWhatsAppInvite(
                         contactName: contactName,
                         phone: phone,
+                        inviteMessage: item.inviteMessage,
                       );
                     },
                     style: ElevatedButton.styleFrom(
@@ -1770,242 +1784,4 @@ class _AddNetworkSearchScreenState
       ),
     );
   }
-}
-
-class MemberChatScreen extends StatefulWidget {
-  final String name;
-  final String initials;
-  final String profileImage;
-  final bool isHindi;
-
-  const MemberChatScreen({
-    super.key,
-    required this.name,
-    required this.initials,
-    this.profileImage = '',
-    required this.isHindi,
-  });
-
-  @override
-  State<MemberChatScreen> createState() => _MemberChatScreenState();
-}
-
-class _MemberChatScreenState extends State<MemberChatScreen> {
-  final TextEditingController _msgController = TextEditingController();
-  final List<ChatMessage> _messages = [
-    ChatMessage(text: 'Hello! Glad to connect.', isMe: false, time: '10:00 AM'),
-    ChatMessage(
-      text: 'Hi, thanks for connecting!',
-      isMe: true,
-      time: '10:02 AM',
-    ),
-  ];
-
-  void _sendMessage() {
-    if (_msgController.text.trim().isEmpty) return;
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: _msgController.text.trim(),
-          isMe: true,
-          time: TimeOfDay.now().format(context),
-        ),
-      );
-      _msgController.clear();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0B4F4A),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 16.r,
-              backgroundColor: Colors.white,
-              backgroundImage: widget.profileImage.isNotEmpty
-                  ? NetworkImage(widget.profileImage)
-                  : null,
-              child: widget.profileImage.isEmpty
-                  ? Text(
-                      widget.initials,
-                      style: TextStyle(
-                        color: const Color(0xFF0B4F4A),
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-            SizedBox(width: 10.w),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.name,
-                  style: TextStyle(fontSize: 14.sp, color: Colors.white),
-                ),
-                Text(
-                  widget.isHindi ? 'ऑनलाइन' : 'Online',
-                  style: TextStyle(fontSize: 10.sp, color: Colors.white70),
-                ),
-              ],
-            ),
-          ],
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.all(16.w),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return Align(
-                  alignment: msg.isMe
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 4.h),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 14.w,
-                      vertical: 10.h,
-                    ),
-                    constraints: BoxConstraints(maxWidth: 280.w),
-                    decoration: BoxDecoration(
-                      color: msg.isMe
-                          ? const Color(0xFF0B4F4A)
-                          : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(14.r),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          msg.text,
-                          style: TextStyle(
-                            color: msg.isMe ? Colors.white : Colors.black87,
-                            fontSize: 13.sp,
-                          ),
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          msg.time,
-                          style: TextStyle(
-                            color: msg.isMe ? Colors.white70 : Colors.black54,
-                            fontSize: 9.sp,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.all(8.w),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _msgController,
-                    style: TextStyle(fontSize: 13.sp),
-                    decoration: InputDecoration(
-                      hintText: widget.isHindi
-                          ? 'संदेश लिखें...'
-                          : 'Type a message...',
-                      hintStyle: TextStyle(fontSize: 13.sp),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 10.h,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24.r),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24.r),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                CircleAvatar(
-                  backgroundColor: const Color(0xFF0B4F4A),
-                  child: IconButton(
-                    icon: Icon(Icons.send, color: Colors.white, size: 18.sp),
-                    onPressed: _sendMessage,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isMe;
-  final String time;
-
-  ChatMessage({required this.text, required this.isMe, required this.time});
-}
-
-enum ConnectionStatus { none, pendingSent, pendingReceived, connected }
-
-class Member {
-  final String id;
-  final String name;
-  final String initials;
-  ConnectionStatus status;
-
-  Member({
-    required this.id,
-    required this.name,
-    required this.initials,
-    this.status = ConnectionStatus.none,
-  });
-}
-
-class ActivityLog {
-  final String title;
-  final DateTime timestamp;
-
-  ActivityLog({required this.title, required this.timestamp});
-}
-
-class NetworkMember {
-  final String id;
-  final String nameEn;
-  final String nameHi;
-  final String roleEn;
-  final String roleHi;
-  final String initials;
-  final String currentLocation;
-  final String permanentLocation;
-  final String pincode;
-  bool isPending;
-
-  NetworkMember({
-    required this.id,
-    required this.nameEn,
-    required this.nameHi,
-    required this.roleEn,
-    required this.roleHi,
-    required this.initials,
-    required this.currentLocation,
-    required this.permanentLocation,
-    required this.pincode,
-    this.isPending = false,
-  });
 }

@@ -29,6 +29,9 @@ import '../Data/ResponseModel/sendReqeustResModel.dart';
 import '../Data/ResponseModel/trackFriendModel.dart';
 import '../Data/ResponseModel/updateProfileResModel.dart';
 import '../Data/ResponseModel/uploadImageResModel.dart';
+import '../Data/BodyModel/BusinessProfileBodyModel.dart';
+import '../Data/ResponseModel/BusinessProfileResModel.dart';
+import '../Data/ResponseModel/ChatHistoryResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -275,6 +278,28 @@ class Authservice {
         longitude: longitude,
       );
       return await api.updateLocation(body);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<BusinessProfileResModel> saveBusinessProfileData(
+    BusinessProfileBodyModel body,
+  ) async {
+    try {
+      final response = await api.saveBusinessProfile(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<ChatHistoryResModel> getChatHistoryData({
+    required String receiverId,
+  }) async {
+    try {
+      final response = await api.getChatHistory(receiverId);
+      return response;
     } catch (e) {
       rethrow;
     }

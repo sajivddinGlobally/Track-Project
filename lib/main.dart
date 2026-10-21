@@ -10,6 +10,7 @@ import 'package:track_loved/HomeScreen/DashboardScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
+import 'package:track_loved/SettingScreen/font_scale_provider.dart';
 import 'package:track_loved/core/Utils/key.dart';
 
 void main() async {
@@ -100,12 +101,26 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ),
           child: SafeArea(
             top: false,
-            child: MaterialApp(
-              debugShowCheckedModeBanner: false,
-              navigatorKey: navigatorKey,
-              scaffoldMessengerKey: snackBarKey,
-              title: 'Flutter Demo',
-              home: homeScreen,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final fontScale = ref.watch(fontScaleProvider);
+                return MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  navigatorKey: navigatorKey,
+                  scaffoldMessengerKey: snackBarKey,
+                  title: 'Flutter Demo',
+                  home: homeScreen,
+                  builder: (context, materialChild) {
+                    final mediaQueryData = MediaQuery.of(context);
+                    return MediaQuery(
+                      data: mediaQueryData.copyWith(
+                        textScaler: TextScaler.linear(fontScale),
+                      ),
+                      child: materialChild ?? const SizedBox.shrink(),
+                    );
+                  },
+                );
+              },
             ),
           ),
         );

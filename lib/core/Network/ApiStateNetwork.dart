@@ -18,16 +18,21 @@ import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
+import '../Data/BodyModel/deleteContactBodyModel.dart';
 import '../Data/BodyModel/locationSharingBodyModel.dart';
 import '../Data/BodyModel/UpdateLocationBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
+import '../Data/ResponseModel/deleteContactResModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
 import '../Data/ResponseModel/updateProfileResModel.dart';
 import '../Data/ResponseModel/uploadImageResModel.dart';
 import '../Data/ResponseModel/LocationSharingReceivedResModel.dart';
+import '../Data/BodyModel/BusinessProfileBodyModel.dart';
+import '../Data/ResponseModel/BusinessProfileResModel.dart';
+import '../Data/ResponseModel/ChatHistoryResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -122,4 +127,19 @@ abstract class ApiStateNetwork {
 
   @GET("/api/v1/law-content")
   Future<dynamic> getLawContent();
+
+  @POST("/api/v1/business/profile")
+  Future<BusinessProfileResModel> saveBusinessProfile(
+    @Body() BusinessProfileBodyModel body,
+  );
+
+  @GET("/api/v1/network/chat/messages/{receiverId}")
+  Future<ChatHistoryResModel> getChatHistory(
+    @Path("receiverId") String receiverId,
+  );
+
+  @DELETE("/api/v1/network/contacts")
+  Future<DeleteContactResModel> deleteContact(
+    @Body() DeleteContactBodyModel body,
+  );
 }

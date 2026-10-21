@@ -59,20 +59,24 @@ class Data {
 class InviteItem {
     String? contactName;
     String? phone;
+    String? inviteMessage;
 
     InviteItem({
         this.contactName,
         this.phone,
+        this.inviteMessage,
     });
 
     factory InviteItem.fromJson(Map<String, dynamic> json) => InviteItem(
         contactName: json["contactName"]?.toString(),
         phone: json["phone"]?.toString(),
+        inviteMessage: json["inviteMessage"]?.toString(),
     );
 
     Map<String, dynamic> toJson() => {
         "contactName": contactName,
         "phone": phone,
+        if (inviteMessage != null) "inviteMessage": inviteMessage,
     };
 }
 
