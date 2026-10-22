@@ -55,6 +55,7 @@ class Authservice {
     required name,
     required phone,
     String role = "user",
+    String? parentPhone,
   }) async {
     try {
       final body = RegisterBodyModel(
@@ -63,6 +64,7 @@ class Authservice {
         name: name,
         phone: phone,
         role: role,
+        parentPhone: parentPhone,
       );
       final response = await api.register(body);
       return response;

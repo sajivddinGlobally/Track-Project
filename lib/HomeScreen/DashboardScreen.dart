@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
+import 'package:track_loved/ProfileScreen/provider/getMyProfileProvider.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 
@@ -186,6 +187,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(getMyProfileProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       key: _scaffoldKey,
@@ -224,44 +227,89 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
               );
             },
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Profile',
-            offset: const Offset(0, 44),
-            constraints: const BoxConstraints(minWidth: 0),
-            padding: EdgeInsets.zero,
-            onSelected: (value) {
-              if (value == 'edit') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                );
-              }
-            },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'edit',
-                height: 36,
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_outlined, size: 16),
-                    SizedBox(width: 6),
-                    Text('Edit Profile', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-            child: Padding(
-              padding: const EdgeInsets.only(left: 4, right: 12),
-              child: CircleAvatar(
-                radius: 14,
-                backgroundColor: Colors.white,
-                child: Text(
-                  _profileInitial(),
-                  style: const TextStyle(
-                    color: Color(0xFF0B4F4A),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  ).then((_) {
+                    ref.invalidate(getMyProfileProvider);
+                  });
+                },
+                child: Tooltip(
+                  message: 'Profile',
+                  child: Container(
+                    padding: const EdgeInsets.all(2.0),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFD4AF37), Color(0xFFFFD54F)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          spreadRadius: 0.5,
+                        ),
+                      ],
+                    ),
+                    child: profileAsync.when(
+                      data: (profileData) {
+                        final img = profileData.data?.user?.profileImage;
+                        if (img != null && img.trim().isNotEmpty) {
+                          return CircleAvatar(
+                            radius: 15,
+                            backgroundColor: const Color(0xFF0F3D38),
+                            backgroundImage: NetworkImage(img),
+                          );
+                        }
+                        return CircleAvatar(
+                          radius: 15,
+                          backgroundColor: const Color(0xFF0F3D38),
+                          child: Text(
+                            _profileInitial(),
+                            style: const TextStyle(
+                              color: Color(0xFFD4AF37),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        );
+                      },
+                      loading: () => CircleAvatar(
+                        radius: 15,
+                        backgroundColor: const Color(0xFF0F3D38),
+                        child: Text(
+                          _profileInitial(),
+                          style: const TextStyle(
+                            color: Color(0xFFD4AF37),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      error: (_, __) => CircleAvatar(
+                        radius: 15,
+                        backgroundColor: const Color(0xFF0F3D38),
+                        child: Text(
+                          _profileInitial(),
+                          style: const TextStyle(
+                            color: Color(0xFFD4AF37),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

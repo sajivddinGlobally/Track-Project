@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,6 +67,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   );
   final TextEditingController _villageTownController = TextEditingController();
 
+  final TextEditingController _permanentCityController =
+      TextEditingController();
+  final TextEditingController _permanentPincodeController =
+      TextEditingController();
+  final TextEditingController _permanentCountryController =
+      TextEditingController(text: 'India');
+
+  String? _selectedCurrentState;
+  String? _selectedPermanentState;
+
+  static const List<String> _indianStates = [
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
+    'Andaman and Nicobar Islands',
+    'Chandigarh',
+    'Dadra and Nagar Haveli and Daman and Diu',
+    'Delhi',
+    'Jammu and Kashmir',
+    'Ladakh',
+    'Lakshadweep',
+    'Puducherry',
+  ];
+
   final FocusNode _schoolFocusNode = FocusNode();
   final FocusNode _locationFocusNode = FocusNode();
   final FocusNode _yearFocusNode = FocusNode();
@@ -81,6 +131,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final FocusNode _pincodeFocusNode = FocusNode();
   final FocusNode _countryFocusNode = FocusNode();
   final FocusNode _villageTownFocusNode = FocusNode();
+  final FocusNode _permanentCityFocusNode = FocusNode();
+  final FocusNode _permanentPincodeFocusNode = FocusNode();
 
   final TextEditingController _mobileController = TextEditingController();
   bool _isMobileVerified = false;
@@ -94,6 +146,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isFormValid = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  void _syncPermanentAddressWithCurrent() {
+    if (_sameAsCurrentAddress) {
+      _permanentAddressController.text = _currentAddressController.text;
+      _permanentCityController.text = _cityController.text;
+      _selectedPermanentState = _selectedCurrentState;
+      _permanentPincodeController.text = _pincodeController.text;
+      _permanentCountryController.text = _countryController.text;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -101,26 +163,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _locationController.addListener(_validateForm);
     _yearController.addListener(_validateForm);
     _mobileController.addListener(_validateForm);
-    _currentAddressController.addListener(_validateForm);
+    _currentAddressController.addListener(() {
+      _syncPermanentAddressWithCurrent();
+      _validateForm();
+    });
     _permanentAddressController.addListener(_validateForm);
-    _cityController.addListener(_validateForm);
-    _stateController.addListener(_validateForm);
-    _pincodeController.addListener(_validateForm);
-    _countryController.addListener(_validateForm);
+    _cityController.addListener(() {
+      _syncPermanentAddressWithCurrent();
+      _validateForm();
+    });
+    _pincodeController.addListener(() {
+      _syncPermanentAddressWithCurrent();
+      _validateForm();
+    });
+    _countryController.addListener(() {
+      _syncPermanentAddressWithCurrent();
+      _validateForm();
+    });
+    _permanentCityController.addListener(_validateForm);
+    _permanentPincodeController.addListener(_validateForm);
   }
 
   void _validateForm() {
+    final isCurrentPincodeValid = RegExp(
+      r'^[1-9][0-9]{5}$',
+    ).hasMatch(_pincodeController.text.trim());
+
+    bool isPermanentValid = true;
+    if (_sameAsCurrentAddress) {
+      isPermanentValid = true;
+    } else {
+      final isPermPincodeValid = RegExp(
+        r'^[1-9][0-9]{5}$',
+      ).hasMatch(_permanentPincodeController.text.trim());
+      isPermanentValid =
+          _permanentAddressController.text.trim().isNotEmpty &&
+          _permanentCityController.text.trim().isNotEmpty &&
+          (_selectedPermanentState != null &&
+              _selectedPermanentState!.isNotEmpty) &&
+          isPermPincodeValid;
+    }
+
     final isValid =
         _schoolController.text.trim().isNotEmpty &&
         _locationController.text.trim().isNotEmpty &&
         _yearController.text.trim().isNotEmpty &&
         _mobileController.text.trim().isNotEmpty &&
         _currentAddressController.text.trim().isNotEmpty &&
-        _permanentAddressController.text.trim().isNotEmpty &&
         _cityController.text.trim().isNotEmpty &&
-        _stateController.text.trim().isNotEmpty &&
-        _pincodeController.text.trim().isNotEmpty &&
-        _countryController.text.trim().isNotEmpty &&
+        (_selectedCurrentState != null && _selectedCurrentState!.isNotEmpty) &&
+        isCurrentPincodeValid &&
+        isPermanentValid &&
         _isMobileVerified;
 
     if (isValid != _isFormValid) {
@@ -183,6 +276,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     if (user.state != null && user.state!.trim().isNotEmpty) {
       _stateController.text = user.state!;
+      final matchedState = _indianStates.firstWhere(
+        (s) => s.toLowerCase() == user.state!.trim().toLowerCase(),
+        orElse: () => '',
+      );
+      if (matchedState.isNotEmpty) {
+        _selectedCurrentState = matchedState;
+      }
     }
     if (user.country != null && user.country!.trim().isNotEmpty) {
       _countryController.text = user.country!;
@@ -192,6 +292,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
     if (user.villageTown != null && user.villageTown!.trim().isNotEmpty) {
       _villageTownController.text = user.villageTown!;
+    }
+
+    if (user.permanentCity != null && user.permanentCity!.trim().isNotEmpty) {
+      _permanentCityController.text = user.permanentCity!;
+    }
+    if (user.permanentState != null && user.permanentState!.trim().isNotEmpty) {
+      final matchedState = _indianStates.firstWhere(
+        (s) => s.toLowerCase() == user.permanentState!.trim().toLowerCase(),
+        orElse: () => '',
+      );
+      if (matchedState.isNotEmpty) {
+        _selectedPermanentState = matchedState;
+      }
+    }
+    if (user.permanentPincode != null &&
+        user.permanentPincode!.trim().isNotEmpty) {
+      _permanentPincodeController.text = user.permanentPincode!;
+    }
+    if (user.permanentCountry != null &&
+        user.permanentCountry!.trim().isNotEmpty) {
+      _permanentCountryController.text = user.permanentCountry!;
+    }
+
+    // Check if permanent matches current address
+    if (_permanentAddressController.text.isNotEmpty &&
+        _permanentAddressController.text == _currentAddressController.text &&
+        (_permanentCityController.text.isEmpty ||
+            _permanentCityController.text == _cityController.text)) {
+      _sameAsCurrentAddress = true;
+      _permanentCityController.text = _cityController.text;
+      _selectedPermanentState = _selectedCurrentState;
+      _permanentPincodeController.text = _pincodeController.text;
     }
 
     if (mounted) {
@@ -216,6 +348,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _pincodeFocusNode.dispose();
     _countryFocusNode.dispose();
     _villageTownFocusNode.dispose();
+    _permanentCityFocusNode.dispose();
+    _permanentPincodeFocusNode.dispose();
 
     _schoolController.dispose();
     _locationController.dispose();
@@ -231,6 +365,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _pincodeController.dispose();
     _countryController.dispose();
     _villageTownController.dispose();
+    _permanentCityController.dispose();
+    _permanentPincodeController.dispose();
+    _permanentCountryController.dispose();
     super.dispose();
   }
 
@@ -964,50 +1101,79 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Stack(
               children: [
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 84,
+                  height: 84,
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(20),
+                    color: const Color(0xFF0F3D38),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF144D47), Color(0xFF072420)],
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                      width: 1.8,
+                    ),
+                    borderRadius: BorderRadius.circular(22.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _pickedImageFile != null
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(20.r),
+                          borderRadius: BorderRadius.circular(222.r),
                           child: Image.file(
                             _pickedImageFile!,
-                            width: 80,
-                            height: 80,
+                            width: 84,
+                            height: 84,
                             fit: BoxFit.cover,
                           ),
                         )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(20.r),
-                          child: Image.network(
-                            _selectedAvatarUrl,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 80,
-                                height: 80,
+                      : (_selectedAvatarUrl.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(22.r),
+                                child: Image.network(
+                                  _selectedAvatarUrl,
+                                  width: 84,
+                                  height: 84,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 84,
+                                      height: 84,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          22.r,
+                                        ),
+                                        color: const Color(0xFF0F3D38),
+                                      ),
+                                      child: const Icon(
+                                        Icons.person_rounded,
+                                        size: 46,
+                                        color: Color(0xFFD4AF37),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              )
+                            : Container(
+                                width: 84,
+                                height: 84,
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade900,
-                                  border: Border.all(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(22.r),
+                                  color: const Color(0xFF0F3D38),
                                 ),
-                                clipBehavior: Clip.antiAlias,
                                 child: const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Colors.grey,
+                                  Icons.person_rounded,
+                                  size: 46,
+                                  color: Color(0xFFD4AF37),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
+                              )),
                 ),
                 Positioned(
                   bottom: 0,
@@ -1324,13 +1490,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                _isHindi ? 'पते की जानकारी' : 'Address Information',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    color: Color(0xFFD4AF37),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isHindi ? 'पते की जानकारी' : 'Address Information',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1349,10 +1525,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+
+          // Current Address Subheading
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F3D38),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.home_outlined,
+                  color: Color(0xFFD4AF37),
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isHindi
+                      ? 'वर्तमान पता (Current Address)'
+                      : 'Current Address',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
+
           _buildDetailRow(
-            icon: Icons.home_outlined,
-            title: _isHindi ? 'वर्तमान पता *' : 'Current Address *',
+            icon: Icons.signpost_outlined,
+            title: _isHindi
+                ? 'वर्तमान पता (सड़क/मकान नं.) *'
+                : 'Current Address (House/Street) *',
             controller: _currentAddressController,
             focusNode: _currentAddressFocusNode,
             maxLines: 1,
@@ -1362,6 +1574,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _permanentAddressController.text = val;
                 });
               }
+              _validateForm();
             },
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
@@ -1373,6 +1586,103 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
           ),
           const Divider(color: Colors.white12, height: 20),
+
+          _buildDetailRow(
+            icon: Icons.location_city,
+            title: _isHindi ? 'वर्तमान शहर *' : 'Current City *',
+            controller: _cityController,
+            focusNode: _cityFocusNode,
+            onChanged: (val) {
+              if (_sameAsCurrentAddress) {
+                setState(() {
+                  _permanentCityController.text = val;
+                });
+              }
+              _validateForm();
+            },
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return _isHindi ? 'कृपया शहर दर्ज करें' : 'Please enter city';
+              }
+              return null;
+            },
+          ),
+          const Divider(color: Colors.white12, height: 20),
+
+          _buildStateDropdown(
+            title: _isHindi ? 'वर्तमान राज्य *' : 'Current State *',
+            selectedState: _selectedCurrentState,
+            onChanged: (val) {
+              setState(() {
+                _selectedCurrentState = val;
+                if (_sameAsCurrentAddress) {
+                  _selectedPermanentState = val;
+                }
+              });
+              _validateForm();
+            },
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return _isHindi ? 'कृपया राज्य चुनें' : 'Please select state';
+              }
+              return null;
+            },
+          ),
+          const Divider(color: Colors.white12, height: 20),
+
+          _buildDetailRow(
+            icon: Icons.pin_drop_outlined,
+            title: _isHindi ? 'वर्तमान पिन कोड *' : 'Current Pin Code *',
+            controller: _pincodeController,
+            focusNode: _pincodeFocusNode,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            onChanged: (val) {
+              if (_sameAsCurrentAddress) {
+                setState(() {
+                  _permanentPincodeController.text = val;
+                });
+              }
+              _validateForm();
+            },
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return _isHindi
+                    ? 'कृपया पिन कोड दर्ज करें'
+                    : 'Please enter pin code';
+              }
+              if (!RegExp(r'^[1-9][0-9]{5}$').hasMatch(val.trim())) {
+                return _isHindi
+                    ? 'कृपया वैध 6-अंकों का पिन कोड दर्ज करें'
+                    : 'Please enter a valid 6-digit pin code';
+              }
+              return null;
+            },
+          ),
+          const Divider(color: Colors.white12, height: 20),
+
+          _buildDetailRow(
+            icon: Icons.public,
+            title: _isHindi ? 'देश *' : 'Country *',
+            controller: _countryController,
+            focusNode: _countryFocusNode,
+            readOnly: true,
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return _isHindi
+                    ? 'कृपया देश दर्ज करें'
+                    : 'Please enter country';
+              }
+              return null;
+            },
+          ),
+          const Divider(color: Colors.white12, height: 24),
+
+          // Same as current address checkbox
           Row(
             children: [
               SizedBox(
@@ -1386,8 +1696,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     setState(() {
                       _sameAsCurrentAddress = value ?? false;
                       if (_sameAsCurrentAddress) {
-                        _permanentAddressController.text =
-                            _currentAddressController.text;
+                        _syncPermanentAddressWithCurrent();
                       }
                     });
                     _validateForm();
@@ -1396,27 +1705,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  _isHindi
-                      ? 'स्थाई पता वर्तमान पता जैसा ही है'
-                      : 'Permanent address same as current address',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _sameAsCurrentAddress = !_sameAsCurrentAddress;
+                      if (_sameAsCurrentAddress) {
+                        _syncPermanentAddressWithCurrent();
+                      }
+                    });
+                    _validateForm();
+                  },
+                  child: Text(
+                    _isHindi
+                        ? 'स्थाई पता वर्तमान पता जैसा ही है'
+                        : 'Permanent address same as current address',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
+
+          // Permanent Address Section Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F3D38),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.apartment_outlined,
+                  color: Color(0xFFD4AF37),
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _isHindi
+                      ? 'स्थाई पता (Permanent Address)'
+                      : 'Permanent Address',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
+
           _buildDetailRow(
-            icon: Icons.location_city_outlined,
-            title: _isHindi ? 'स्थाई पता *' : 'Permanent Address *',
+            icon: Icons.home,
+            title: _isHindi
+                ? 'स्थाई पता (सड़क/मकान नं.) *'
+                : 'Permanent Address (House/Street) *',
             controller: _permanentAddressController,
             focusNode: _permanentAddressFocusNode,
             maxLines: 1,
             readOnly: _sameAsCurrentAddress,
+            onChanged: (val) => _validateForm(),
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return _isHindi
@@ -1427,71 +1784,405 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
           ),
           const Divider(color: Colors.white12, height: 20),
+
           _buildDetailRow(
-            icon: Icons.location_city,
-            title: _isHindi ? 'शहर *' : 'City *',
-            controller: _cityController,
-            focusNode: _cityFocusNode,
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return _isHindi ? 'कृपया शहर दर्ज करें' : 'Please enter city';
-              }
-              return null;
-            },
-          ),
-          const Divider(color: Colors.white12, height: 20),
-          _buildDetailRow(
-            icon: Icons.map_outlined,
-            title: _isHindi ? 'राज्य *' : 'State *',
-            controller: _stateController,
-            focusNode: _stateFocusNode,
+            icon: Icons.location_city_outlined,
+            title: _isHindi ? 'स्थाई शहर *' : 'Permanent City *',
+            controller: _permanentCityController,
+            focusNode: _permanentCityFocusNode,
+            readOnly: _sameAsCurrentAddress,
+            onChanged: (val) => _validateForm(),
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return _isHindi
-                    ? 'कृपया राज्य दर्ज करें'
-                    : 'Please enter state';
+                    ? 'कृपया स्थाई शहर दर्ज करें'
+                    : 'Please enter permanent city';
               }
               return null;
             },
           ),
           const Divider(color: Colors.white12, height: 20),
+
+          _buildStateDropdown(
+            title: _isHindi ? 'स्थाई राज्य *' : 'Permanent State *',
+            selectedState: _selectedPermanentState,
+            readOnly: _sameAsCurrentAddress,
+            onChanged: (val) {
+              setState(() {
+                _selectedPermanentState = val;
+              });
+              _validateForm();
+            },
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return _isHindi
+                    ? 'कृपया स्थाई राज्य चुनें'
+                    : 'Please select permanent state';
+              }
+              return null;
+            },
+          ),
+          const Divider(color: Colors.white12, height: 20),
+
           _buildDetailRow(
-            icon: Icons.pin_drop_outlined,
-            title: _isHindi ? 'पिन कोड *' : 'Pin Code *',
-            controller: _pincodeController,
-            focusNode: _pincodeFocusNode,
+            icon: Icons.pin_drop,
+            title: _isHindi ? 'स्थाई पिन कोड *' : 'Permanent Pin Code *',
+            controller: _permanentPincodeController,
+            focusNode: _permanentPincodeFocusNode,
             keyboardType: TextInputType.number,
+            maxLength: 6,
+            readOnly: _sameAsCurrentAddress,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            onChanged: (val) => _validateForm(),
             validator: (val) {
               if (val == null || val.trim().isEmpty) {
                 return _isHindi
-                    ? 'कृपया पिन कोड दर्ज करें'
-                    : 'Please enter pin code';
+                    ? 'कृपया स्थाई पिन कोड दर्ज करें'
+                    : 'Please enter permanent pin code';
               }
-              if (val.trim().length != 6) {
+              if (!RegExp(r'^[1-9][0-9]{5}$').hasMatch(val.trim())) {
                 return _isHindi
-                    ? 'कृपया 6-अंकों का पिन कोड दर्ज करें'
-                    : 'Please enter 6-digit pin code';
+                    ? 'कृपया वैध 6-अंकों का पिन कोड दर्ज करें'
+                    : 'Please enter a valid 6-digit pin code';
               }
               return null;
             },
           ),
           const Divider(color: Colors.white12, height: 20),
+
           _buildDetailRow(
             icon: Icons.public,
-            title: _isHindi ? 'देश *' : 'Country *',
-            controller: _countryController,
-            focusNode: _countryFocusNode,
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) {
-                return _isHindi
-                    ? 'कृपया देश दर्ज करें'
-                    : 'Please enter country';
-              }
-              return null;
-            },
+            title: _isHindi ? 'स्थाई देश *' : 'Permanent Country *',
+            controller: _permanentCountryController,
+            readOnly: true,
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showStatePicker({
+    required String title,
+    required String? selectedState,
+    required ValueChanged<String> onSelected,
+  }) async {
+    final searchController = TextEditingController();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final query = searchController.text.trim().toLowerCase();
+            final filteredStates = _indianStates.where((state) {
+              return state.toLowerCase().contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.70,
+              decoration: const BoxDecoration(
+                color: Color(0xFF072420),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border(
+                  top: BorderSide(color: Color(0xFFD4AF37), width: 1.5),
+                  left: BorderSide(color: Color(0xFFD4AF37), width: 0.5),
+                  right: BorderSide(color: Color(0xFFD4AF37), width: 0.5),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.outfit(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFFD4AF37),
+                          ),
+                          onPressed: () => Navigator.pop(bottomSheetContext),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: TextField(
+                      controller: searchController,
+                      style: const TextStyle(color: Colors.white),
+                      onChanged: (val) {
+                        setModalState(() {});
+                      },
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFF0F3D38),
+                        hintText: _isHindi
+                            ? 'राज्य खोजें (उदा. Rajasthan, Maharashtra)...'
+                            : 'Search state (e.g. Rajasthan, Maharashtra)...',
+                        hintStyle: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 14.sp,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFFD4AF37),
+                        ),
+                        suffixIcon: searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.white54,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  searchController.clear();
+                                  setModalState(() {});
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: const Color(
+                              0xFFD4AF37,
+                            ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: const Color(
+                              0xFFD4AF37,
+                            ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4AF37),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: filteredStates.isEmpty
+                        ? Center(
+                            child: Text(
+                              _isHindi
+                                  ? 'कोई राज्य नहीं मिला'
+                                  : 'No state found',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 15.sp,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            itemCount: filteredStates.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(color: Colors.white10, height: 1),
+                            itemBuilder: (context, index) {
+                              final stateItem = filteredStates[index];
+                              final isSelected = stateItem == selectedState;
+                              return ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                title: Text(
+                                  stateItem,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? const Color(0xFF00E676)
+                                        : Colors.white,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    fontSize: 15.sp,
+                                  ),
+                                ),
+                                trailing: isSelected
+                                    ? const Icon(
+                                        Icons.check_circle,
+                                        color: Color(0xFF00E676),
+                                        size: 20,
+                                      )
+                                    : null,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(bottomSheetContext);
+                                  onSelected(stateItem);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStateDropdown({
+    required String title,
+    required String? selectedState,
+    required ValueChanged<String?> onChanged,
+    required FormFieldValidator<String?> validator,
+    bool readOnly = false,
+  }) {
+    return FormField<String>(
+      initialValue: selectedState,
+      validator: validator,
+      builder: (formFieldState) {
+        final hasError = formFieldState.hasError;
+        return InkWell(
+          onTap: readOnly
+              ? null
+              : () {
+                  _showStatePicker(
+                    title: title.replaceAll('*', '').trim(),
+                    selectedState: selectedState,
+                    onSelected: (val) {
+                      formFieldState.didChange(val);
+                      onChanged(val);
+                    },
+                  );
+                },
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 2.h),
+                child: const Icon(
+                  Icons.map_outlined,
+                  color: Colors.white70,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: Colors.white60,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (selectedState != null && selectedState.isNotEmpty)
+                                ? selectedState
+                                : (_isHindi ? 'राज्य चुनें' : 'Select State'),
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              color:
+                                  (selectedState != null &&
+                                      selectedState.isNotEmpty)
+                                  ? (readOnly ? Colors.white38 : Colors.white)
+                                  : Colors.white38,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (!readOnly)
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            color: Color(0xFFD4AF37),
+                          ),
+                      ],
+                    ),
+                    if (hasError) ...[
+                      SizedBox(height: 4.h),
+                      Text(
+                        formFieldState.errorText ?? '',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (!readOnly)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _showStatePicker(
+                      title: title.replaceAll('*', '').trim(),
+                      selectedState: selectedState,
+                      onSelected: (val) {
+                        formFieldState.didChange(val);
+                        onChanged(val);
+                      },
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(6.0),
+                    child: Icon(
+                      Icons.search,
+                      color: Color(0xFFD4AF37),
+                      size: 20,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1503,6 +2194,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     int maxLines = 1,
     bool readOnly = false,
     TextInputType? keyboardType,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
     ValueChanged<String>? onChanged,
     FormFieldValidator<String>? validator,
   }) {
@@ -1545,6 +2238,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   maxLines: maxLines,
                   readOnly: readOnly,
                   keyboardType: keyboardType,
+                  maxLength: maxLength,
+                  inputFormatters: inputFormatters,
                   onChanged: onChanged,
                   validator: validator,
                   style: TextStyle(
@@ -1554,6 +2249,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   decoration: InputDecoration(
                     isDense: true,
+                    counterText: '',
                     hintText: _isHindi ? 'विवरण दर्ज करें' : 'Enter details',
                     hintStyle: TextStyle(
                       color: Colors.white38,
@@ -1648,7 +2344,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         campusLocation: _locationController.text.trim(),
         graduationYear: _yearController.text.trim(),
         currentAddress: _currentAddressController.text.trim(),
-        permanentAddress: _permanentAddressController.text.trim(),
+        permanentAddress: _sameAsCurrentAddress
+            ? _currentAddressController.text.trim()
+            : _permanentAddressController.text.trim(),
+        city: _cityController.text.trim().isNotEmpty
+            ? _cityController.text.trim()
+            : null,
+        state:
+            _selectedCurrentState != null && _selectedCurrentState!.isNotEmpty
+            ? _selectedCurrentState
+            : (_stateController.text.trim().isNotEmpty
+                  ? _stateController.text.trim()
+                  : null),
+        country: _countryController.text.trim().isNotEmpty
+            ? _countryController.text.trim()
+            : null,
+        pincode: _pincodeController.text.trim().isNotEmpty
+            ? _pincodeController.text.trim()
+            : null,
+        permanentCity: _sameAsCurrentAddress
+            ? (_cityController.text.trim().isNotEmpty
+                  ? _cityController.text.trim()
+                  : null)
+            : (_permanentCityController.text.trim().isNotEmpty
+                  ? _permanentCityController.text.trim()
+                  : null),
+        permanentState: _sameAsCurrentAddress
+            ? _selectedCurrentState
+            : _selectedPermanentState,
+        permanentPincode: _sameAsCurrentAddress
+            ? (_pincodeController.text.trim().isNotEmpty
+                  ? _pincodeController.text.trim()
+                  : null)
+            : (_permanentPincodeController.text.trim().isNotEmpty
+                  ? _permanentPincodeController.text.trim()
+                  : null),
+        permanentCountry: _sameAsCurrentAddress
+            ? _countryController.text.trim()
+            : _permanentCountryController.text.trim(),
         profession: _professionController.text.trim().isNotEmpty
             ? _professionController.text.trim()
             : null,
@@ -1657,18 +2390,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             : null,
         bio: _bioController.text.trim().isNotEmpty
             ? _bioController.text.trim()
-            : null,
-        city: _cityController.text.trim().isNotEmpty
-            ? _cityController.text.trim()
-            : null,
-        state: _stateController.text.trim().isNotEmpty
-            ? _stateController.text.trim()
-            : null,
-        country: _countryController.text.trim().isNotEmpty
-            ? _countryController.text.trim()
-            : null,
-        pincode: _pincodeController.text.trim().isNotEmpty
-            ? _pincodeController.text.trim()
             : null,
         villageTown: _villageTownController.text.trim().isNotEmpty
             ? _villageTownController.text.trim()
@@ -1698,7 +2419,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           }
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      log(st.toString());
       log('Error saving profile: $e');
       if (mounted) {
         showErrorSnackBar(

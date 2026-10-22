@@ -254,6 +254,7 @@ class _AddNetworkSearchScreenState
                   : (c.contactName ?? 'Unknown User'),
               profileImage: c.user?.profileImage?.toString(),
               requestStatus: c.connectionStatus,
+              phone: c.matchedPhone,
             ),
           )
           .toList();
@@ -506,6 +507,7 @@ class _AddNetworkSearchScreenState
                 : (c.contactName ?? 'Unknown User'),
             profileImage: c.user?.profileImage?.toString(),
             requestStatus: c.connectionStatus,
+            phone: c.matchedPhone,
           ),
         )
         .toList();
@@ -893,11 +895,35 @@ class _AddNetworkSearchScreenState
     );
   }
 
+  String _normalizePhone(String raw) {
+    String clean = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('91') && clean.length == 12) {
+      clean = clean.substring(2);
+    } else if (clean.startsWith('0') && clean.length == 11) {
+      clean = clean.substring(1);
+    } else if (clean.length > 10) {
+      clean = clean.substring(clean.length - 10);
+    }
+    return clean;
+  }
+
   Widget _buildMatchedContactsView(
     List<User> users,
     List<mcr.InviteItem> inviteList,
   ) {
     final totalCount = users.length + inviteList.length;
+
+    final allPhones = <String>{
+      for (final u in users)
+        if (_normalizePhone(u.phone ?? _phoneByUserId[u.id] ?? '').isNotEmpty)
+          _normalizePhone(u.phone ?? _phoneByUserId[u.id] ?? ''),
+      for (final i in inviteList)
+        if (_normalizePhone(i.phone ?? '').isNotEmpty)
+          _normalizePhone(i.phone ?? ''),
+    };
+
+    final bool allSelected =
+        allPhones.isNotEmpty && _selectedPhones.length == allPhones.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -905,14 +931,18 @@ class _AddNetworkSearchScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              _isHindi
-                  ? 'मिलान करने वाले सदस्य ($totalCount)'
-                  : 'Matching Members ($totalCount)',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Expanded(
+              child: Text(
+                _isHindi
+                    ? 'सहेजे गए संपर्क ($totalCount)'
+                    : 'Saved Contacts ($totalCount)',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Row(
@@ -926,24 +956,53 @@ class _AddNetworkSearchScreenState
                         _selectedPhones.clear();
                       });
                     },
-                    borderRadius: BorderRadius.circular(8.r),
-                    child: Padding(
+                    borderRadius: BorderRadius.circular(20.r),
+                    child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 4.h,
+                        horizontal: 10.w,
+                        vertical: 5.h,
                       ),
-                      child: Text(
-                        _selectMode
-                            ? (_isHindi ? 'रद्द करें' : 'Cancel')
-                            : (_isHindi ? 'चुनें' : 'Select'),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w600,
+                      decoration: BoxDecoration(
+                        color: _selectMode
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : const Color(0xFFD32F2F).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(
+                          color: _selectMode
+                              ? Colors.white30
+                              : const Color(0xFFFF5252).withValues(alpha: 0.5),
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _selectMode
+                                ? Icons.close_rounded
+                                : Icons.delete_outline_rounded,
+                            size: 14.sp,
+                            color: _selectMode
+                                ? Colors.white
+                                : const Color(0xFFFF8A80),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            _selectMode
+                                ? (_isHindi ? 'रद्द करें' : 'Cancel')
+                                : (_isHindi ? 'हटाएं' : 'Delete'),
+                            style: TextStyle(
+                              color: _selectMode
+                                  ? Colors.white
+                                  : const Color(0xFFFF8A80),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                SizedBox(width: 8.w),
                 InkWell(
                   onTap: () {
                     setState(() {
@@ -955,14 +1014,14 @@ class _AddNetworkSearchScreenState
                   borderRadius: BorderRadius.circular(8.r),
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
+                      horizontal: 6.w,
                       vertical: 4.h,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.close, size: 16.sp, color: Colors.white70),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 3.w),
                         Text(
                           _isHindi ? 'बंद करें' : 'Close',
                           style: TextStyle(
@@ -979,8 +1038,11 @@ class _AddNetworkSearchScreenState
             ),
           ],
         ),
-        if (_selectMode) _buildSelectionBar(users, inviteList),
-        SizedBox(height: 14.h),
+        if (_selectMode) ...[
+          SizedBox(height: 10.h),
+          _buildSelectionBar(allPhones, allSelected),
+        ],
+        SizedBox(height: 12.h),
         Expanded(
           child: (users.isEmpty && inviteList.isEmpty)
               ? Center(
@@ -996,8 +1058,8 @@ class _AddNetworkSearchScreenState
                         SizedBox(height: 8.h),
                         Text(
                           _isHindi
-                              ? 'आपके संपर्कों में से कोई भी सदस्य नहीं मिला।'
-                              : 'No members found matching your contacts.',
+                              ? 'कोई सहेजा गया संपर्क नहीं मिला।'
+                              : 'No saved contacts found.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -1035,94 +1097,160 @@ class _AddNetworkSearchScreenState
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: users.length + inviteList.length,
                     itemBuilder: (context, index) {
-                      final String? phone = index < users.length
-                          ? _phoneByUserId[users[index].id]
-                          : inviteList[index - users.length].phone;
-                      final Widget card = index < users.length
-                          ? _buildMemberCard(
-                              users[index],
-                              isContactMatched: true,
-                            )
-                          : _buildInviteCard(inviteList[index - users.length]);
-                      if (!_selectMode) return card;
-                      final bool checked =
-                          phone != null && _selectedPhones.contains(phone);
-                      return Row(
-                        children: [
-                          Checkbox(
-                            value: checked,
-                            activeColor: const Color(0xFF2E7D32),
-                            side: const BorderSide(color: Colors.white70),
-                            onChanged: phone == null
-                                ? null
-                                : (v) => setState(() {
-                                    v == true
-                                        ? _selectedPhones.add(phone)
-                                        : _selectedPhones.remove(phone);
-                                  }),
-                          ),
-                          Expanded(child: card),
-                        ],
-                      );
+                      if (index < users.length) {
+                        final user = users[index];
+                        final rawPhone =
+                            user.phone ?? _phoneByUserId[user.id] ?? '';
+                        final cleanPhone = _normalizePhone(rawPhone);
+                        final isSelected =
+                            cleanPhone.isNotEmpty &&
+                            _selectedPhones.contains(cleanPhone);
+
+                        return _buildMemberCard(
+                          user,
+                          isContactMatched: true,
+                          isSelectMode: _selectMode,
+                          isSelected: isSelected,
+                          onSelectToggle: () {
+                            if (cleanPhone.isEmpty) return;
+                            setState(() {
+                              if (_selectedPhones.contains(cleanPhone)) {
+                                _selectedPhones.remove(cleanPhone);
+                              } else {
+                                _selectedPhones.add(cleanPhone);
+                              }
+                            });
+                          },
+                          onDirectDelete: () {
+                            _confirmAndDeleteSingleContact(
+                              phone: cleanPhone,
+                              contactName: user.name ?? 'User',
+                            );
+                          },
+                        );
+                      } else {
+                        final inviteIndex = index - users.length;
+                        final item = inviteList[inviteIndex];
+                        final cleanPhone = _normalizePhone(item.phone ?? '');
+                        final isSelected =
+                            cleanPhone.isNotEmpty &&
+                            _selectedPhones.contains(cleanPhone);
+
+                        return _buildInviteCard(
+                          item,
+                          isSelectMode: _selectMode,
+                          isSelected: isSelected,
+                          onSelectToggle: () {
+                            if (cleanPhone.isEmpty) return;
+                            setState(() {
+                              if (_selectedPhones.contains(cleanPhone)) {
+                                _selectedPhones.remove(cleanPhone);
+                              } else {
+                                _selectedPhones.add(cleanPhone);
+                              }
+                            });
+                          },
+                          onDirectDelete: () {
+                            _confirmAndDeleteSingleContact(
+                              phone: cleanPhone,
+                              contactName: item.contactName ?? 'Contact',
+                            );
+                          },
+                        );
+                      }
                     },
                   ),
                 ),
         ),
+        if (_selectMode && totalCount > 0) _buildBottomDeleteBar(),
       ],
     );
   }
 
-  Widget _buildSelectionBar(List<User> users, List<mcr.InviteItem> inviteList) {
-    final allPhones = <String>{
-      for (final u in users)
-        if (_phoneByUserId[u.id] != null) _phoneByUserId[u.id]!,
-      for (final i in inviteList)
-        if (i.phone != null && i.phone!.isNotEmpty) i.phone!,
-    };
-    final allSelected =
-        allPhones.isNotEmpty && _selectedPhones.containsAll(allPhones);
-
-    return Padding(
-      padding: EdgeInsets.only(top: 8.h),
+  Widget _buildSelectionBar(Set<String> allPhones, bool allSelected) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF003832),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: const Color(0xFF005B52).withValues(alpha: 0.8),
+        ),
+      ),
       child: Row(
         children: [
-          Checkbox(
-            value: allSelected,
-            activeColor: const Color(0xFF2E7D32),
-            side: const BorderSide(color: Colors.white70),
-            onChanged: (v) => setState(() {
-              _selectedPhones
-                ..clear()
-                ..addAll(v == true ? allPhones : <String>{});
-            }),
-          ),
-          Expanded(
-            child: Text(
-              _isHindi
-                  ? 'सभी चुनें (${_selectedPhones.length} चयनित)'
-                  : 'Select all (${_selectedPhones.length} selected)',
-              style: TextStyle(color: Colors.white, fontSize: 13.sp),
+          InkWell(
+            onTap: () {
+              setState(() {
+                if (allSelected) {
+                  _selectedPhones.clear();
+                } else {
+                  _selectedPhones
+                    ..clear()
+                    ..addAll(allPhones);
+                }
+              });
+            },
+            borderRadius: BorderRadius.circular(6.r),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20.w,
+                  height: 20.w,
+                  decoration: BoxDecoration(
+                    color: allSelected
+                        ? const Color(0xFF00E676)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(5.r),
+                    border: Border.all(
+                      color: allSelected
+                          ? const Color(0xFF00E676)
+                          : Colors.white60,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: allSelected
+                      ? Icon(Icons.check, size: 14.sp, color: Colors.black87)
+                      : null,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  _isHindi ? 'सभी चुनें' : 'Select All',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
-          ElevatedButton.icon(
-            onPressed: _selectedPhones.isEmpty || _isDeleting
-                ? null
-                : _confirmAndDeleteSelected,
-            icon: _isDeleting
-                ? SizedBox(
-                    width: 14.sp,
-                    height: 14.sp,
-                    child: const CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(Icons.delete_outline, size: 16.sp),
-            label: Text(_isHindi ? 'हटाएं' : 'Delete'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-              minimumSize: Size.zero,
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              textStyle: TextStyle(fontSize: 12.sp),
+          const Spacer(),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: _selectedPhones.isNotEmpty
+                  ? const Color(0xFF0B4F4A)
+                  : Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: _selectedPhones.isNotEmpty
+                    ? const Color(0xFF00E676).withValues(alpha: 0.5)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Text(
+              _isHindi
+                  ? '${_selectedPhones.length} चयनित'
+                  : '${_selectedPhones.length} Selected',
+              style: TextStyle(
+                color: _selectedPhones.isNotEmpty
+                    ? const Color(0xFF00E676)
+                    : Colors.white70,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -1130,63 +1258,303 @@ class _AddNetworkSearchScreenState
     );
   }
 
-  Future<void> _confirmAndDeleteSelected() async {
-    final count = _selectedPhones.length;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(_isHindi ? 'संपर्क हटाएं?' : 'Remove contacts?'),
-        content: Text(
-          _isHindi
-              ? '$count संपर्क हटाए जाएंगे।'
-              : '$count contact(s) will be removed.',
+  Widget _buildBottomDeleteBar() {
+    final bool canDelete = _selectedPhones.isNotEmpty && !_isDeleting;
+    return Container(
+      margin: EdgeInsets.only(top: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00221E),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: canDelete
+              ? const Color(0xFFD32F2F).withValues(alpha: 0.5)
+              : Colors.white12,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(_isHindi ? 'रद्द करें' : 'Cancel'),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: Colors.white70, size: 18.sp),
+          SizedBox(width: 8.w),
+          Expanded(
             child: Text(
-              _isHindi ? 'हटाएं' : 'Delete',
-              style: const TextStyle(color: Colors.red),
+              _selectedPhones.isEmpty
+                  ? (_isHindi
+                        ? 'हटाने के लिए संपर्क चुनें'
+                        : 'Tap contacts to select')
+                  : (_isHindi
+                        ? '${_selectedPhones.length} संपर्क हटाने के लिए तैयार'
+                        : '${_selectedPhones.length} contact(s) ready to delete'),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          ElevatedButton.icon(
+            onPressed: canDelete ? _confirmAndDeleteSelected : null,
+            icon: _isDeleting
+                ? SizedBox(
+                    width: 14.sp,
+                    height: 14.sp,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(Icons.delete_forever_rounded, size: 16.sp),
+            label: Text(
+              _isHindi
+                  ? 'हटाएं (${_selectedPhones.length})'
+                  : 'Delete (${_selectedPhones.length})',
+              style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              disabledBackgroundColor: Colors.white12,
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white38,
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 9.h),
+              elevation: canDelete ? 3 : 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
             ),
           ),
         ],
       ),
     );
-    if (ok != true || !mounted) return;
+  }
+
+  Future<void> _confirmAndDeleteSingleContact({
+    required String? phone,
+    required String contactName,
+  }) async {
+    final cleanPhone = _normalizePhone(phone ?? '');
+    if (cleanPhone.isEmpty) {
+      showErrorSnackBar(
+        _isHindi ? 'फ़ोन नंबर उपलब्ध नहीं है।' : 'Phone number not available.',
+      );
+      return;
+    }
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF002E29),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: const BorderSide(color: Color(0xFF005B52), width: 1.5),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6.w),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                color: const Color(0xFFFF5252),
+                size: 22.sp,
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                _isHindi ? 'संपर्क हटाएं?' : 'Delete Contact?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          _isHindi
+              ? 'क्या आप वाकई "$contactName" को अपने सहेजे गए संपर्कों से हटाना चाहते हैं?'
+              : 'Are you sure you want to delete "$contactName" from your saved contacts?',
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              _isHindi ? 'रद्द करें' : 'Cancel',
+              style: TextStyle(color: Colors.white60, fontSize: 13.sp),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              _isHindi ? 'हटाएं' : 'Delete',
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true && mounted) {
+      await _deletePhonesList([cleanPhone]);
+    }
+  }
+
+  Future<void> _confirmAndDeleteSelected() async {
+    final count = _selectedPhones.length;
+    if (count == 0) return;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF002E29),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: const BorderSide(color: Color(0xFF005B52), width: 1.5),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(6.w),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.delete_sweep_rounded,
+                color: const Color(0xFFFF5252),
+                size: 22.sp,
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                _isHindi ? 'संपर्क हटाएं?' : 'Delete Contacts?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          _isHindi
+              ? 'क्या आप वाकई चुने गए $count संपर्कों को हटाना चाहते हैं?'
+              : 'Are you sure you want to delete $count selected contact(s)?',
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              _isHindi ? 'रद्द करें' : 'Cancel',
+              style: TextStyle(color: Colors.white60, fontSize: 13.sp),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              _isHindi ? 'हटाएं' : 'Delete',
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true && mounted) {
+      await _deletePhonesList(_selectedPhones.toList());
+    }
+  }
+
+  Future<void> _deletePhonesList(List<String> rawPhones) async {
+    final cleanPhones = rawPhones
+        .map(_normalizePhone)
+        .where((p) => p.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (cleanPhones.isEmpty) {
+      showErrorSnackBar(
+        _isHindi
+            ? 'कोई मान्य फ़ोन नंबर नहीं मिला।'
+            : 'No valid phone numbers found.',
+      );
+      return;
+    }
 
     setState(() => _isDeleting = true);
     try {
       final res = await ref
           .read(authServiceProvider)
-          .deleteContacts(_selectedPhones.toList());
+          .deleteContacts(cleanPhones);
       if (!mounted) return;
+
+      final phoneSet = cleanPhones.toSet();
+
       setState(() {
-        _matchedContactsUsers = null;
-        _matchedInviteList = null;
-        _selectedPhones.clear();
-        _selectMode = false;
+        if (_matchedContactsUsers != null) {
+          _matchedContactsUsers = _matchedContactsUsers!.where((u) {
+            final ph = _normalizePhone(u.phone ?? _phoneByUserId[u.id] ?? '');
+            return !phoneSet.contains(ph);
+          }).toList();
+        }
+        if (_matchedInviteList != null) {
+          _matchedInviteList = _matchedInviteList!
+              .where(
+                (item) => !phoneSet.contains(_normalizePhone(item.phone ?? '')),
+              )
+              .toList();
+        }
+        _selectedPhones.removeWhere(
+          (p) => phoneSet.contains(_normalizePhone(p)),
+        );
+        if (_selectedPhones.isEmpty) {
+          _selectMode = false;
+        }
       });
+
       ref.invalidate(getMatchContactProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            res.message ??
-                (_isHindi ? 'संपर्क हटा दिए गए' : 'Contacts removed'),
-          ),
-        ),
+
+      showSuccessSnackBar(
+        res.message ??
+            (_isHindi
+                ? '${res.deletedCount ?? cleanPhones.length} संपर्क सफलतापूर्वक हटा दिए गए।'
+                : '${res.deletedCount ?? cleanPhones.length} contact(s) deleted successfully.'),
       );
     } catch (e) {
+      log('Error deleting contacts: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi ? 'संपर्क हटाने में विफल' : 'Failed to remove contacts',
-          ),
-        ),
+      showErrorSnackBar(
+        _isHindi ? 'संपर्क हटाने में विफल रहा।' : 'Failed to delete contacts.',
       );
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -1304,7 +1672,14 @@ class _AddNetworkSearchScreenState
     );
   }
 
-  Widget _buildMemberCard(User member, {bool isContactMatched = false}) {
+  Widget _buildMemberCard(
+    User member, {
+    bool isContactMatched = false,
+    bool isSelectMode = false,
+    bool isSelected = false,
+    VoidCallback? onSelectToggle,
+    VoidCallback? onDirectDelete,
+  }) {
     final String name = member.name ?? 'Unknown User';
     final String profileImage = member.profileImage ?? '';
 
@@ -1333,394 +1708,468 @@ class _AddNetworkSearchScreenState
               (u) => u.id != null && u.id == member.id,
             ));
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFDCDFE4), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 24.r,
-                backgroundColor: const Color(0xFF0B4F4A),
-                backgroundImage: profileImage.isNotEmpty
-                    ? NetworkImage(profileImage)
-                    : null,
-                child: profileImage.isEmpty
-                    ? Text(
-                        initials,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.sp,
-                        ),
-                      )
-                    : null,
+        onTap: isSelectMode ? onSelectToggle : null,
+        onLongPress: isContactMatched ? onSelectToggle : null,
+        child: Container(
+          margin: EdgeInsets.only(bottom: 12.h),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF00E676)
+                  : const Color(0xFFDCDFE4),
+              width: isSelected ? 1.8 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? const Color(0xFF00E676).withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: isSelected ? 8 : 6,
+                offset: const Offset(0, 2),
               ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    if (member.isVerified == true) ...[
-                      SizedBox(width: 4.w),
-                      Icon(
-                        Icons.verified,
-                        color: const Color(0xFF0B8F68),
-                        size: 16.sp,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (isFromPhoneContacts) ...[
-                SizedBox(width: 8.w),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: const Color(0xFF81C784)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.call,
-                        size: 11.sp,
-                        color: const Color(0xFF2E7D32),
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        _isHindi ? 'संपर्क में' : 'In Contacts',
-                        style: TextStyle(
-                          fontSize: 10.5.sp,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF2E7D32),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
-          SizedBox(height: 14.h),
-          Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: 40.h),
-                      child: isConnected
-                          ? Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E9),
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(
-                                  color: const Color(0xFF81C784),
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    size: 16.sp,
-                                    color: const Color(0xFF2E7D32),
-                                  ),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    _isHindi ? 'जुड़े हुए' : 'Connected',
-                                    style: TextStyle(
-                                      color: const Color(0xFF2E7D32),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12.5.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : isPending
-                          ? Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(
-                                  color: const Color(0xFFCBD5E1),
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.access_time_rounded,
-                                    size: 15.sp,
-                                    color: const Color(0xFF64748B),
-                                  ),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    _isHindi ? 'लंबित' : 'Pending',
-                                    style: TextStyle(
-                                      color: const Color(0xFF475569),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12.5.sp,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ElevatedButton(
-                              onPressed: isLoading
-                                  ? null
-                                  : () async {
-                                      if (member.id == null) return;
-                                      setState(() {
-                                        _loadingUserIds.add(member.id!);
-                                      });
-                                      try {
-                                        final service = ref.read(
-                                          authServiceProvider,
-                                        );
-                                        final res = await service.sendRequest(
-                                          id: member.id.toString(),
-                                        );
-                                        if (res.success == true &&
-                                            context.mounted) {
-                                          setState(() {
-                                            _pendingUserIds.add(member.id!);
-                                            member.requestStatus = 'pending';
-                                          });
-                                          ref.invalidate(
-                                            addNetworkSerachProvider,
-                                          );
-                                          showSuccessSnackBar(
-                                            _isHindi
-                                                ? '$name को कनेक्शन अनुरोध भेजा गया!'
-                                                : 'Connection request sent to $name!',
-                                          );
-                                        } else if (context.mounted &&
-                                            res.message != null &&
-                                            res.message!.isNotEmpty) {
-                                          showErrorSnackBar(res.message!);
-                                        }
-                                      } catch (e) {
-                                        log(e.toString());
-                                        if (context.mounted) {
-                                          showErrorSnackBar(
-                                            _isHindi
-                                                ? 'अनुरोध भेजने में विफल रहा।'
-                                                : 'Failed to send request.',
-                                          );
-                                        }
-                                      } finally {
-                                        if (mounted) {
-                                          setState(() {
-                                            _loadingUserIds.remove(member.id!);
-                                          });
-                                        }
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0B4F4A),
-                                disabledBackgroundColor: const Color(
-                                  0xFF0B4F4A,
-                                ).withValues(alpha: 0.7),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                              ),
-                              child: isLoading
-                                  ? Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 14.w,
-                                          height: 14.w,
-                                          child:
-                                              const CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Text(
-                                          _isHindi
-                                              ? 'भेज रहे हैं...'
-                                              : 'Sending...',
-                                          style: TextStyle(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.person_add_alt_1,
-                                          size: 16.sp,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 5.w),
-                                        Text(
-                                          _isHindi ? 'जोड़ें' : 'Connect',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 13.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                  CircleAvatar(
+                    radius: 24.r,
+                    backgroundColor: const Color(0xFF0B4F4A),
+                    backgroundImage: profileImage.isNotEmpty
+                        ? NetworkImage(profileImage)
+                        : null,
+                    child: profileImage.isEmpty
+                        ? Text(
+                            initials,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.sp,
                             ),
-                    ),
+                          )
+                        : null,
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: 40.h),
-                      child: isConnected
-                          ? ElevatedButton.icon(
-                              onPressed: () {
-                                _openChatScreen(member);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0B4F4A),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                              ),
-                              icon: Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                size: 16.sp,
-                              ),
-                              label: Text(
-                                _isHindi ? 'चैट' : 'Chat',
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          : OutlinedButton.icon(
-                              onPressed: () {
-                                if (isPending) {
-                                  showErrorSnackBar(
-                                    _isHindi
-                                        ? 'कनेक्शन अनुरोध स्वीकार होने के बाद ही आप संदेश भेज सकते हैं।'
-                                        : 'You can chat once the connection request is accepted.',
-                                  );
-                                } else {
-                                  showErrorSnackBar(
-                                    _isHindi
-                                        ? 'चैट करने के लिए पहले कनेक्शन अनुरोध भेजें।'
-                                        : 'Send a connection request first to chat.',
-                                  );
-                                }
-                              },
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF8FAFC),
-                                foregroundColor: const Color(0xFF94A3B8),
-                                side: const BorderSide(
-                                  color: Color(0xFFE2E8F0),
-                                ),
-                                elevation: 0,
-                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                              ),
-                              icon: Icon(
-                                isPending
-                                    ? Icons.lock_clock_outlined
-                                    : Icons.lock_outline,
-                                size: 15.sp,
-                                color: const Color(0xFF94A3B8),
-                              ),
-                              label: Text(
-                                _isHindi ? 'चैट' : 'Chat',
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF94A3B8),
-                                ),
-                              ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
                             ),
+                          ),
+                        ),
+                        if (member.isVerified == true) ...[
+                          SizedBox(width: 4.w),
+                          Icon(
+                            Icons.verified,
+                            color: const Color(0xFF0B8F68),
+                            size: 16.sp,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ],
-              ),
-              SizedBox(height: 12.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.location_on, color: Colors.red, size: 18.sp),
-                  SizedBox(width: 4.w),
-                  Text(
-                    "Current:",
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Expanded(
-                    child: Text(
-                      "${member.campusLocation},${member.city},${member.state},${member.country},${member.pincode}",
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black54,
+                  if (isFromPhoneContacts) ...[
+                    SizedBox(width: 8.w),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.call,
+                            size: 11.sp,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            _isHindi ? 'संपर्क में' : 'In Contacts',
+                            style: TextStyle(
+                              fontSize: 10.5.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  ],
+                  if (isContactMatched) ...[
+                    if (isSelectMode) ...[
+                      SizedBox(width: 8.w),
+                      Container(
+                        width: 22.w,
+                        height: 22.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected
+                              ? const Color(0xFF00E676)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF00E676)
+                                : Colors.black26,
+                            width: 1.8,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                size: 14.sp,
+                                color: Colors.black87,
+                              )
+                            : null,
+                      ),
+                    ] else ...[
+                      SizedBox(width: 6.w),
+                      InkWell(
+                        onTap: onDirectDelete,
+                        borderRadius: BorderRadius.circular(16.r),
+                        child: Container(
+                          padding: EdgeInsets.all(5.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.delete_outline_rounded,
+                            size: 17.sp,
+                            color: const Color(0xFFE53935),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+              SizedBox(height: 14.h),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: 40.h),
+                          child: isConnected
+                              ? Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F5E9),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    border: Border.all(
+                                      color: const Color(0xFF81C784),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 16.sp,
+                                        color: const Color(0xFF2E7D32),
+                                      ),
+                                      SizedBox(width: 5.w),
+                                      Text(
+                                        _isHindi ? 'जुड़े हुए' : 'Connected',
+                                        style: TextStyle(
+                                          color: const Color(0xFF2E7D32),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : isPending
+                              ? Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(10.r),
+                                    border: Border.all(
+                                      color: const Color(0xFFCBD5E1),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.access_time_rounded,
+                                        size: 15.sp,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                      SizedBox(width: 5.w),
+                                      Text(
+                                        _isHindi ? 'लंबित' : 'Pending',
+                                        style: TextStyle(
+                                          color: const Color(0xFF475569),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ElevatedButton(
+                                  onPressed: isLoading
+                                      ? null
+                                      : () async {
+                                          if (member.id == null) return;
+                                          setState(() {
+                                            _loadingUserIds.add(member.id!);
+                                          });
+                                          try {
+                                            final service = ref.read(
+                                              authServiceProvider,
+                                            );
+                                            final res = await service
+                                                .sendRequest(
+                                                  id: member.id.toString(),
+                                                );
+                                            if (res.success == true &&
+                                                context.mounted) {
+                                              setState(() {
+                                                _pendingUserIds.add(member.id!);
+                                                member.requestStatus =
+                                                    'pending';
+                                              });
+                                              ref.invalidate(
+                                                addNetworkSerachProvider,
+                                              );
+                                              showSuccessSnackBar(
+                                                _isHindi
+                                                    ? '$name को कनेक्शन अनुरोध भेजा गया!'
+                                                    : 'Connection request sent to $name!',
+                                              );
+                                            } else if (context.mounted &&
+                                                res.message != null &&
+                                                res.message!.isNotEmpty) {
+                                              showErrorSnackBar(res.message!);
+                                            }
+                                          } catch (e) {
+                                            log(e.toString());
+                                            if (context.mounted) {
+                                              showErrorSnackBar(
+                                                _isHindi
+                                                    ? 'अनुरोध भेजने में विफल रहा।'
+                                                    : 'Failed to send request.',
+                                              );
+                                            }
+                                          } finally {
+                                            if (mounted) {
+                                              setState(() {
+                                                _loadingUserIds.remove(
+                                                  member.id!,
+                                                );
+                                              });
+                                            }
+                                          }
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0B4F4A),
+                                    disabledBackgroundColor: const Color(
+                                      0xFF0B4F4A,
+                                    ).withValues(alpha: 0.7),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                  ),
+                                  child: isLoading
+                                      ? Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: 14.w,
+                                              height: 14.w,
+                                              child:
+                                                  const CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Text(
+                                              _isHindi
+                                                  ? 'भेज रहे हैं...'
+                                                  : 'Sending...',
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.person_add_alt_1,
+                                              size: 16.sp,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(width: 5.w),
+                                            Text(
+                                              _isHindi ? 'जोड़ें' : 'Connect',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: 40.h),
+                          child: isConnected
+                              ? ElevatedButton.icon(
+                                  onPressed: () {
+                                    _openChatScreen(member);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0B4F4A),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                  ),
+                                  icon: Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    size: 16.sp,
+                                  ),
+                                  label: Text(
+                                    _isHindi ? 'चैट' : 'Chat',
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: () {
+                                    if (isPending) {
+                                      showErrorSnackBar(
+                                        _isHindi
+                                            ? 'कनेक्शन अनुरोध स्वीकार होने के बाद ही आप संदेश भेज सकते हैं।'
+                                            : 'You can chat once the connection request is accepted.',
+                                      );
+                                    } else {
+                                      showErrorSnackBar(
+                                        _isHindi
+                                            ? 'चैट करने के लिए पहले कनेक्शन अनुरोध भेजें।'
+                                            : 'Send a connection request first to chat.',
+                                      );
+                                    }
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFF8FAFC),
+                                    foregroundColor: const Color(0xFF94A3B8),
+                                    side: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                    elevation: 0,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                  ),
+                                  icon: Icon(
+                                    isPending
+                                        ? Icons.lock_clock_outlined
+                                        : Icons.lock_outline,
+                                    size: 15.sp,
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                  label: Text(
+                                    _isHindi ? 'चैट' : 'Chat',
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.location_on, color: Colors.red, size: 18.sp),
+                      SizedBox(width: 4.w),
+                      Text(
+                        "Current:",
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 4.w),
+                      Expanded(
+                        child: Text(
+                          "${member.campusLocation},${member.city},${member.state},${member.country},${member.pincode}",
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1784,7 +2233,13 @@ class _AddNetworkSearchScreenState
     }
   }
 
-  Widget _buildInviteCard(mcr.InviteItem item) {
+  Widget _buildInviteCard(
+    mcr.InviteItem item, {
+    bool isSelectMode = false,
+    bool isSelected = false,
+    VoidCallback? onSelectToggle,
+    VoidCallback? onDirectDelete,
+  }) {
     final String contactName = item.contactName ?? 'Contact';
     final String phone = item.phone ?? '';
     final String phoneKey = phone.isNotEmpty ? phone : contactName;
@@ -1800,185 +2255,219 @@ class _AddNetworkSearchScreenState
               .join()
               .toUpperCase();
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF003832),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(
-          color: const Color(0xFF005B52).withValues(alpha: 0.6),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 22.r,
-                backgroundColor: const Color(0xFF0B4F4A),
-                child: Text(
-                  initials,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 9.w,
-                  height: 9.w,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00E676),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF003832),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
+        onTap: isSelectMode ? onSelectToggle : null,
+        onLongPress: onSelectToggle,
+        child: Container(
+          margin: EdgeInsets.only(bottom: 12.h),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          decoration: BoxDecoration(
+            color: const Color(0xFF003832),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF00E676)
+                  : const Color(0xFF005B52).withValues(alpha: 0.6),
+              width: isSelected ? 1.8 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? const Color(0xFF00E676).withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.1),
+                blurRadius: isSelected ? 8 : 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  contactName,
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 3.h),
-                Row(
-                  children: [
-                    Container(
-                      width: 6.w,
-                      height: 6.w,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00E676),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Text(
-                      _isHindi ? 'ऑनलाइन' : 'Online',
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 22.r,
+                    backgroundColor: const Color(0xFF0B4F4A),
+                    child: Text(
+                      initials,
                       style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: const Color(0xFF00E676),
-                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14.sp,
                       ),
                     ),
-                  ],
-                ),
-                if (phone.isNotEmpty) ...[
-                  SizedBox(height: 3.h),
-                  Row(
-                    children: [
-                      Icon(Icons.call, size: 11.sp, color: Colors.white70),
-                      SizedBox(width: 4.w),
-                      Expanded(
-                        child: Text(
-                          phone.startsWith('+') ? phone : '+91 $phone',
-                          style: TextStyle(
-                            fontSize: 11.5.sp,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 9.w,
+                      height: 9.w,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00E676),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF003832),
+                          width: 1.5,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
-              ],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          ConstrainedBox(
-            constraints: BoxConstraints(minHeight: 36.h),
-            child: isInvited
-                ? Container(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF004D40),
-                      borderRadius: BorderRadius.circular(18.r),
-                      border: Border.all(color: const Color(0xFF00897B)),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      contactName,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    alignment: Alignment.center,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    SizedBox(height: 3.h),
+                    Row(
                       children: [
-                        Icon(Icons.check, size: 14.sp, color: Colors.white),
-                        SizedBox(width: 4.w),
+                        Container(
+                          width: 6.w,
+                          height: 6.w,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00E676),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        SizedBox(width: 5.w),
                         Text(
-                          _isHindi ? 'आमंत्रित' : 'Invited',
+                          _isHindi ? 'ऑनलाइन' : 'Online',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 11.5.sp,
+                            color: const Color(0xFF00E676),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                  )
-                : ElevatedButton.icon(
-                    onPressed: () async {
-                      setState(() {
-                        _invitedPhoneNumbers.add(phoneKey);
-                      });
-                      await _sendWhatsAppInvite(
-                        contactName: contactName,
-                        phone: phone,
-                        inviteMessage: item.inviteMessage,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00897B),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.symmetric(horizontal: 14.w),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18.r),
+                    if (phone.isNotEmpty) ...[
+                      SizedBox(height: 3.h),
+                      Row(
+                        children: [
+                          Icon(Icons.call, size: 11.sp, color: Colors.white70),
+                          SizedBox(width: 4.w),
+                          Expanded(
+                            child: Text(
+                              phone.startsWith('+') ? phone : '+91 $phone',
+                              style: TextStyle(
+                                fontSize: 11.5.sp,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    icon: Icon(
-                      Icons.person_add,
-                      size: 15.sp,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      _isHindi ? 'आमंत्रित करें' : 'Invite',
-                      style: TextStyle(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              ConstrainedBox(
+                constraints: BoxConstraints(minHeight: 36.h),
+                child: isInvited
+                    ? Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF004D40),
+                          borderRadius: BorderRadius.circular(18.r),
+                          border: Border.all(color: const Color(0xFF00897B)),
+                        ),
+                        alignment: Alignment.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check, size: 14.sp, color: Colors.white),
+                            SizedBox(width: 4.w),
+                            Text(
+                              _isHindi ? 'आमंत्रित' : 'Invited',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: () async {
+                          setState(() {
+                            _invitedPhoneNumbers.add(phoneKey);
+                          });
+                          await _sendWhatsAppInvite(
+                            contactName: contactName,
+                            phone: phone,
+                            inviteMessage: item.inviteMessage,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00897B),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(horizontal: 14.w),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18.r),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.person_add,
+                          size: 14.sp,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          _isHindi ? 'आमंत्रित करें' : 'Invite',
+                          style: TextStyle(
+                            fontSize: 12.5.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
+              ),
+              if (isSelectMode) ...[
+                SizedBox(width: 8.w),
+                Container(
+                  width: 22.w,
+                  height: 22.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? const Color(0xFF00E676)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF00E676)
+                          : Colors.white38,
+                      width: 1.8,
                     ),
                   ),
+                  child: isSelected
+                      ? Icon(Icons.check, size: 14.sp, color: Colors.black87)
+                      : null,
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

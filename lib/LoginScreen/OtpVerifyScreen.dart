@@ -12,7 +12,15 @@ import 'package:track_loved/core/Utils/showMessage.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
   final String email;
-  const OtpVerifyScreen({super.key, required this.email});
+  final String? parentPhone;
+  final bool isChild;
+
+  const OtpVerifyScreen({
+    super.key,
+    required this.email,
+    this.parentPhone,
+    this.isChild = false,
+  });
 
   @override
   ConsumerState<OtpVerifyScreen> createState() => _OtpVerifyScreenState();
@@ -109,9 +117,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'OTP Verification',
-          style: TextStyle(
+        title: Text(
+          widget.isChild ? 'Parental Verification' : 'OTP Verification',
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -139,17 +147,21 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                       color: Colors.white.withValues(alpha: 0.1),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.phonelink_lock_rounded,
+                  child: Icon(
+                    widget.isChild
+                        ? Icons.family_restroom_rounded
+                        : Icons.phonelink_lock_rounded,
                     color: accentGold,
                     size: 56,
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                const Text(
-                  'Verification Code',
-                  style: TextStyle(
+                Text(
+                  widget.isChild
+                      ? 'Parental Consent Code'
+                      : 'Verification Code',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -160,7 +172,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
 
                 Text.rich(
                   TextSpan(
-                    text: 'We have sent a 6-digit verification code to\n',
+                    text: widget.isChild
+                        ? "We have sent a 6-digit parental consent verification code to\n"
+                        : 'We have sent a 6-digit verification code to\n',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -168,9 +182,14 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                     ),
                     children: [
                       TextSpan(
-                        text: widget.email.isNotEmpty
-                            ? widget.email
-                            : 'your registered email address',
+                        text:
+                            widget.isChild &&
+                                widget.parentPhone != null &&
+                                widget.parentPhone!.isNotEmpty
+                            ? "Parent's Phone: ${widget.parentPhone}"
+                            : (widget.email.isNotEmpty
+                                  ? widget.email
+                                  : 'your registered contact'),
                         style: const TextStyle(
                           color: accentGold,
                           fontWeight: FontWeight.bold,
@@ -329,6 +348,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             response.data?.user?.isProfileComplete,
                           );
                           await box.put("email", response.data?.user?.email);
+                          await box.put("role", response.data?.user?.role);
 
                           if (context.mounted) {
                             isNavigating = true;

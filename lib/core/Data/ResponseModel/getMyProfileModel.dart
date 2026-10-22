@@ -68,6 +68,10 @@ class User {
   String? college;
   String? villageTown;
   String? pincode;
+  String? permanentCity;
+  String? permanentState;
+  String? permanentPincode;
+  String? permanentCountry;
   DateTime? createdAt;
   DateTime? updatedAt;
   bool? isBlocked;
@@ -95,6 +99,10 @@ class User {
     this.college,
     this.villageTown,
     this.pincode,
+    this.permanentCity,
+    this.permanentState,
+    this.permanentPincode,
+    this.permanentCountry,
     this.createdAt,
     this.updatedAt,
     this.isBlocked,
@@ -125,6 +133,10 @@ class User {
     college: json["college"],
     villageTown: json["villageTown"],
     pincode: json["pincode"],
+    permanentCity: json["permanentCity"],
+    permanentState: json["permanentState"],
+    permanentPincode: json["permanentPincode"],
+    permanentCountry: json["permanentCountry"],
     createdAt: json["createdAt"] == null
         ? null
         : DateTime.parse(json["createdAt"]),
@@ -139,6 +151,10 @@ class User {
     "role": role,
     "currentAddress": currentAddress,
     "permanentAddress": permanentAddress,
+    "permanentCity": permanentCity,
+    "permanentState": permanentState,
+    "permanentPincode": permanentPincode,
+    "permanentCountry": permanentCountry,
     "campusLocation": campusLocation,
     "graduationYear": graduationYear,
     "_id": id,

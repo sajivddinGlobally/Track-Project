@@ -110,6 +110,7 @@ class User {
     String? currentAddress;
     String? permanentAddress;
     String? graduationYear;
+    String? phone;
 
     User({
         this.id,
@@ -133,6 +134,7 @@ class User {
         this.currentAddress,
         this.permanentAddress,
         this.graduationYear,
+        this.phone,
     });
 
     factory User.fromJson(Map<String, dynamic> json) => User(
@@ -157,11 +159,13 @@ class User {
         currentAddress: json["currentAddress"],
         permanentAddress: json["permanentAddress"],
         graduationYear: json["graduationYear"],
+        phone: json["phone"]?.toString() ?? json["matchedPhone"]?.toString(),
     );
 
     Map<String, dynamic> toJson() => {
         "_id": id,
         "name": name,
+        if (phone != null) "phone": phone,
         "isVerified": isVerified,
         "profileImage": profileImage,
         "bio": bio,

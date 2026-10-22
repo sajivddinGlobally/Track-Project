@@ -43,6 +43,15 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
+  void _navigateToScreen(BuildContext context, Widget targetScreen) {
+    Navigator.pop(context);
+    Navigator.pushAndRemoveUntil(
+      context,
+      CupertinoPageRoute(builder: (context) => targetScreen),
+      (route) => route.isFirst,
+    );
+  }
+
   void _checkCompanyAndNavigate(
     BuildContext context, {
     required Widget targetScreen,
@@ -102,14 +111,17 @@ class AppDrawer extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(dialogCtx).pop();
-                  navigatorKey.currentState?.push(
+                  navigatorKey.currentState?.pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (_) => const CompanyProfileScreen(),
                     ),
+                    (route) => route.isFirst,
                   );
                 },
                 child: Text(
-                  isHindi ? 'कंपनी प्रोफ़ाइल पूरी करें' : 'Complete Company Profile',
+                  isHindi
+                      ? 'कंपनी प्रोफ़ाइल पूरी करें'
+                      : 'Complete Company Profile',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -122,8 +134,9 @@ class AppDrawer extends StatelessWidget {
         );
       }
     } else {
-      navigatorKey.currentState?.push(
+      navigatorKey.currentState?.pushAndRemoveUntil(
         CupertinoPageRoute(builder: (_) => targetScreen),
+        (route) => route.isFirst,
       );
     }
   }
@@ -169,13 +182,7 @@ class AppDrawer extends StatelessWidget {
                 child: InkWell(
                   customBorder: const CircleBorder(),
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder: (context) => const ProfileScreen(),
-                      ),
-                    );
+                    _navigateToScreen(context, const ProfileScreen());
                   },
                   child: CircleAvatar(
                     backgroundColor: Colors.white24,
@@ -188,18 +195,42 @@ class AppDrawer extends StatelessWidget {
                 ),
               ),
             ],
-            currentAccountPicture: CircleAvatar(
-              radius: 32.r,
-              backgroundColor: Colors.white,
-              child: Text(
-                (name != null && name.toString().trim().isNotEmpty)
-                    ? name.toString().trim()[0].toUpperCase()
-                    : "N/A",
-                style: GoogleFonts.outfit(
-                  color: const Color(0xFF0B4F4A),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 22.sp,
-                ),
+            currentAccountPicture: GestureDetector(
+              onTap: () {
+                _navigateToScreen(context, const ProfileScreen());
+              },
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFD4AF37), Color(0xFFFFD54F)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 32.r,
+                      backgroundColor: const Color(0xFF0F3D38),
+                      child: Text(
+                        (name != null && name.toString().trim().isNotEmpty)
+                            ? name.toString().trim()[0].toUpperCase()
+                            : "N/A",
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFFD4AF37),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -211,20 +242,21 @@ class AppDrawer extends StatelessWidget {
             title: isHindi ? 'डैशबोर्ड' : 'Dashboard',
             onTap: () {
               Navigator.pop(context);
+              Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
-
+          // _buildDrawerItem(
+          //   icon: Icons.person_outline,
+          //   title: isHindi ? 'मेरी प्रोफ़ाइल' : 'My Profile',
+          //   onTap: () {
+          //     _navigateToScreen(context, const ProfileScreen());
+          //   },
+          // ),
           _buildDrawerItem(
             icon: Icons.person_add,
             title: isHindi ? 'नेटवर्क जोड़ें' : 'Add Network',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => const AddNetworkSearchScreen(),
-                ),
-              );
+              _navigateToScreen(context, const AddNetworkSearchScreen());
             },
           ),
 
@@ -234,13 +266,7 @@ class AppDrawer extends StatelessWidget {
                 ? 'नेटवर्क स्थान अनुमतियाँ'
                 : 'Network Location Permissions',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => NetworkLocationPermissionsScreen(),
-                ),
-              );
+              _navigateToScreen(context, NetworkLocationPermissionsScreen());
             },
           ),
 
@@ -248,13 +274,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.people_alt,
             title: isHindi ? 'नेटवर्किंग अनुरोध' : 'Networking Requests',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => const NetworkingRequestScreen(),
-                ),
-              );
+              _navigateToScreen(context, const NetworkingRequestScreen());
             },
           ),
 
@@ -262,13 +282,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.favorite,
             title: isHindi ? 'प्रियजनों को ट्रैक करें' : 'Track Loved Ones',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => SearchLovedOnesScreen(),
-                ),
-              );
+              _navigateToScreen(context, SearchLovedOnesScreen());
             },
           ),
 
@@ -278,13 +292,7 @@ class AppDrawer extends StatelessWidget {
                 ? 'व्यापार के अवसर खोजें'
                 : 'Explore Business Opportunities',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => ExploreBusinessScreen(),
-                ),
-              );
+              _navigateToScreen(context, ExploreBusinessScreen());
             },
           ),
 
@@ -305,11 +313,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.gavel,
             title: isHindi ? 'कानून जानें' : 'Know Your Law',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                CupertinoPageRoute(builder: (context) => LegalAwarenessApp()),
-              );
+              _navigateToScreen(context, LegalAwarenessApp());
             },
           ),
 
@@ -330,11 +334,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.feedback,
             title: isHindi ? 'गूगल फीडबैक' : 'Google Feedback',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => FeedbackRatingScreen()),
-              );
+              _navigateToScreen(context, FeedbackRatingScreen());
             },
           ),
 
@@ -344,13 +344,7 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.settings,
             title: isHindi ? 'सेटिंग्स' : 'Settings',
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingScreen(isHindi: isHindi),
-                ),
-              );
+              _navigateToScreen(context, SettingScreen(isHindi: isHindi));
             },
           ),
 

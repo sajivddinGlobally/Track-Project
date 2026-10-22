@@ -520,7 +520,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(14.r),
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          
+                        },
                         icon: Icon(
                           Icons.g_mobiledata,
                           size: 32.sp,

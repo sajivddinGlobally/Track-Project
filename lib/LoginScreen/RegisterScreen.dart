@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:track_loved/LoginScreen/DpdpaPolicyDialog.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/LoginScreen/OtpVerifyScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -23,15 +24,45 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _nameConatroller = TextEditingController();
   final _phoneConatroller = TextEditingController();
 
+  final _parentPhoneController = TextEditingController();
+
   bool isLoading = false;
   bool isPasswordVisible = false;
+  String? _selectedAccountType; // "adult" (18+) or "child" (<18)
   final String _selectedRole = "user"; // default: "user"
+  bool _agreedToTerms = false;
+  DpdpaConsentResult? _dpdpaConsent;
+
+  Future<void> _showDpdpaPolicyDialog() async {
+    final result = await showDialog<DpdpaConsentResult>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => DpdpaPolicyDialog(
+        initialLanguageCode: _dpdpaConsent?.languageCode ?? 'en',
+        initialLocationConsent:
+            _dpdpaConsent?.consentLocationAndProfile ?? _agreedToTerms,
+        initialMarketplaceConsent: _dpdpaConsent?.consentMarketplace ?? false,
+        initialContactsConsent: _dpdpaConsent?.consentContacts ?? false,
+        initialParentalConsent: _selectedAccountType == 'child'
+            ? (_dpdpaConsent?.parentalDeclaration ?? true)
+            : (_dpdpaConsent?.parentalDeclaration ?? false),
+      ),
+    );
+
+    if (result != null && result.agreed) {
+      setState(() {
+        _dpdpaConsent = result;
+        _agreedToTerms = result.consentLocationAndProfile;
+      });
+    }
+  }
 
   @override
   void dispose() {
     _nameConatroller.dispose();
     _emailController.dispose();
     _phoneConatroller.dispose();
+    _parentPhoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -121,16 +152,130 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         ),
                       ),
                       SizedBox(height: 24.h),
+                      // Account Type Selector (Adult 18+ vs Child Under 18)
+                      DropdownButtonFormField<String>(
+                        value: _selectedAccountType,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF0F3D38),
+                        decoration: InputDecoration(
+                          labelText: 'Account Type',
+                          hintText: 'Select Account Type',
+                          labelStyle: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 15.5.sp,
+                          ),
+                          hintStyle: TextStyle(
+                            fontSize: 15.sp,
+                            color: Colors.white38,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 16.h,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 1.2,
+                            ),
+                          ),
+
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(
+                              color: _selectedAccountType == 'child'
+                                  ? const Color(0xFF00E676)
+                                  : const Color(0xFFD4AF37),
+                              width: 1.2,
+                            ),
+                          ),
+                        ),
+
+                        icon: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: const Color(0xFFD4AF37),
+                          size: 24.sp,
+                        ),
+
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+
+                        hint: Text(
+                          'Select Account Type',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'adult',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  color: const Color(0xFFD4AF37),
+                                  size: 18.sp,
+                                ),
+                                SizedBox(width: 10.w),
+                                const Text('Adult (18+ Years)'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'child',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.child_care,
+                                  color: const Color(0xFF00E676),
+                                  size: 18.sp,
+                                ),
+                                SizedBox(width: 10.w),
+                                Flexible(
+                                  child: Text(
+                                    'Child (Under 18 Years - Parental Gate)',
+                                    style: TextStyle(
+                                      color: const Color(0xFF00E676),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14.sp,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedAccountType = value;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 18.h),
 
                       customTextField(
                         controller: _nameConatroller,
-                        labelText: 'Enter Your Name',
-                        hintText: 'Enter your name',
+                        labelText: _selectedAccountType == 'child'
+                            ? "Child's Full Name"
+                            : 'Enter Your Name',
+                        hintText: _selectedAccountType == 'child'
+                            ? "Enter child's full name"
+                            : 'Enter your name',
                         prefixIcon: Icons.person,
                         keyboardType: TextInputType.name,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your name';
+                            return _selectedAccountType == 'child'
+                                ? "Please enter child's name"
+                                : 'Please enter your name';
                           }
                           return null;
                         },
@@ -159,17 +304,89 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
                       customTextField(
                         controller: _phoneConatroller,
-                        labelText: 'Phone Number',
-                        hintText: 'Enter phone number',
+                        labelText: _selectedAccountType == 'child'
+                            ? "Child's Phone Number (SIM Device)"
+                            : 'Phone Number',
+                        hintText: _selectedAccountType == 'child'
+                            ? "Enter child's mobile number"
+                            : 'Enter phone number',
                         prefixIcon: Icons.call,
                         keyboardType: TextInputType.phone,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter phone number';
+                            return _selectedAccountType == 'child'
+                                ? "Please enter child's phone number"
+                                : 'Please enter phone number';
                           }
                           return null;
                         },
                       ),
+
+                      // If Child: show Parent/Guardian Phone input and parental consent note
+                      if (_selectedAccountType == 'child') ...[
+                        SizedBox(height: 18.h),
+                        customTextField(
+                          controller: _parentPhoneController,
+                          labelText: 'Parent / Guardian Phone Number',
+                          hintText: "Enter parent's 10-digit phone number",
+                          prefixIcon: Icons.family_restroom,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (_selectedAccountType == 'child') {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Please enter parent/guardian phone number";
+                              }
+                              if (value.trim().length < 10) {
+                                return "Please enter a valid 10-digit phone number";
+                              }
+                              if (value.trim() ==
+                                  _phoneConatroller.text.trim()) {
+                                return "Parent phone must be different from child's phone";
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                        SizedBox(height: 8.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 8.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF00E676,
+                            ).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF00E676,
+                              ).withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.shield_outlined,
+                                color: const Color(0xFF00E676),
+                                size: 18.sp,
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  "Parental Permission Required: A verification OTP will be sent to the parent's phone to verify and authorize setup under DPDPA Section 9.",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 11.5.sp,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 18.h),
 
                       customTextField(
@@ -194,7 +411,100 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           return null;
                         },
                       ),
-                      SizedBox(height: 24.h),
+                      SizedBox(height: 16.h),
+
+                      // Terms & Conditions (DPDPA) Consent Row
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 6.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              height: 24.h,
+                              width: 24.w,
+                              child: Checkbox(
+                                value: _agreedToTerms,
+                                activeColor: const Color(0xFF00E676),
+                                checkColor: Colors.black,
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  width: 1.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                onChanged: (val) {
+                                  if (val == true) {
+                                    _showDpdpaPolicyDialog();
+                                  } else {
+                                    setState(() {
+                                      _agreedToTerms = false;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _showDpdpaPolicyDialog,
+                                child: RichText(
+                                  text: TextSpan(
+                                    text: 'I agree to ',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12.sp,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Terms & Conditions',
+                                        style: TextStyle(
+                                          color: const Color(0xFFD4AF37),
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                      const TextSpan(text: ' & '),
+                                      TextSpan(
+                                        text: 'Privacy Policy (DPDPA)',
+                                        style: TextStyle(
+                                          color: const Color(0xFFD4AF37),
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.open_in_new_rounded,
+                                size: 18.sp,
+                                color: const Color(0xFFD4AF37),
+                              ),
+                              tooltip: 'Read & Change Language',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: _showDpdpaPolicyDialog,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 18.h),
 
                       // Sign Up Button matching LoginScreen style
                       Container(
@@ -220,6 +530,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                   if (!_formKey.currentState!.validate()) {
                                     return;
                                   }
+                                  if (!_agreedToTerms) {
+                                    showErrorSnackBar(
+                                      'Please accept the Terms & Conditions and Privacy Policy to proceed',
+                                    );
+                                    _showDpdpaPolicyDialog();
+                                    return;
+                                  }
                                   try {
                                     setState(() {
                                       isLoading = true;
@@ -232,12 +549,20 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       password: _passwordController.text.trim(),
                                       name: _nameConatroller.text.trim(),
                                       phone: _phoneConatroller.text.trim(),
-                                      role: _selectedRole,
+                                      role: _selectedAccountType == 'child'
+                                          ? 'child'
+                                          : _selectedRole,
+                                      parentPhone:
+                                          _selectedAccountType == 'child'
+                                          ? _parentPhoneController.text.trim()
+                                          : null,
                                     );
                                     if (response.success == true) {
                                       showSuccessSnackBar(
                                         response.message ??
-                                            "OTP sent successfully",
+                                            (_selectedAccountType == 'child'
+                                                ? "Parental verification OTP sent successfully"
+                                                : "OTP sent successfully"),
                                       );
                                       if (context.mounted) {
                                         Navigator.push(
@@ -247,6 +572,16 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                                 OtpVerifyScreen(
                                                   email: _emailController.text
                                                       .trim(),
+                                                  parentPhone:
+                                                      _selectedAccountType ==
+                                                          'child'
+                                                      ? _parentPhoneController
+                                                            .text
+                                                            .trim()
+                                                      : null,
+                                                  isChild:
+                                                      _selectedAccountType ==
+                                                      'child',
                                                 ),
                                           ),
                                         );
