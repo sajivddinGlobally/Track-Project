@@ -2155,7 +2155,15 @@ class _AddNetworkSearchScreenState
                       SizedBox(width: 4.w),
                       Expanded(
                         child: Text(
-                          "${member.campusLocation},${member.city},${member.state},${member.country},${member.pincode}",
+                          [
+                                member.currentAddress,
+                                member.city,
+                                member.state,
+                                member.country,
+                                member.pincode,
+                              ]
+                              .where((e) => e != null && e.trim().isNotEmpty)
+                              .join(', '),
                           style: TextStyle(
                             fontSize: 13.sp,
                             fontWeight: FontWeight.w500,

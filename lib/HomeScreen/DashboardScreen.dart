@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
-import 'package:track_loved/ProfileScreen/provider/getMyProfileProvider.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 
@@ -180,14 +179,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     }
   }
 
-  String _profileInitial() {
-    final name = Hive.box('userdata').get('name')?.toString().trim() ?? '';
-    return name.isEmpty ? '?' : name[0].toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final profileAsync = ref.watch(getMyProfileProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -240,7 +234,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                       builder: (context) => const ProfileScreen(),
                     ),
                   ).then((_) {
-                    ref.invalidate(getMyProfileProvider);
+                    setState(() {});
                   });
                 },
                 child: Tooltip(
@@ -262,9 +256,17 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                         ),
                       ],
                     ),
-                    child: profileAsync.when(
-                      data: (profileData) {
-                        final img = profileData.data?.user?.profileImage;
+                    child: ValueListenableBuilder<Box>(
+                      valueListenable: Hive.box('userdata').listenable(
+                        keys: ['profileImage', 'name'],
+                      ),
+                      builder: (context, box, _) {
+                        final img = box.get('profileImage')?.toString();
+                        final name =
+                            box.get('name')?.toString().trim() ?? '';
+                        final initial =
+                            name.isEmpty ? '?' : name[0].toUpperCase();
+
                         if (img != null && img.trim().isNotEmpty) {
                           return CircleAvatar(
                             radius: 15,
@@ -276,7 +278,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                           radius: 15,
                           backgroundColor: const Color(0xFF0F3D38),
                           child: Text(
-                            _profileInitial(),
+                            initial,
                             style: const TextStyle(
                               color: Color(0xFFD4AF37),
                               fontWeight: FontWeight.bold,
@@ -285,30 +287,6 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                           ),
                         );
                       },
-                      loading: () => CircleAvatar(
-                        radius: 15,
-                        backgroundColor: const Color(0xFF0F3D38),
-                        child: Text(
-                          _profileInitial(),
-                          style: const TextStyle(
-                            color: Color(0xFFD4AF37),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      error: (_, __) => CircleAvatar(
-                        radius: 15,
-                        backgroundColor: const Color(0xFF0F3D38),
-                        child: Text(
-                          _profileInitial(),
-                          style: const TextStyle(
-                            color: Color(0xFFD4AF37),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),

@@ -399,6 +399,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "name",
                                         response.data!.user!.name,
                                       );
+                                      if (response.data?.user?.profileImage !=
+                                              null &&
+                                          response
+                                              .data!
+                                              .user!
+                                              .profileImage!
+                                              .trim()
+                                              .isNotEmpty) {
+                                        await box.put(
+                                          "profileImage",
+                                          response.data!.user!.profileImage,
+                                        );
+                                      }
                                       await box.put(
                                         "isProfileComplete",
                                         response

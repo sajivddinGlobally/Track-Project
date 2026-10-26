@@ -31,6 +31,7 @@ class UpdateProfileBodyModel {
   String? permanentState;
   String? permanentPincode;
   String? permanentCountry;
+  String? parentPhone;
 
   UpdateProfileBodyModel({
     this.name,
@@ -57,6 +58,7 @@ class UpdateProfileBodyModel {
     this.permanentState,
     this.permanentPincode,
     this.permanentCountry,
+    this.parentPhone,
   });
 
   factory UpdateProfileBodyModel.fromJson(Map<String, dynamic> json) =>
@@ -85,6 +87,7 @@ class UpdateProfileBodyModel {
         permanentState: json["permanentState"],
         permanentPincode: json["permanentPincode"],
         permanentCountry: json["permanentCountry"],
+        parentPhone: json["parentPhone"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -112,5 +115,6 @@ class UpdateProfileBodyModel {
     if (permanentState != null) "permanentState": permanentState,
     if (permanentPincode != null) "permanentPincode": permanentPincode,
     if (permanentCountry != null) "permanentCountry": permanentCountry,
+    if (parentPhone != null) "parentPhone": parentPhone,
   };
 }

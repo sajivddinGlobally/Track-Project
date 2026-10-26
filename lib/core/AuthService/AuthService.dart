@@ -25,6 +25,7 @@ import '../Data/ResponseModel/deleteContactResModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
+import '../Data/ResponseModel/getBusinnesProfileModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
@@ -34,6 +35,13 @@ import '../Data/ResponseModel/uploadImageResModel.dart';
 import '../Data/BodyModel/BusinessProfileBodyModel.dart';
 import '../Data/ResponseModel/BusinessProfileResModel.dart';
 import '../Data/ResponseModel/ChatHistoryResModel.dart';
+import '../Data/BodyModel/TriggerSosBodyModel.dart';
+import '../Data/ResponseModel/TriggerSosResModel.dart';
+import '../Data/BodyModel/CreateJobPostBodyModel.dart';
+import '../Data/ResponseModel/CreateJobPostResModel.dart';
+import '../Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
+import '../Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
+import '../Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -280,6 +288,19 @@ class Authservice {
     }
   }
 
+  Future<dynamic> getLawContentByState({
+    required String state,
+    required String category,
+    required String type,
+  }) async {
+    try {
+      final response = await api.getLawContentByState(state, category, type);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<dynamic> updateLocation({
     required double latitude,
     required double longitude,
@@ -306,11 +327,81 @@ class Authservice {
     }
   }
 
+  Future<BusinessProfileResModel> updateBusinessProfileData(
+    BusinessProfileBodyModel body,
+  ) async {
+    try {
+      final response = await api.updateBusinessProfile(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<ChatHistoryResModel> getChatHistoryData({
     required String receiverId,
   }) async {
     try {
       final response = await api.getChatHistory(receiverId);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<TriggerSosResModel> triggerSosData(TriggerSosBodyModel body) async {
+    try {
+      final response = await api.triggerSos(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetBussinessProfileModel> getBussinessProfileData() async {
+    try {
+      final response = await api.getBussinessProfile();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CreateJobPostResModel> createJobPostData(
+    CreateJobPostBodyModel body,
+  ) async {
+    try {
+      final response = await api.createJobPost(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CreateBusinessOpportunityResModel> createBusinessOpportunityData(
+    CreateBusinessOpportunityBodyModel body,
+  ) async {
+    try {
+      final response = await api.createBusinessOpportunity(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetBusinessOpportunitiesResModel> getBusinessOpportunitiesData({
+    int? page,
+    int? limit,
+    String? search,
+    String? pincode,
+  }) async {
+    try {
+      final response = await api.getBusinessOpportunities(
+        page,
+        limit,
+        search,
+        pincode,
+      );
       return response;
     } catch (e) {
       rethrow;

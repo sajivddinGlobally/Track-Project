@@ -233,6 +233,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _isGoogleAvatar = false;
     }
 
+    try {
+      final box = Hive.box('userdata');
+      if (user.name != null && user.name!.trim().isNotEmpty) {
+        box.put('name', user.name!.trim());
+      }
+      if (user.profileImage != null && user.profileImage!.trim().isNotEmpty) {
+        box.put('profileImage', user.profileImage!.trim());
+      }
+    } catch (_) {}
+
     // Only populate if available in API, otherwise keep blank
     if (user.school != null && user.school!.trim().isNotEmpty) {
       _schoolController.text = user.school!;
@@ -2400,6 +2410,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (updateResponse.success == true) {
         var box = Hive.box("userdata");
         await box.put("isProfileComplete", true);
+        if (_userName.trim().isNotEmpty) {
+          await box.put("name", _userName.trim());
+        } else if (updateResponse.data?.user?.name != null &&
+            updateResponse.data!.user!.name!.trim().isNotEmpty) {
+          await box.put("name", updateResponse.data!.user!.name!.trim());
+        }
+        if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+          await box.put("profileImage", profileImageUrl);
+        } else if (updateResponse.data?.user?.profileImage != null &&
+            updateResponse.data!.user!.profileImage!.trim().isNotEmpty) {
+          await box.put(
+            "profileImage",
+            updateResponse.data!.user!.profileImage!.trim(),
+          );
+        }
 
         if (!mounted) return;
         Navigator.pushAndRemoveUntil(
@@ -2409,7 +2434,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
       }
 
-      // ref.invalidate(getMyProfileProvider);
+      ref.invalidate(getMyProfileProvider);
 
       if (mounted) {
         setState(() {

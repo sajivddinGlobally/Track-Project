@@ -1,10 +1,12 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:track_loved/SettingScreen/ChildToAdultUpgradeScreen.dart';
+import 'package:track_loved/SettingScreen/CompanyOwnershipTransferScreen.dart';
+import 'package:track_loved/SettingScreen/FontSizeSettingScreen.dart';
+import 'package:track_loved/SettingScreen/NotificationSettingScreen.dart';
 import 'package:track_loved/SettingScreen/font_scale_provider.dart';
 
 class SettingScreen extends ConsumerStatefulWidget {
@@ -19,6 +21,9 @@ class SettingScreen extends ConsumerStatefulWidget {
 class _SettingScreenState extends ConsumerState<SettingScreen> {
   late bool _isHindi;
 
+  // User Profile
+  bool _isAdultVerified = false;
+
   // Font Size Settings
   double _fontScale = 1.0;
   String _fontPreset = 'Default';
@@ -26,57 +31,19 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
   // Notification Sound Settings
   bool _notificationSoundEnabled = true;
   String _selectedTone = 'Default Chime';
-  double _soundVolume = 0.8;
-  bool _vibrationEnabled = true;
 
-  final List<Map<String, dynamic>> _soundTones = [
-    {
-      'id': 'Default Chime',
-      'nameEn': 'Default Chime',
-      'nameHi': 'डिफ़ॉल्ट चाइम',
-      'descEn': 'Classic standard alert chime',
-      'descHi': 'मानक क्लासिक अलर्ट चाइम',
-      'icon': Icons.notifications_active_rounded,
-    },
-    {
-      'id': 'Gentle Bell',
-      'nameEn': 'Gentle Bell',
-      'nameHi': 'धीमी घंटी',
-      'descEn': 'Soft and pleasant notification tone',
-      'descHi': 'शांत और सुखद अधिसूचना टोन',
-      'icon': Icons.music_note_rounded,
-    },
-    {
-      'id': 'Alert Pulse',
-      'nameEn': 'Alert Pulse',
-      'nameHi': 'अलर्ट पल्स',
-      'descEn': 'Clear high-priority safety alert tone',
-      'descHi': 'स्पष्ट उच्च-प्राथमिकता सुरक्षा अलर्ट',
-      'icon': Icons.warning_amber_rounded,
-    },
-    {
-      'id': 'Radar Echo',
-      'nameEn': 'Radar Echo',
-      'nameHi': 'रडार इको',
-      'descEn': 'Distinctive location ping sound',
-      'descHi': 'विशिष्ट लोकेशन पिंग ध्वनि',
-      'icon': Icons.radar_rounded,
-    },
-    {
-      'id': 'Subtle Beep',
-      'nameEn': 'Subtle Beep',
-      'nameHi': 'हल्की बीप',
-      'descEn': 'Minimal unobtrusive beep',
-      'descHi': 'हल्की और शांत बीप ध्वनि',
-      'icon': Icons.volume_down_rounded,
-    },
-  ];
+  // Assigned Person state
+  bool _isCompanyAccountAssigned = false;
+  String _assignedPersonName = '';
+  String _assignedPersonContact = '';
+  String _assignedPersonRole = 'Corporate Super Admin';
 
   @override
   void initState() {
     super.initState();
     _isHindi = widget.isHindi;
     _loadSettings();
+    _loadCompanyData();
   }
 
   void _loadSettings() {
@@ -84,25 +51,43 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
       final box = Hive.box('userdata');
       final currentScale = ref.read(fontScaleProvider);
       setState(() {
+        final accountType =
+            box.get('account_type', defaultValue: 'minor') as String;
+        final adultSubmitted =
+            box.get('adult_upgrade_submitted', defaultValue: false) as bool;
+        _isAdultVerified = accountType == 'adult' || adultSubmitted;
+
         _fontScale = currentScale;
-        _fontPreset = box.get(
-          'app_font_preset',
-          defaultValue: _getPresetFromScale(_fontScale),
-        );
-        _notificationSoundEnabled =
-            box.get('notification_sound_enabled', defaultValue: true) as bool;
-        _selectedTone =
-            box.get('notification_sound_tone', defaultValue: 'Default Chime')
+        _fontPreset =
+            box.get(
+                  'font_preset_label',
+                  defaultValue: box.get(
+                    'app_font_preset',
+                    defaultValue: _getPresetFromScale(_fontScale),
+                  ),
+                )
                 as String;
-        _soundVolume =
-            (box.get('notification_volume', defaultValue: 0.8) as num)
-                .toDouble();
-        _vibrationEnabled =
-            box.get('notification_vibrate', defaultValue: true) as bool;
+
+        _notificationSoundEnabled =
+            box.get(
+                  'notif_sound_enabled',
+                  defaultValue: box.get(
+                    'notification_sound_enabled',
+                    defaultValue: true,
+                  ),
+                )
+                as bool;
+        _selectedTone =
+            box.get(
+                  'notif_selected_tone',
+                  defaultValue: box.get(
+                    'notification_sound_tone',
+                    defaultValue: 'Default Chime',
+                  ),
+                )
+                as String;
       });
-    } catch (_) {
-      // Fallback to default values
-    }
+    } catch (_) {}
   }
 
   String _getPresetFromScale(double scale) {
@@ -112,148 +97,70 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
     return 'Extra Large';
   }
 
-  void _saveFontScale(double scale, {String? preset}) {
-    final newPreset = preset ?? _getPresetFromScale(scale);
-    setState(() {
-      _fontScale = scale;
-      _fontPreset = newPreset;
-    });
-
-    // Update Riverpod provider to scale the entire app immediately
-    ref.read(fontScaleProvider.notifier).setScale(scale);
-
+  void _loadCompanyData() {
     try {
       final box = Hive.box('userdata');
-      box.put('app_font_preset', newPreset);
+      setState(() {
+        _isCompanyAccountAssigned =
+            box.get('company_account_assigned', defaultValue: false) as bool;
+        _assignedPersonName =
+            box.get('company_assigned_admin_name', defaultValue: '') as String;
+        _assignedPersonContact =
+            box.get('company_assigned_admin_contact', defaultValue: '')
+                as String;
+        _assignedPersonRole =
+            box.get(
+                  'company_assigned_admin_role',
+                  defaultValue: 'Corporate Super Admin',
+                )
+                as String;
+      });
     } catch (_) {}
   }
 
-  void _saveNotificationSettings({
-    bool? soundEnabled,
-    String? tone,
-    double? volume,
-    bool? vibrate,
-  }) {
-    setState(() {
-      if (soundEnabled != null) _notificationSoundEnabled = soundEnabled;
-      if (tone != null) _selectedTone = tone;
-      if (volume != null) _soundVolume = volume;
-      if (vibrate != null) _vibrationEnabled = vibrate;
-    });
+  void _revokeAssignment() async {
+    final box = Hive.box('userdata');
+    await box.put('company_account_assigned', false);
+    _loadCompanyData();
 
-    try {
-      final box = Hive.box('userdata');
-      if (soundEnabled != null) {
-        box.put('notification_sound_enabled', soundEnabled);
-      }
-      if (tone != null) box.put('notification_sound_tone', tone);
-      if (volume != null) box.put('notification_volume', volume);
-      if (vibrate != null) box.put('notification_vibrate', vibrate);
-    } catch (_) {}
-  }
-
-  void _playTestTone() {
-    if (!_notificationSoundEnabled) return;
-    HapticFeedback.mediumImpact();
-    SystemSound.play(SystemSoundType.click);
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.volume_up_rounded,
-              color: const Color(0xFFD4AF37),
-              size: 20.sp,
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? 'ध्वनि पूर्वावलोकन बजाया गया: $_selectedTone'
-                    : 'Playing preview: $_selectedTone',
-                style: GoogleFonts.outfit(
-                  fontSize: 13.sp,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+        content: Text(
+          _isHindi
+              ? 'असाइनमेंट सफलतापूर्वक निरस्त कर दिया गया है'
+              : 'Assignment successfully revoked',
+          style: GoogleFonts.outfit(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0F3D38),
         duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // App Brand Palette (matching Login, Register, Dashboard)
     const brandGold = Color(0xFFC5A038);
     const brightGold = Color(0xFFD4AF37);
 
     return Scaffold(
-      extendBodyBehindAppBar: false,
+      backgroundColor: const Color(0xFF0F3D38),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF0F3D38),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white, size: 28.sp),
+          icon: Icon(Icons.arrow_back, color: Colors.white, size: 24.sp),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          _isHindi ? 'सेटिंग्स' : 'Settings',
+          _isHindi ? 'सेटिंग्स एवं प्राथमिकताएं' : 'Settings & Preferences',
           style: GoogleFonts.outfit(
             color: Colors.white,
-            fontSize: 19.sp,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.bold,
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: _isHindi ? 'डिफ़ॉल्ट रीसेट करें' : 'Reset to Default',
-            icon: Icon(
-              Icons.restart_alt_rounded,
-              color: brightGold,
-              size: 22.sp,
-            ),
-            onPressed: () {
-              _saveFontScale(1.0, preset: 'Default');
-              _saveNotificationSettings(
-                soundEnabled: true,
-                tone: 'Default Chime',
-                volume: 0.8,
-                vibrate: true,
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    _isHindi
-                        ? 'सेटिंग्स डिफ़ॉल्ट पर रीसेट कर दी गई हैं'
-                        : 'Settings reset to default',
-                    style: GoogleFonts.outfit(color: Colors.white),
-                  ),
-                  backgroundColor: const Color(0xFF0F3D38),
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                    side: const BorderSide(color: brandGold, width: 1),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: Container(
         width: double.infinity,
@@ -266,508 +173,263 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
           ),
         ),
         child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: constraints.maxWidth > 650
-                        ? 560
-                        : double.infinity,
-                  ),
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 18.w,
-                      vertical: 18.h,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Section 1: Font Size
-                        _buildSectionHeader(
-                          icon: Icons.format_size_rounded,
-                          title: _isHindi ? 'फ़ॉन्ट का आकार' : 'Font Size',
-                          subtitle: _isHindi
-                              ? 'ऐप में टेक्स्ट का आकार समायोजित करें'
-                              : 'Adjust text size across the application',
-                          accentGold: brightGold,
-                        ),
-                        SizedBox(height: 14.h),
-                        _buildFontSizeCard(brandGold, brightGold),
-                        SizedBox(height: 26.h),
-                        // Section 2: Notification Sound
-                        _buildSectionHeader(
-                          icon: Icons.notifications_active_rounded,
-                          title: _isHindi
-                              ? 'सूचना ध्वनि'
-                              : 'Notification Sound',
-                          subtitle: _isHindi
-                              ? 'अलर्ट ध्वनि और सूचना प्राथमिकताएं सेट करें'
-                              : 'Set alert sounds & notification preferences',
-                          accentGold: brightGold,
-                        ),
-                        SizedBox(height: 14.h),
-                        _buildNotificationSoundCard(brandGold, brightGold),
-                        SizedBox(height: 30.h),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color accentGold,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: EdgeInsets.all(9.r),
-          decoration: BoxDecoration(
-            color: accentGold.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(
-              color: accentGold.withValues(alpha: 0.35),
-              width: 1,
-            ),
-          ),
-          child: Icon(icon, color: accentGold, size: 22.sp),
-        ),
-        SizedBox(width: 12.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.outfit(
-                  fontSize: 16.5.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                subtitle,
-                style: GoogleFonts.outfit(
-                  fontSize: 12.sp,
-                  color: Colors.white70,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFontSizeCard(Color brandGold, Color brightGold) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.white24, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Preset Buttons
-          Row(
-            children: [
-              _buildPresetChip(
-                'Small',
-                _isHindi ? 'छोटा' : 'Small',
-                0.85,
-                brandGold,
-                brightGold,
-              ),
-              SizedBox(width: 8.w),
-              _buildPresetChip(
-                'Default',
-                _isHindi ? 'सामान्य' : 'Default',
-                1.0,
-                brandGold,
-                brightGold,
-              ),
-              SizedBox(width: 8.w),
-              _buildPresetChip(
-                'Large',
-                _isHindi ? 'बड़ा' : 'Large',
-                1.15,
-                brandGold,
-                brightGold,
-              ),
-              SizedBox(width: 8.w),
-              _buildPresetChip(
-                'Extra Large',
-                _isHindi ? 'बहुत बड़ा' : 'XL',
-                1.3,
-                brandGold,
-                brightGold,
-              ),
-            ],
-          ),
-
-          SizedBox(height: 18.h),
-
-          // Interactive Slider
-          Row(
-            children: [
-              Text(
-                'A',
-                style: GoogleFonts.outfit(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white60,
-                ),
-              ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: brandGold,
-                    inactiveTrackColor: Colors.white24,
-                    thumbColor: brightGold,
-                    overlayColor: brandGold.withValues(alpha: 0.2),
-                    trackHeight: 4.h,
-                    thumbShape: RoundSliderThumbShape(enabledThumbRadius: 9.r),
-                  ),
-                  child: Slider(
-                    value: _fontScale,
-                    min: 0.85,
-                    max: 1.3,
-                    divisions: 3,
-                    onChanged: (val) {
-                      _saveFontScale(val);
-                    },
-                  ),
-                ),
-              ),
-              Text(
-                'A',
-                style: GoogleFonts.outfit(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.bold,
-                  color: brightGold,
-                ),
-              ),
-            ],
-          ),
-
-          // Size percentage display
-          Center(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 5.h),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(
-                  color: brandGold.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                '${(_fontScale * 100).toInt()}%  ($_fontPreset)',
-                style: GoogleFonts.outfit(
-                  fontSize: 12.5.sp,
-                  fontWeight: FontWeight.w600,
-                  color: brightGold,
-                ),
-              ),
-            ),
-          ),
-
-          SizedBox(height: 16.h),
-          const Divider(height: 1, color: Colors.white12),
-          SizedBox(height: 14.h),
-
-          // Live Preview Box
-          Text(
-            _isHindi ? 'पूर्वावलोकन (Live Preview)' : 'Live Preview',
-            style: GoogleFonts.outfit(
-              fontSize: 12.5.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
-            ),
-          ),
-          SizedBox(height: 8.h),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(14.r),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.white24, width: 1),
-            ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 14.r,
-                      backgroundColor: const Color(0xFF0F3D38),
-                      child: Icon(
-                        Icons.shield_rounded,
-                        color: brightGold,
-                        size: 15.sp,
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        _isHindi ? 'सुरक्षा अधिसूचना' : 'Safety Notification',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Just now',
-                      style: GoogleFonts.outfit(
-                        fontSize: 10.5.sp,
-                        color: Colors.white60,
-                      ),
-                    ),
-                  ],
+                // User Profile Header Overview Card
+                // Container(
+                //   padding: EdgeInsets.all(16.r),
+                //   decoration: BoxDecoration(
+                //     gradient: LinearGradient(
+                //       colors: [
+                //         brightGold.withValues(alpha: 0.15),
+                //         Colors.white.withValues(alpha: 0.04),
+                //       ],
+                //     ),
+                //     borderRadius: BorderRadius.circular(16.r),
+                //     border: Border.all(color: brandGold.withValues(alpha: 0.4)),
+                //   ),
+                //   child: Row(
+                //     children: [
+                //       CircleAvatar(
+                //         radius: 24.r,
+                //         backgroundColor: brightGold.withValues(alpha: 0.2),
+                //         child: Text(
+                //           _userName.isNotEmpty
+                //               ? _userName[0].toUpperCase()
+                //               : 'U',
+                //           style: GoogleFonts.outfit(
+                //             fontSize: 20.sp,
+                //             fontWeight: FontWeight.bold,
+                //             color: brightGold,
+                //           ),
+                //         ),
+                //       ),
+                //       SizedBox(width: 14.w),
+                //       Expanded(
+                //         child: Column(
+                //           crossAxisAlignment: CrossAxisAlignment.start,
+                //           children: [
+                //             Text(
+                //               _userName.isNotEmpty
+                //                   ? _userName
+                //                   : (_isHindi
+                //                         ? 'उपयोगकर्ता'
+                //                         : 'Account Holder'),
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 16.sp,
+                //                 fontWeight: FontWeight.bold,
+                //                 color: Colors.white,
+                //               ),
+                //             ),
+                //             SizedBox(height: 2.h),
+                //             Text(
+                //               _userPhone.isNotEmpty ? _userPhone : _userEmail,
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 12.5.sp,
+                //                 color: Colors.white70,
+                //               ),
+                //             ),
+                //             SizedBox(height: 6.h),
+                //             Row(
+                //               children: [
+                //                 Container(
+                //                   padding: EdgeInsets.symmetric(
+                //                     horizontal: 8.w,
+                //                     vertical: 3.h,
+                //                   ),
+                //                   decoration: BoxDecoration(
+                //                     color: _isAdultVerified
+                //                         ? const Color(
+                //                             0xFF00E676,
+                //                           ).withValues(alpha: 0.15)
+                //                         : Colors.orange.withValues(alpha: 0.2),
+                //                     borderRadius: BorderRadius.circular(6.r),
+                //                     border: Border.all(
+                //                       color: _isAdultVerified
+                //                           ? const Color(0xFF00E676)
+                //                           : Colors.orangeAccent,
+                //                       width: 0.8,
+                //                     ),
+                //                   ),
+                //                   child: Text(
+                //                     _isAdultVerified
+                //                         ? (_isHindi
+                //                               ? '18+ बालिग खाता'
+                //                               : '18+ Adult Verified')
+                //                         : (_isHindi
+                //                               ? 'नाबालिग / चाइल्ड खाता'
+                //                               : 'Minor / Child Account'),
+                //                     style: GoogleFonts.outfit(
+                //                       fontSize: 10.5.sp,
+                //                       fontWeight: FontWeight.bold,
+                //                       color: _isAdultVerified
+                //                           ? const Color(0xFF00E676)
+                //                           : Colors.orangeAccent,
+                //                     ),
+                //                   ),
+                //                 ),
+                //               ],
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                // SizedBox(height: 24.h),
+
+                // Category 1: Display & Appearance
+                _buildCategoryHeader(
+                  title: _isHindi
+                      ? 'प्रदर्शन एवं टेक्स्ट'
+                      : 'Display & Appearance',
+                  icon: Icons.palette_outlined,
+                  brightGold: brightGold,
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  _isHindi
-                      ? 'आपका प्रियजन सुरक्षित स्थान पर पहुँच गया है। लाइव ट्रैकिंग सक्रिय है।'
-                      : 'Your loved one has reached the safe zone. Live location tracking is active.',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12.5.sp,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPresetChip(
-    String key,
-    String label,
-    double scale,
-    Color brandGold,
-    Color brightGold,
-  ) {
-    final isSelected = (_fontScale - scale).abs() < 0.05;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _saveFontScale(scale, preset: key),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: EdgeInsets.symmetric(vertical: 8.5.h),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? brandGold
-                : Colors.white.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(
-              color: isSelected ? brightGold : Colors.white24,
-              width: 1.2,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4.w),
-              child: Text(
-                label,
-                maxLines: 1,
-                style: GoogleFonts.outfit(
-                  fontSize: 12.sp,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? Colors.black87 : Colors.white70,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationSoundCard(Color brandGold, Color brightGold) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: Colors.white24, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Master Toggle
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isHindi ? 'सूचना ध्वनि सक्षम करें' : 'Enable Sound',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14.5.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      _isHindi
-                          ? 'सभी सूचनाओं और संदेशों के लिए ध्वनि बजाएं'
-                          : 'Play sound for notifications and messages',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11.5.sp,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CupertinoSwitch(
-                value: _notificationSoundEnabled,
-                activeTrackColor: brandGold,
-                onChanged: (val) {
-                  _saveNotificationSettings(soundEnabled: val);
-                  if (val) _playTestTone();
-                },
-              ),
-            ],
-          ),
-
-          if (_notificationSoundEnabled) ...[
-            SizedBox(height: 16.h),
-            const Divider(height: 1, color: Colors.white12),
-            SizedBox(height: 16.h),
-
-            // Sound Tone Picker
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _isHindi ? 'ध्वनि टोन चुनें' : 'Select Sound Tone',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _playTestTone,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 5.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: brandGold.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(
-                        color: brandGold.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.play_arrow_rounded,
-                          color: brightGold,
-                          size: 16.sp,
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          _isHindi ? 'टेस्ट करें' : 'Test Sound',
-                          style: GoogleFonts.outfit(
-                            fontSize: 11.5.sp,
-                            fontWeight: FontWeight.bold,
-                            color: brightGold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10.h),
-
-            // List of Sound Tones
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _soundTones.length,
-              separatorBuilder: (_, __) => SizedBox(height: 8.h),
-              itemBuilder: (context, index) {
-                final tone = _soundTones[index];
-                final isSelected = _selectedTone == tone['id'];
-
-                return GestureDetector(
+                SizedBox(height: 10.h),
+                _buildSettingTile(
+                  icon: Icons.format_size_rounded,
+                  title: _isHindi ? 'फ़ॉन्ट का आकार' : 'Font Size & Scaling',
+                  subtitle: _isHindi
+                      ? 'वर्तमान: $_fontPreset (${(_fontScale * 100).round()}%) • आकार बदलने के लिए टैप करें'
+                      : 'Current: $_fontPreset (${(_fontScale * 100).round()}%) • Tap to adjust',
+                  accentColor: brightGold,
                   onTap: () {
-                    _saveNotificationSettings(tone: tone['id'] as String);
-                    _playTestTone();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            FontSizeSettingScreen(isHindi: _isHindi),
+                      ),
+                    ).then((_) => _loadSettings());
                   },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 10.h,
-                    ),
+                ),
+                SizedBox(height: 20.h),
+
+                // Category 2: Sounds & Alerts
+                _buildCategoryHeader(
+                  title: _isHindi
+                      ? 'ध्वनि एवं सूचनाएं'
+                      : 'Audio & Notifications',
+                  icon: Icons.volume_up_outlined,
+                  brightGold: brightGold,
+                ),
+                SizedBox(height: 10.h),
+                _buildSettingTile(
+                  icon: Icons.notifications_active_rounded,
+                  title: _isHindi
+                      ? 'सूचनाएं एवं रिंगटोन'
+                      : 'Notifications & Tone Settings',
+                  subtitle: _isHindi
+                      ? 'टोन: $_selectedTone • ${_notificationSoundEnabled ? 'ध्वनि सक्रिय' : 'मौन'}'
+                      : 'Tone: $_selectedTone • ${_notificationSoundEnabled ? 'Alerts Sound On' : 'Muted'}',
+                  accentColor: brightGold,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            NotificationSettingScreen(isHindi: _isHindi),
+                      ),
+                    ).then((_) => _loadSettings());
+                  },
+                ),
+                SizedBox(height: 20.h),
+
+                // Category 3: Account Lifecycle & Legal Age
+                _buildCategoryHeader(
+                  title: _isHindi
+                      ? 'पहचान एवं खाता स्थिति'
+                      : 'Identity & Legal Lifecycle',
+                  icon: Icons.shield_outlined,
+                  brightGold: brightGold,
+                ),
+                SizedBox(height: 10.h),
+                _buildSettingTile(
+                  icon: Icons.how_to_reg_rounded,
+                  title: _isHindi
+                      ? 'चाइल्ड से बालिग खाता अपग्रेड (18+)'
+                      : 'Upgrade: Child to Adult Account (18+)',
+                  subtitle: _isAdultVerified
+                      ? (_isHindi
+                            ? 'सत्यापन अनुरोध सबमिट हो चुका है'
+                            : 'Adult verification request active')
+                      : (_isHindi
+                            ? '18 वर्ष पूर्ण होने पर स्वतंत्र वयस्क खाते में बदलें (KYC प्रमाणीकरण)'
+                            : 'Transition minor account to adult self-governed account with ID proof'),
+                  tag: _isAdultVerified
+                      ? (_isHindi ? 'सत्यापित' : 'Active 18+')
+                      : (_isHindi ? 'अपग्रेड करें' : 'Upgrade'),
+                  tagColor: _isAdultVerified
+                      ? const Color(0xFF00E676)
+                      : Colors.orangeAccent,
+                  accentColor: brightGold,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ChildToAdultUpgradeScreen(isHindi: _isHindi),
+                      ),
+                    ).then((_) => _loadSettings());
+                  },
+                ),
+                SizedBox(height: 20.h),
+
+                // Category 4: Corporate & Company Management
+                _buildCategoryHeader(
+                  title: _isHindi
+                      ? 'कॉर्पोरेट एवं कंपनी प्रशासन'
+                      : 'Company Administration',
+                  icon: Icons.business_center_outlined,
+                  brightGold: brightGold,
+                ),
+                SizedBox(height: 10.h),
+
+                // Company Ownership Transfer Tile
+                _buildSettingTile(
+                  icon: Icons.swap_horiz_rounded,
+                  title: _isHindi
+                      ? 'कंपनी स्वामित्व हस्तांतरण (Permanent Handover)'
+                      : 'Company Ownership Transfer & Admin Change',
+                  subtitle: _isHindi
+                      ? 'कंपनी छोड़ने पर नए व्यवस्थापक को स्वामित्व और आधिकारिक नंबर सौंपें'
+                      : 'Permanently delegate company ownership & update official contact phone to successor',
+                  tag: _isHindi ? 'हस्तांतरण' : 'Handover',
+                  tagColor: Colors.orangeAccent,
+                  accentColor: Colors.orangeAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CompanyOwnershipTransferScreen(isHindi: _isHindi),
+                      ),
+                    ).then((_) => _loadCompanyData());
+                  },
+                ),
+
+                // If Company Assigned Banner
+                if (_isCompanyAccountAssigned) ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? brandGold.withValues(alpha: 0.18)
-                          : Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(10.r),
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
-                        color: isSelected ? brandGold : Colors.white12,
-                        width: isSelected ? 1.5 : 1,
+                        color: brandGold.withValues(alpha: 0.4),
                       ),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          tone['icon'] as IconData,
+                          Icons.check_circle_rounded,
+                          color: const Color(0xFF00E676),
                           size: 20.sp,
-                          color: isSelected ? brightGold : Colors.white60,
                         ),
                         SizedBox(width: 10.w),
                         Expanded(
@@ -775,138 +437,165 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _isHindi ? tone['nameHi'] : tone['nameEn'],
+                                '${_isHindi ? 'सौंपा गया एडमिन:' : 'Assigned Administrator:'} $_assignedPersonName',
                                 style: GoogleFonts.outfit(
                                   fontSize: 13.sp,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: isSelected ? brightGold : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
                               Text(
-                                _isHindi ? tone['descHi'] : tone['descEn'],
+                                '$_assignedPersonContact • $_assignedPersonRole',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 11.sp,
-                                  color: Colors.white60,
+                                  fontSize: 11.5.sp,
+                                  color: Colors.white70,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        if (isSelected)
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: brightGold,
-                            size: 18.sp,
-                          )
-                        else
-                          Icon(
-                            Icons.radio_button_unchecked_rounded,
-                            color: Colors.white30,
-                            size: 18.sp,
+                        IconButton(
+                          tooltip: _isHindi ? 'असाइनमेंट रद्द करें' : 'Revoke',
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            color: Colors.redAccent,
+                            size: 20,
                           ),
+                          onPressed: _revokeAssignment,
+                        ),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
+                ],
 
-            SizedBox(height: 18.h),
-            const Divider(height: 1, color: Colors.white12),
-            SizedBox(height: 14.h),
-
-            // Volume Control
-            Row(
-              children: [
-                Icon(
-                  _soundVolume == 0
-                      ? Icons.volume_mute_rounded
-                      : Icons.volume_up_rounded,
-                  color: brightGold,
-                  size: 20.sp,
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  _isHindi ? 'ध्वनि स्तर (Volume)' : 'Volume',
-                  style: GoogleFonts.outfit(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${(_soundVolume * 100).toInt()}%',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.bold,
-                    color: brightGold,
-                  ),
-                ),
+                SizedBox(height: 36.h),
               ],
             ),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: brandGold,
-                inactiveTrackColor: Colors.white24,
-                thumbColor: brightGold,
-                overlayColor: brandGold.withValues(alpha: 0.2),
-                trackHeight: 4.h,
-                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8.r),
-              ),
-              child: Slider(
-                value: _soundVolume,
-                min: 0.0,
-                max: 1.0,
-                onChanged: (val) {
-                  _saveNotificationSettings(volume: val);
-                },
-              ),
-            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Vibration Toggle
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCategoryHeader({
+    required String title,
+    required IconData icon,
+    required Color brightGold,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: brightGold, size: 18.sp),
+        SizedBox(width: 8.w),
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 14.5.sp,
+            fontWeight: FontWeight.bold,
+            color: brightGold,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color accentColor,
+    required VoidCallback onTap,
+    String? tag,
+    Color? tagColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(14.r),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.r),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: accentColor, size: 22.sp),
+            ),
+            SizedBox(width: 14.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        _isHindi ? 'सूचना पर कंपन (Vibration)' : 'Vibration',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13.5.sp,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14.5.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        _isHindi
-                            ? 'ध्वनि के साथ फ़ोन को कंपन कराएं'
-                            : 'Vibrate device alongside sound notification',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11.5.sp,
-                          color: Colors.white70,
+                      if (tag != null) ...[
+                        SizedBox(width: 6.w),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 7.w,
+                            vertical: 2.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (tagColor ?? accentColor).withValues(
+                              alpha: 0.15,
+                            ),
+                            borderRadius: BorderRadius.circular(6.r),
+                            border: Border.all(
+                              color: (tagColor ?? accentColor).withValues(
+                                alpha: 0.4,
+                              ),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            tag,
+                            style: GoogleFonts.outfit(
+                              fontSize: 10.5.sp,
+                              fontWeight: FontWeight.bold,
+                              color: tagColor ?? accentColor,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
-                ),
-                CupertinoSwitch(
-                  value: _vibrationEnabled,
-                  activeTrackColor: brandGold,
-                  onChanged: (val) {
-                    _saveNotificationSettings(vibrate: val);
-                    if (val) HapticFeedback.mediumImpact();
-                  },
-                ),
-              ],
+                  SizedBox(height: 3.h),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12.sp,
+                      color: Colors.white60,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.white38,
+              size: 16.sp,
             ),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -190,7 +190,7 @@ class User {
 
 class Location {
     String? type;
-    List<int>? coordinates;
+    List<dynamic>? coordinates;
 
     Location({
         this.type,
@@ -199,7 +199,7 @@ class Location {
 
     factory Location.fromJson(Map<String, dynamic> json) => Location(
         type: json["type"],
-        coordinates: json["coordinates"] == null ? [] : List<int>.from(json["coordinates"]!.map((x) => x)),
+        coordinates: json["coordinates"] == null ? [] : List<dynamic>.from(json["coordinates"]!.map((x) => x)),
     );
 
     Map<String, dynamic> toJson() => {

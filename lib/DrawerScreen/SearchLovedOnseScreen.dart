@@ -6,6 +6,8 @@ import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
 import 'package:track_loved/core/Utils/AddressText.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:track_loved/core/Data/BodyModel/TriggerSosBodyModel.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SearchLovedOnesScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,7 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
+  bool _isSosLoading = false;
 
   List<LocationSharingUser> _users = [];
 
@@ -205,26 +208,13 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B4F4A),
+                backgroundColor: Colors.red.shade700,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               ),
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _isHindi
-                          ? 'सभी जुड़े हुए सदस्यों को मदद का संदेश भेज दिया गया है!'
-                          : 'Help alert sent to all connected members!',
-                      style: TextStyle(fontSize: 13.5.sp),
-                    ),
-                    backgroundColor: const Color(0xFF0B4F4A),
-                  ),
-                );
-              },
+              onPressed: _triggerEmergencySos,
               child: Text(
                 _isHindi ? 'हाँ, भेजें' : 'Yes, Send',
                 style: TextStyle(
@@ -238,6 +228,134 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
         );
       },
     );
+  }
+
+  Future<void> _triggerEmergencySos() async {
+    Navigator.pop(context);
+
+    setState(() {
+      _isSosLoading = true;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _isHindi
+                    ? 'आपातकालीन एसओएस भेजा जा रहा है...'
+                    : 'Sending Emergency SOS alert...',
+                style: TextStyle(fontSize: 13.5.sp),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red.shade700,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+
+    try {
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isHindi
+                  ? 'सटीक स्थान प्राप्त नहीं हो सका। कृपया जीपीएस चालू करें।'
+                  : 'Could not fetch current location. Please turn on GPS.',
+              style: TextStyle(fontSize: 13.5.sp),
+            ),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+        return;
+      }
+
+      final body = TriggerSosBodyModel(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        triggerType: "APP_BUTTON",
+        batteryPercentage: 70,
+      );
+
+      final response = await ref.read(authServiceProvider).triggerSosData(body);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (response.success == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message ??
+                  (_isHindi
+                      ? 'आपातकालीन एसओएस अलर्ट सफलतापूर्वक भेजा गया!'
+                      : 'Emergency SOS alert triggered successfully!'),
+              style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: const Color(0xFF0B4F4A),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message ??
+                  (_isHindi
+                      ? 'एसओएस भेजने में विफल रहा।'
+                      : 'Failed to trigger SOS alert.'),
+              style: TextStyle(fontSize: 13.5.sp),
+            ),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isHindi
+                ? 'त्रुटि: ${e.toString()}'
+                : 'Failed to trigger SOS: ${e.toString()}',
+            style: TextStyle(fontSize: 13.5.sp),
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSosLoading = false;
+        });
+      }
+    }
   }
 
   void _showLocationDetails(LocationSharingUser user) {
@@ -465,11 +583,22 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
       // Floating Action Button for Help Alert
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _sendHelpAlertToMembers,
+        onPressed: _isSosLoading ? null : _sendHelpAlertToMembers,
         backgroundColor: Colors.red.shade700,
-        icon: Icon(Icons.sos, color: Colors.white, size: 22.sp),
+        icon: _isSosLoading
+            ? SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(Icons.sos, color: Colors.white, size: 22.sp),
         label: Text(
-          _isHindi ? 'मदद चाहिए' : 'Need Help',
+          _isSosLoading
+              ? (_isHindi ? 'भेज रहे हैं...' : 'Sending...')
+              : (_isHindi ? 'मदद चाहिए' : 'Need Help'),
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,

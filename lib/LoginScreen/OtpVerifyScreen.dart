@@ -45,7 +45,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   void _startTimer() {
     if (!mounted) return;
     setState(() {
-      _secondsRemaining = 60;
+      _secondsRemaining = 30;
       _canResend = false;
     });
     _timer?.cancel();
@@ -342,6 +342,15 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                           }
                           if (response.data?.user?.name != null) {
                             await box.put("name", response.data!.user!.name);
+                          }
+                          if (response.data?.user?.profileImage != null &&
+                              response.data!.user!.profileImage!
+                                  .trim()
+                                  .isNotEmpty) {
+                            await box.put(
+                              "profileImage",
+                              response.data!.user!.profileImage,
+                            );
                           }
                           await box.put(
                             "isProfileComplete",

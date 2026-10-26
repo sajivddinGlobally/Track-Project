@@ -57,8 +57,11 @@ class User {
   String? email;
   String? phone;
   bool? isVerified;
+  bool? isProfileComplete;
   bool? isBlocked;
   String? role;
+  String? companyProfileStatus;
+  dynamic referredBy;
   String? profileImage;
   String? bio;
   String? profession;
@@ -69,6 +72,13 @@ class User {
   String? school;
   String? college;
   String? villageTown;
+  String? pincode;
+  bool? companyVerifiedStatus;
+  String? parentPhone;
+  String? permanentCity;
+  String? permanentState;
+  String? permanentPincode;
+  String? permanentCountry;
   DateTime? createdAt;
   DateTime? updatedAt;
   String? campusLocation;
@@ -83,8 +93,11 @@ class User {
     this.email,
     this.phone,
     this.isVerified,
+    this.isProfileComplete,
     this.isBlocked,
     this.role,
+    this.companyProfileStatus,
+    this.referredBy,
     this.profileImage,
     this.bio,
     this.profession,
@@ -95,6 +108,13 @@ class User {
     this.school,
     this.college,
     this.villageTown,
+    this.pincode,
+    this.companyVerifiedStatus,
+    this.parentPhone,
+    this.permanentCity,
+    this.permanentState,
+    this.permanentPincode,
+    this.permanentCountry,
     this.createdAt,
     this.updatedAt,
     this.campusLocation,
@@ -112,8 +132,11 @@ class User {
     email: json["email"],
     phone: json["phone"],
     isVerified: json["isVerified"],
+    isProfileComplete: json["isProfileComplete"],
     isBlocked: json["isBlocked"],
     role: json["role"],
+    companyProfileStatus: json["companyProfileStatus"],
+    referredBy: json["referredBy"],
     profileImage: json["profileImage"],
     bio: json["bio"],
     profession: json["profession"],
@@ -124,12 +147,19 @@ class User {
     school: json["school"],
     college: json["college"],
     villageTown: json["villageTown"],
+    pincode: json["pincode"],
+    companyVerifiedStatus: json["companyVerifiedStatus"],
+    parentPhone: json["parentPhone"],
+    permanentCity: json["permanentCity"],
+    permanentState: json["permanentState"],
+    permanentPincode: json["permanentPincode"],
+    permanentCountry: json["permanentCountry"],
     createdAt: json["createdAt"] == null
         ? null
-        : DateTime.parse(json["createdAt"]),
+        : DateTime.tryParse(json["createdAt"].toString()),
     updatedAt: json["updatedAt"] == null
         ? null
-        : DateTime.parse(json["updatedAt"]),
+        : DateTime.tryParse(json["updatedAt"].toString()),
     campusLocation: json["campusLocation"],
     currentAddress: json["currentAddress"],
     graduationYear: json["graduationYear"],
@@ -143,8 +173,11 @@ class User {
     "email": email,
     "phone": phone,
     "isVerified": isVerified,
+    "isProfileComplete": isProfileComplete,
     "isBlocked": isBlocked,
     "role": role,
+    "companyProfileStatus": companyProfileStatus,
+    "referredBy": referredBy,
     "profileImage": profileImage,
     "bio": bio,
     "profession": profession,
@@ -155,6 +188,9 @@ class User {
     "school": school,
     "college": college,
     "villageTown": villageTown,
+    "pincode": pincode,
+    "companyVerifiedStatus": companyVerifiedStatus,
+    "parentPhone": parentPhone,
     "createdAt": createdAt?.toIso8601String(),
     "updatedAt": updatedAt?.toIso8601String(),
     "campusLocation": campusLocation,

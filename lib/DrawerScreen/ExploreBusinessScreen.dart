@@ -1,52 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/DrawerScreen/provider/getBusinessOpportunitiesProvider.dart';
+import 'package:track_loved/core/Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
 
-class ExploreBusinessScreen extends StatefulWidget {
+class ExploreBusinessScreen extends ConsumerStatefulWidget {
   const ExploreBusinessScreen({super.key});
 
   @override
-  State<ExploreBusinessScreen> createState() => _ExploreBusinessScreenState();
+  ConsumerState<ExploreBusinessScreen> createState() =>
+      _ExploreBusinessScreenState();
 }
 
-class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
+class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
   bool _isHindi = false;
   String _searchQuery = '';
-
-  final List<Map<String, dynamic>> _opportunities = [
-    {
-      'company': 'SwiftLogistics Express',
-      'type': 'Start Courier Business / Franchise',
-      'title': 'Looking for City Distributors for Fast Courier Service',
-      'location': 'Faridabad / Delhi NCR',
-      'pincode': '121001',
-      'investment': '₹2 Lakhs - ₹5 Lakhs',
-      'area': '150 - 300 Sq. Ft.',
-      'returns': '20-25% ROI or Payback within 6 Months',
-      'description':
-          'Full technology platform, sorting software, uniform kits, and initial branding support provided. Great scope for local last-mile delivery growth.',
-      'contactPerson': 'Rajesh Verma (Director)',
-      'phone': '+91 98765 43210',
-      'email': 'partners@swiftlogistics.com',
-    },
-    {
-      'company': 'Apex Organic Retail Chain',
-      'type': 'Retail Franchise Store',
-      'title': 'Super Stockist & Retail Partner for Organic Grocery Products',
-      'location': 'Gurugram / Haryana',
-      'pincode': '122001',
-      'investment': '₹5 Lakhs - ₹10 Lakhs',
-      'area': '400 - 600 Sq. Ft.',
-      'returns': '25-30% Margin with Guaranteed Buyback Support',
-      'description':
-          'Exclusive regional stockist rights for high-margin healthy snack lines and organic staple goods. Complete store setup and marketing material included.',
-      'contactPerson': 'Sunil Malhotra',
-      'phone': '+91 91234 56789',
-      'email': 'expansion@apexorganic.in',
-    },
-  ];
 
   @override
   void dispose() {
@@ -56,20 +27,18 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredOpportunities = _opportunities.where((item) {
-      if (_searchQuery.isEmpty) return true;
-      final query = _searchQuery.toLowerCase();
-      final company = (item['company'] ?? '').toString().toLowerCase();
-      final title = (item['title'] ?? '').toString().toLowerCase();
-      final location = (item['location'] ?? '').toString().toLowerCase();
-      final type = (item['type'] ?? '').toString().toLowerCase();
-      final pincode = (item['pincode'] ?? '').toString().toLowerCase();
-      return company.contains(query) ||
-          title.contains(query) ||
-          location.contains(query) ||
-          type.contains(query) ||
-          pincode.contains(query);
-    }).toList();
+    final trimmedQuery = _searchQuery.trim();
+    final isPincode =
+        trimmedQuery.isNotEmpty && RegExp(r'^\d+$').hasMatch(trimmedQuery);
+
+    final filter = BusinessOpportunitiesFilter(
+      search: !isPincode && trimmedQuery.isNotEmpty ? trimmedQuery : null,
+      pincode: isPincode ? trimmedQuery : null,
+    );
+
+    final asyncOpportunities = ref.watch(
+      getBusinessOpportunitiesProvider(filter),
+    );
 
     return Scaffold(
       drawer: AppDrawer(isHindi: _isHindi),
@@ -115,7 +84,7 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                     controller: _searchController,
                     onChanged: (val) {
                       setState(() {
-                        _searchQuery = val.trim();
+                        _searchQuery = val;
                       });
                     },
                     style: TextStyle(fontSize: 14.sp, color: Colors.black87),
@@ -178,10 +147,73 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                 ),
                 SizedBox(height: 10.h),
 
-                // Opportunities List
+                // Opportunities List from Backend API
                 Expanded(
-                  child: filteredOpportunities.isEmpty
-                      ? Center(
+                  child: asyncOpportunities.when(
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    error: (error, stack) => Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.w),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48.sp,
+                              color: Colors.white70,
+                            ),
+                            SizedBox(height: 12.h),
+                            Text(
+                              _isHindi
+                                  ? 'डेटा लोड करने में समस्या आई'
+                                  : 'Failed to load opportunities',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 6.h),
+                            Text(
+                              error.toString(),
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: 12.sp,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 16.h),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF0B4F4A),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              onPressed: () {
+                                ref.invalidate(
+                                  getBusinessOpportunitiesProvider(filter),
+                                );
+                              },
+                              icon: const Icon(Icons.refresh),
+                              label: Text(
+                                _isHindi ? 'पुनः प्रयास करें' : 'Retry',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    data: (response) {
+                      final list = response.data ?? [];
+                      if (list.isEmpty) {
+                        return Center(
                           child: Padding(
                             padding: EdgeInsets.all(20.w),
                             child: Column(
@@ -206,12 +238,39 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                               ],
                             ),
                           ),
-                        )
-                      : ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: filteredOpportunities.length,
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        color: const Color(0xFF0B4F4A),
+                        backgroundColor: Colors.white,
+                        onRefresh: () async {
+                          ref.invalidate(
+                            getBusinessOpportunitiesProvider(filter),
+                          );
+                        },
+                        child: ListView.builder(
+                          itemCount: list.length,
                           itemBuilder: (context, index) {
-                            final item = filteredOpportunities[index];
+                            final item = list[index];
+                            final location = [item.city, item.state]
+                                .where((s) => s != null && s.trim().isNotEmpty)
+                                .join(', ');
+
+                            String inv =
+                                item.requiredInvest?.toString() ?? 'N/A';
+                            if (inv != 'N/A' &&
+                                !inv.startsWith('₹') &&
+                                !inv.toLowerCase().contains('rs')) {
+                              inv = '₹$inv';
+                            }
+
+                            final companyName = item.ownerName.isNotEmpty
+                                ? item.ownerName
+                                : (item.companyType?.isNotEmpty == true
+                                      ? item.companyType!
+                                      : 'Verified Business');
+
                             return Container(
                               margin: EdgeInsets.only(bottom: 16.h),
                               decoration: BoxDecoration(
@@ -251,7 +310,7 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                                           ),
                                         ),
                                         child: Text(
-                                          item['type'],
+                                          item.opportunityType ?? 'Opportunity',
                                           style: TextStyle(
                                             fontSize: 11.5.sp,
                                             fontWeight: FontWeight.bold,
@@ -259,30 +318,32 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                                           ),
                                         ),
                                       ),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.location_on,
-                                            size: 14.sp,
-                                            color: const Color(0xFF0B4F4A),
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            item['location'],
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              color: Colors.black54,
-                                              fontWeight: FontWeight.w600,
+                                      if (location.isNotEmpty)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 14.sp,
+                                              color: const Color(0xFF0B4F4A),
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            SizedBox(width: 4.w),
+                                            Text(
+                                              location,
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                color: Colors.black54,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                     ],
                                   ),
                                   SizedBox(height: 10.h),
                                   Text(
-                                    item['title'],
+                                    item.opportunityHeadline ??
+                                        'Business Opportunity',
                                     style: TextStyle(
                                       fontSize: 16.sp,
                                       fontWeight: FontWeight.bold,
@@ -291,7 +352,7 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                                   ),
                                   SizedBox(height: 4.h),
                                   Text(
-                                    item['company'],
+                                    companyName,
                                     style: TextStyle(
                                       fontSize: 13.5.sp,
                                       fontWeight: FontWeight.w600,
@@ -304,13 +365,13 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                                       _infoBadge(
                                         Icons.account_balance_wallet,
                                         _isHindi ? 'निवेश' : 'Investment',
-                                        item['investment'],
+                                        inv,
                                       ),
                                       SizedBox(width: 8.w),
                                       _infoBadge(
                                         Icons.aspect_ratio,
                                         _isHindi ? 'क्षेत्र' : 'Area',
-                                        item['area'],
+                                        item.area ?? 'N/A',
                                       ),
                                     ],
                                   ),
@@ -320,27 +381,31 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                                       _infoBadge(
                                         Icons.trending_up,
                                         _isHindi ? 'रिटर्न' : 'Returns',
-                                        item['returns'],
+                                        item.expectedReturn?.toString() ??
+                                            'N/A',
                                       ),
                                       SizedBox(width: 8.w),
                                       _infoBadge(
                                         Icons.pin_drop,
                                         _isHindi ? 'पिनकोड' : 'Pincode',
-                                        item['pincode'],
+                                        item.pincode ?? 'N/A',
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 12.h),
-                                  Text(
-                                    item['description'],
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      color: Colors.black54,
-                                      height: 1.35,
+                                  if (item.opportunityDescription?.isNotEmpty ==
+                                      true) ...[
+                                    SizedBox(height: 12.h),
+                                    Text(
+                                      item.opportunityDescription!,
+                                      style: TextStyle(
+                                        fontSize: 13.sp,
+                                        color: Colors.black54,
+                                        height: 1.35,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  ],
                                   SizedBox(height: 16.h),
                                   SizedBox(
                                     width: double.infinity,
@@ -382,6 +447,9 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
                             );
                           },
                         ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -437,7 +505,13 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
     );
   }
 
-  void _showContactDialog(BuildContext context, Map<String, dynamic> item) {
+  void _showContactDialog(BuildContext context, BusinessOpportunityItem item) {
+    final companyName = item.ownerName.isNotEmpty
+        ? item.ownerName
+        : (item.companyType?.isNotEmpty == true
+              ? item.companyType!
+              : 'Business Partner');
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -445,7 +519,7 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
           borderRadius: BorderRadius.circular(16.r),
         ),
         title: Text(
-          item['company'],
+          companyName,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18.sp,
@@ -473,67 +547,73 @@ class _ExploreBusinessScreenState extends State<ExploreBusinessScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.person,
-                        size: 16.sp,
-                        color: const Color(0xFF0B4F4A),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Text(
-                          '${item['contactPerson']}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.5.sp,
-                            color: Colors.black87,
+                  if (item.contactPersonName?.isNotEmpty == true) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.person,
+                          size: 16.sp,
+                          color: const Color(0xFF0B4F4A),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            item.contactPersonName!,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5.sp,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone,
-                        size: 16.sp,
-                        color: const Color(0xFF0B4F4A),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Text(
-                          '${item['phone']}',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                  ],
+                  if (item.mobileNumber?.isNotEmpty == true) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.phone,
+                          size: 16.sp,
+                          color: const Color(0xFF0B4F4A),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            item.mobileNumber!,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.email,
-                        size: 16.sp,
-                        color: const Color(0xFF0B4F4A),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Text(
-                          '${item['email']}',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.black87,
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                  ],
+                  if (item.businessEmail?.isNotEmpty == true) ...[
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.email,
+                          size: 16.sp,
+                          color: const Color(0xFF0B4F4A),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Text(
+                            item.businessEmail!,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: Colors.black87,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

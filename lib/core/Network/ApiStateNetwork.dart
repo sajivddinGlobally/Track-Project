@@ -15,6 +15,7 @@ import 'package:track_loved/core/Data/ResponseModel/NetworkRequestResModel.dart'
 import 'package:track_loved/core/Data/ResponseModel/OtpVerifyResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/RegisterResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
@@ -33,6 +34,13 @@ import '../Data/ResponseModel/LocationSharingReceivedResModel.dart';
 import '../Data/BodyModel/BusinessProfileBodyModel.dart';
 import '../Data/ResponseModel/BusinessProfileResModel.dart';
 import '../Data/ResponseModel/ChatHistoryResModel.dart';
+import '../Data/BodyModel/TriggerSosBodyModel.dart';
+import '../Data/ResponseModel/TriggerSosResModel.dart';
+import '../Data/BodyModel/CreateJobPostBodyModel.dart';
+import '../Data/ResponseModel/CreateJobPostResModel.dart';
+import '../Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
+import '../Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
+import '../Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -128,8 +136,20 @@ abstract class ApiStateNetwork {
   @GET("/api/v1/law-content")
   Future<dynamic> getLawContent();
 
+  @GET("/api/v1/law-content")
+  Future<dynamic> getLawContentByState(
+    @Query("state") String state,
+    @Query("category") String category,
+    @Query("type") String type,
+  );
+
   @POST("/api/v1/business/profile")
   Future<BusinessProfileResModel> saveBusinessProfile(
+    @Body() BusinessProfileBodyModel body,
+  );
+
+  @PATCH("/api/v1/business/profile")
+  Future<BusinessProfileResModel> updateBusinessProfile(
     @Body() BusinessProfileBodyModel body,
   );
 
@@ -141,5 +161,29 @@ abstract class ApiStateNetwork {
   @DELETE("/api/v1/network/contacts")
   Future<DeleteContactResModel> deleteContact(
     @Body() DeleteContactBodyModel body,
+  );
+
+  @POST("/api/v1/sos/trigger")
+  Future<TriggerSosResModel> triggerSos(@Body() TriggerSosBodyModel body);
+
+  @GET("/api/v1/business/profile")
+  Future<GetBussinessProfileModel> getBussinessProfile();
+
+  @POST("/api/v1/business/job-posts")
+  Future<CreateJobPostResModel> createJobPost(
+    @Body() CreateJobPostBodyModel body,
+  );
+
+  @POST("/api/v1/business/opportunities")
+  Future<CreateBusinessOpportunityResModel> createBusinessOpportunity(
+    @Body() CreateBusinessOpportunityBodyModel body,
+  );
+
+  @GET("/api/v1/business/opportunities")
+  Future<GetBusinessOpportunitiesResModel> getBusinessOpportunities(
+    @Query("page") int? page,
+    @Query("limit") int? limit,
+    @Query("search") String? search,
+    @Query("pincode") String? pincode,
   );
 }

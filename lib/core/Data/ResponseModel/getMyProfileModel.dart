@@ -57,6 +57,10 @@ class User {
   String? email;
   String? phone;
   bool? isVerified;
+  bool? isProfileComplete;
+  bool? isBlocked;
+  String? companyProfileStatus;
+  dynamic referredBy;
   String? profileImage;
   String? bio;
   String? profession;
@@ -68,13 +72,14 @@ class User {
   String? college;
   String? villageTown;
   String? pincode;
+  bool? companyVerifiedStatus;
+  String? parentPhone;
   String? permanentCity;
   String? permanentState;
   String? permanentPincode;
   String? permanentCountry;
   DateTime? createdAt;
   DateTime? updatedAt;
-  bool? isBlocked;
 
   User({
     this.location,
@@ -88,6 +93,10 @@ class User {
     this.email,
     this.phone,
     this.isVerified,
+    this.isProfileComplete,
+    this.isBlocked,
+    this.companyProfileStatus,
+    this.referredBy,
     this.profileImage,
     this.bio,
     this.profession,
@@ -99,13 +108,14 @@ class User {
     this.college,
     this.villageTown,
     this.pincode,
+    this.companyVerifiedStatus,
+    this.parentPhone,
     this.permanentCity,
     this.permanentState,
     this.permanentPincode,
     this.permanentCountry,
     this.createdAt,
     this.updatedAt,
-    this.isBlocked,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -122,6 +132,10 @@ class User {
     email: json["email"],
     phone: json["phone"],
     isVerified: json["isVerified"],
+    isProfileComplete: json["isProfileComplete"],
+    isBlocked: json["isBlocked"],
+    companyProfileStatus: json["companyProfileStatus"],
+    referredBy: json["referredBy"],
     profileImage: json["profileImage"],
     bio: json["bio"],
     profession: json["profession"],
@@ -133,17 +147,18 @@ class User {
     college: json["college"],
     villageTown: json["villageTown"],
     pincode: json["pincode"],
+    companyVerifiedStatus: json["companyVerifiedStatus"],
+    parentPhone: json["parentPhone"],
     permanentCity: json["permanentCity"],
     permanentState: json["permanentState"],
     permanentPincode: json["permanentPincode"],
     permanentCountry: json["permanentCountry"],
     createdAt: json["createdAt"] == null
         ? null
-        : DateTime.parse(json["createdAt"]),
+        : DateTime.tryParse(json["createdAt"].toString()),
     updatedAt: json["updatedAt"] == null
         ? null
-        : DateTime.parse(json["updatedAt"]),
-    isBlocked: json["isBlocked"],
+        : DateTime.tryParse(json["updatedAt"].toString()),
   );
 
   Map<String, dynamic> toJson() => {
@@ -162,6 +177,10 @@ class User {
     "email": email,
     "phone": phone,
     "isVerified": isVerified,
+    "isProfileComplete": isProfileComplete,
+    "isBlocked": isBlocked,
+    "companyProfileStatus": companyProfileStatus,
+    "referredBy": referredBy,
     "profileImage": profileImage,
     "bio": bio,
     "profession": profession,
@@ -173,15 +192,16 @@ class User {
     "college": college,
     "villageTown": villageTown,
     "pincode": pincode,
+    "companyVerifiedStatus": companyVerifiedStatus,
+    "parentPhone": parentPhone,
     "createdAt": createdAt?.toIso8601String(),
     "updatedAt": updatedAt?.toIso8601String(),
-    "isBlocked": isBlocked,
   };
 }
 
 class Location {
   String? type;
-  List<int>? coordinates;
+  List<dynamic>? coordinates;
 
   Location({this.type, this.coordinates});
 
@@ -189,7 +209,7 @@ class Location {
     type: json["type"],
     coordinates: json["coordinates"] == null
         ? []
-        : List<int>.from(json["coordinates"]!.map((x) => x)),
+        : List<dynamic>.from(json["coordinates"]!.map((x) => x)),
   );
 
   Map<String, dynamic> toJson() => {

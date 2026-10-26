@@ -16,8 +16,6 @@ import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
-import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
-import 'package:track_loved/core/Utils/key.dart';
 
 class AppDrawer extends StatelessWidget {
   final bool isHindi;
@@ -52,100 +50,12 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  void _checkCompanyAndNavigate(
-    BuildContext context, {
-    required Widget targetScreen,
-  }) {
-    final box = Hive.box('userdata');
-    final isCompanyComplete =
-        box.get('isCompanyProfileComplete', defaultValue: false) == true;
-
-    Navigator.pop(context);
-
-    final navContext = navigatorKey.currentContext;
-
-    if (!isCompanyComplete) {
-      if (navContext != null) {
-        showDialog(
-          context: navContext,
-          builder: (dialogCtx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            title: Text(
-              isHindi ? 'कंपनी प्रोफ़ाइल अधूरी है' : 'Company Profile Required',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            content: Text(
-              isHindi
-                  ? 'नौकरी या अवसर पोस्ट करने के लिए कृपया पहले अपनी कंपनी प्रोफ़ाइल और KYC विवरण पूरा करें।'
-                  : 'Please complete your Company Profile and corporate KYC details before posting opportunities.',
-              style: TextStyle(
-                fontSize: 13.5.sp,
-                color: Colors.black87,
-                height: 1.4,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(),
-                child: Text(
-                  isHindi ? 'रद्द करें' : 'Cancel',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B4F4A),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.of(dialogCtx).pop();
-                  navigatorKey.currentState?.pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const CompanyProfileScreen(),
-                    ),
-                    (route) => route.isFirst,
-                  );
-                },
-                child: Text(
-                  isHindi
-                      ? 'कंपनी प्रोफ़ाइल पूरी करें'
-                      : 'Complete Company Profile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.sp,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      navigatorKey.currentState?.pushAndRemoveUntil(
-        CupertinoPageRoute(builder: (_) => targetScreen),
-        (route) => route.isFirst,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final box = Hive.box('userdata');
     final name = box.get('name');
     final email = box.get('email');
+    final profileImage = box.get('profileImage')?.toString();
 
     return Drawer(
       width: 320.w,
@@ -218,16 +128,24 @@ class AppDrawer extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 32.r,
                       backgroundColor: const Color(0xFF0F3D38),
-                      child: Text(
-                        (name != null && name.toString().trim().isNotEmpty)
-                            ? name.toString().trim()[0].toUpperCase()
-                            : "N/A",
-                        style: GoogleFonts.outfit(
-                          color: const Color(0xFFD4AF37),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22.sp,
-                        ),
-                      ),
+                      backgroundImage: (profileImage != null &&
+                              profileImage.trim().isNotEmpty)
+                          ? NetworkImage(profileImage.trim())
+                          : null,
+                      child: (profileImage == null ||
+                              profileImage.trim().isEmpty)
+                          ? Text(
+                              (name != null &&
+                                      name.toString().trim().isNotEmpty)
+                                  ? name.toString().trim()[0].toUpperCase()
+                                  : "N/A",
+                              style: GoogleFonts.outfit(
+                                color: const Color(0xFFD4AF37),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 22.sp,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ],
@@ -302,9 +220,9 @@ class AppDrawer extends StatelessWidget {
                 ? 'व्यापार के अवसर पोस्ट करें'
                 : 'Post Business Opportunities',
             onTap: () {
-              _checkCompanyAndNavigate(
+              _navigateToScreen(
                 context,
-                targetScreen: PostBusinessOpportunitiesScreen(),
+                const PostBusinessOpportunitiesScreen(),
               );
             },
           ),
@@ -323,9 +241,9 @@ class AppDrawer extends StatelessWidget {
                 ? 'नौकरी के अवसर पोस्ट करें'
                 : 'Post Job Opportunities',
             onTap: () {
-              _checkCompanyAndNavigate(
+              _navigateToScreen(
                 context,
-                targetScreen: const PostJobOpportunitiesScreen(),
+                const PostJobOpportunitiesScreen(),
               );
             },
           ),
@@ -334,7 +252,10 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.feedback,
             title: isHindi ? 'गूगल फीडबैक' : 'Google Feedback',
             onTap: () {
-              _navigateToScreen(context, FeedbackRatingScreen());
+              _navigateToScreen(
+                context,
+                FeedbackRatingScreen(isHindi: isHindi),
+              );
             },
           ),
 

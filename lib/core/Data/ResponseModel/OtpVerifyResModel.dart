@@ -58,6 +58,7 @@ class User {
     String? email;
     String? phone;
     String? role;
+    String? profileImage;
     bool? isVerified;
     bool? isProfileComplete;
 
@@ -67,6 +68,7 @@ class User {
         this.email,
         this.phone,
         this.role,
+        this.profileImage,
         this.isVerified,
         this.isProfileComplete,
     });
@@ -77,6 +79,7 @@ class User {
         email: json["email"],
         phone: json["phone"],
         role: json["role"],
+        profileImage: json["profileImage"],
         isVerified: json["isVerified"],
         isProfileComplete: json["isProfileComplete"],
     );
@@ -87,6 +90,7 @@ class User {
         "email": email,
         "phone": phone,
         "role": role,
+        "profileImage": profileImage,
         "isVerified": isVerified,
         "isProfileComplete": isProfileComplete,
     };
