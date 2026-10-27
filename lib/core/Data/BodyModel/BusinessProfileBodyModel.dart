@@ -20,6 +20,7 @@ class BusinessProfileBodyModel {
     String? city;
     String? state;
     String? pincode;
+    Map<String, dynamic>? complianceLedger;
 
     BusinessProfileBodyModel({
         this.registeredCompanyName,
@@ -33,6 +34,7 @@ class BusinessProfileBodyModel {
         this.city,
         this.state,
         this.pincode,
+        this.complianceLedger,
     });
 
     factory BusinessProfileBodyModel.fromJson(Map<String, dynamic> json) => BusinessProfileBodyModel(
@@ -47,6 +49,9 @@ class BusinessProfileBodyModel {
         city: json["city"],
         state: json["state"],
         pincode: json["pincode"],
+        complianceLedger: json["compliance_ledger"] != null
+            ? Map<String, dynamic>.from(json["compliance_ledger"])
+            : null,
     );
 
     Map<String, dynamic> toJson() => {
@@ -61,5 +66,6 @@ class BusinessProfileBodyModel {
         "city": city,
         "state": state,
         "pincode": pincode,
+        if (complianceLedger != null) "compliance_ledger": complianceLedger,
     };
 }

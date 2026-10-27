@@ -872,6 +872,74 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
+  Future<GetMyCompanyJobPostsResModel> getMyCompanyJobPosts(
+    int? page,
+    int? limit,
+    String? search,
+    String? companyId,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'limit': limit,
+      r'search': search,
+      r'companyId': companyId,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<GetMyCompanyJobPostsResModel>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/my/job-posts',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late GetMyCompanyJobPostsResModel _value;
+    try {
+      _value = GetMyCompanyJobPostsResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<UpdateJobPostingResModel> updateJobPosting(
+    UpdateJobPostingBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<UpdateJobPostingResModel>(
+      Options(method: 'PATCH', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/job-posts',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late UpdateJobPostingResModel _value;
+    try {
+      _value = UpdateJobPostingResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<CreateBusinessOpportunityResModel> createBusinessOpportunity(
     CreateBusinessOpportunityBodyModel body,
   ) async {
@@ -910,10 +978,10 @@ class _ApiStateNetwork implements ApiStateNetwork {
   ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
-      if (page != null) r'page': page,
-      if (limit != null) r'limit': limit,
-      if (search != null) r'search': search,
-      if (pincode != null) r'pincode': pincode,
+      r'page': page,
+      r'limit': limit,
+      r'search': search,
+      r'pincode': pincode,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -932,6 +1000,74 @@ class _ApiStateNetwork implements ApiStateNetwork {
     late GetBusinessOpportunitiesResModel _value;
     try {
       _value = GetBusinessOpportunitiesResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<CreateOpportunityReportResModel> createOpportunityReport(
+    CreateOpportunityReportBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<CreateOpportunityReportResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/opportunity-reports',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CreateOpportunityReportResModel _value;
+    try {
+      _value = CreateOpportunityReportResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<GetMyBusinessOpportunitiesResModel> getMyBusinessOpportunities(
+    int? page,
+    int? limit,
+    String? search,
+    String? companyId,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'page': page,
+      r'limit': limit,
+      r'search': search,
+      r'companyId': companyId,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<GetMyBusinessOpportunitiesResModel>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/my/opportunities',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late GetMyBusinessOpportunitiesResModel _value;
+    try {
+      _value = GetMyBusinessOpportunitiesResModel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

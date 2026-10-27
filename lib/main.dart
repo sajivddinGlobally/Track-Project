@@ -8,6 +8,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
+import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/font_scale_provider.dart';
@@ -64,10 +65,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    var box = Hive.box("userdata");
-    var token = box.get("token");
-    var isProfileComplete = box.get("isProfileComplete");
+    var box = Hive.isBoxOpen("userdata") ? Hive.box("userdata") : null;
+    var token = box?.get("token");
+    var role = box?.get("role");
+    var isParentConsentApproved = box?.get("isParentConsentApproved");
+    var childPhone = box?.get("phone")?.toString() ?? '';
+    var parentPhone = box?.get("parentPhone")?.toString();
+    var isProfileComplete = box?.get("isProfileComplete");
     log("isProfileComplete :- $isProfileComplete");
+    log("role :- $role, isParentConsentApproved :- $isParentConsentApproved");
     log("Device permissions granted: $_arePermissionsGranted");
 
     Widget homeScreen;
@@ -77,6 +83,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
         ),
+      );
+    } else if (role == 'child' && isParentConsentApproved != true) {
+      homeScreen = WaitingParentApprovalScreen(
+        childPhone: childPhone,
+        parentPhone: parentPhone,
       );
     } else if (token == null) {
       homeScreen = const LoginScreen();
@@ -128,3 +139,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
+
+
+
+
+//  post job opportunites form fill karne ke bad manage my posting me job postings me show hoga
+//  or jab post business opportunites form fill karta hia to manage my posting me business expansions me show hoga ok 
+//  or explorer business opportunites me se koi use apply ya share profile kar deta hai to to iski data manage my application me show hota hia ok 

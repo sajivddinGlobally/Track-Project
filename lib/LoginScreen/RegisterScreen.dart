@@ -29,7 +29,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   bool isLoading = false;
   bool isPasswordVisible = false;
   String? _selectedAccountType; // "adult" (18+) or "child" (<18)
-  final String _selectedRole = "user"; // default: "user"
   bool _agreedToTerms = false;
   DpdpaConsentResult? _dpdpaConsent;
 
@@ -215,20 +214,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         ),
                         items: [
                           DropdownMenuItem(
-                            value: 'adult',
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.person,
-                                  color: const Color(0xFFD4AF37),
-                                  size: 18.sp,
-                                ),
-                                SizedBox(width: 10.w),
-                                const Text('Adult (18+ Years)'),
-                              ],
-                            ),
-                          ),
-                          DropdownMenuItem(
                             value: 'child',
                             child: Row(
                               children: [
@@ -251,8 +236,42 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               ],
                             ),
                           ),
+                          DropdownMenuItem(
+                            value: 'user',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.person,
+                                  color: const Color(0xFFD4AF37),
+                                  size: 18.sp,
+                                ),
+                                SizedBox(width: 10.w),
+                                const Text('User'),
+                              ],
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'company',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.business,
+                                  color: const Color(0xFFD4AF37),
+                                  size: 18.sp,
+                                ),
+                                SizedBox(width: 10.w),
+                                const Text('Company'),
+                              ],
+                            ),
+                          ),
                         ],
 
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select account type';
+                          }
+                          return null;
+                        },
                         onChanged: (value) {
                           setState(() {
                             _selectedAccountType = value;
@@ -551,7 +570,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                       phone: _phoneConatroller.text.trim(),
                                       role: _selectedAccountType == 'child'
                                           ? 'child'
-                                          : _selectedRole,
+                                          : _selectedAccountType == 'company'
+                                          ? 'company'
+                                          : 'user',
                                       parentPhone:
                                           _selectedAccountType == 'child'
                                           ? _parentPhoneController.text.trim()
@@ -571,6 +592,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                             builder: (context) =>
                                                 OtpVerifyScreen(
                                                   email: _emailController.text
+                                                      .trim(),
+                                                  phone: _phoneConatroller.text
                                                       .trim(),
                                                   parentPhone:
                                                       _selectedAccountType ==

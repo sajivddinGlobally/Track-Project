@@ -17,10 +17,12 @@ import 'package:track_loved/core/Data/ResponseModel/OtpVerifyResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/RegisterResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/updateJobPostResModel.dart';
 import 'package:track_loved/core/Network/ApiStateNetwork.dart';
 
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
 import '../Data/BodyModel/deleteContactBodyModel.dart';
+import '../Data/BodyModel/updateJobPostBodyModel.dart';
 import '../Data/ResponseModel/deleteContactResModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
@@ -42,6 +44,11 @@ import '../Data/ResponseModel/CreateJobPostResModel.dart';
 import '../Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
 import '../Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
 import '../Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
+import '../Data/BodyModel/CreateOpportunityReportBodyModel.dart';
+import '../Data/ResponseModel/CreateOpportunityReportResModel.dart';
+import '../Data/ResponseModel/GetMyCompanyJobPostsResModel.dart';
+import '../Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
+import '../Data/ResponseModel/GetLawContentResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -279,23 +286,37 @@ class Authservice {
     }
   }
 
-  Future<dynamic> getLawContent() async {
+  Future<GetLawContentResModel> getLawContent() async {
     try {
       final response = await api.getLawContent();
-      return response;
+      if (response is GetLawContentResModel) {
+        return response;
+      } else if (response is Map<String, dynamic>) {
+        return GetLawContentResModel.fromJson(response);
+      } else if (response is String) {
+        return getLawContentResModelFromJson(response);
+      }
+      return GetLawContentResModel(success: false, data: []);
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<dynamic> getLawContentByState({
+  Future<GetLawContentResModel> getLawContentByState({
     required String state,
     required String category,
     required String type,
   }) async {
     try {
       final response = await api.getLawContentByState(state, category, type);
-      return response;
+      if (response is GetLawContentResModel) {
+        return response;
+      } else if (response is Map<String, dynamic>) {
+        return GetLawContentResModel.fromJson(response);
+      } else if (response is String) {
+        return getLawContentResModelFromJson(response);
+      }
+      return GetLawContentResModel(success: false, data: []);
     } catch (e) {
       rethrow;
     }
@@ -401,6 +422,66 @@ class Authservice {
         limit,
         search,
         pincode,
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CreateOpportunityReportResModel> createOpportunityReportData(
+    CreateOpportunityReportBodyModel body,
+  ) async {
+    try {
+      final response = await api.createOpportunityReport(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetMyCompanyJobPostsResModel> getMyCompanyJobPostsData({
+    int? page,
+    int? limit,
+    String? search,
+    String? companyId,
+  }) async {
+    try {
+      final response = await api.getMyCompanyJobPosts(
+        page,
+        limit,
+        search,
+        companyId,
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<UpdateJobPostingResModel> updateJobPosting(
+    UpdateJobPostingBodyModel body,
+  ) async {
+    try {
+      final response = await api.updateJobPosting(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetMyBusinessOpportunitiesResModel> getMyBusinessOpportunitiesData({
+    int? page,
+    int? limit,
+    String? search,
+    String? companyId,
+  }) async {
+    try {
+      final response = await api.getMyBusinessOpportunities(
+        page,
+        limit,
+        search,
+        companyId,
       );
       return response;
     } catch (e) {

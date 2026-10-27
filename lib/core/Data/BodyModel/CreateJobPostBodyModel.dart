@@ -20,6 +20,12 @@ class CreateJobPostBodyModel {
   String? jobDescription;
   List<String>? requirements;
   String? applicationContactEmail;
+  String? departmentCategory;
+  String? officeAddress;
+  String? desiredCandidateProfile;
+  bool? authenticListingCertified;
+  bool? noEmploymentRelationshipDeclared;
+  bool? authorizedRepresentativeCertified;
 
   // Optional legacy fields for backward compatibility
   String? companyName;
@@ -42,6 +48,12 @@ class CreateJobPostBodyModel {
     this.jobDescription,
     this.requirements,
     this.applicationContactEmail,
+    this.departmentCategory,
+    this.officeAddress,
+    this.desiredCandidateProfile,
+    this.authenticListingCertified,
+    this.noEmploymentRelationshipDeclared,
+    this.authorizedRepresentativeCertified,
     this.companyName,
     this.employerType,
     this.jobLocation,
@@ -77,6 +89,14 @@ class CreateJobPostBodyModel {
               ),
         applicationContactEmail:
             json["applicationContactEmail"] ?? json["applicationEmail"],
+        departmentCategory: json["departmentCategory"] ?? json["category"],
+        officeAddress: json["officeAddress"],
+        desiredCandidateProfile: json["desiredCandidateProfile"],
+        authenticListingCertified: json["authenticListingCertified"],
+        noEmploymentRelationshipDeclared:
+            json["noEmploymentRelationshipDeclared"],
+        authorizedRepresentativeCertified:
+            json["authorizedRepresentativeCertified"],
         companyName: json["companyName"],
         employerType: json["employerType"],
         jobLocation: json["jobLocation"],
@@ -98,6 +118,20 @@ class CreateJobPostBodyModel {
         "jobDescription": jobDescription,
         "requirements": requirements ?? [],
         "applicationContactEmail": applicationContactEmail,
+        if (departmentCategory != null && departmentCategory!.isNotEmpty)
+          "departmentCategory": departmentCategory,
+        if (officeAddress != null && officeAddress!.isNotEmpty)
+          "officeAddress": officeAddress,
+        if (desiredCandidateProfile != null &&
+            desiredCandidateProfile!.isNotEmpty)
+          "desiredCandidateProfile": desiredCandidateProfile,
+        if (authenticListingCertified != null)
+          "authenticListingCertified": authenticListingCertified,
+        if (noEmploymentRelationshipDeclared != null)
+          "noEmploymentRelationshipDeclared": noEmploymentRelationshipDeclared,
+        if (authorizedRepresentativeCertified != null)
+          "authorizedRepresentativeCertified":
+              authorizedRepresentativeCertified,
         if (companyName != null && companyName!.isNotEmpty)
           "companyName": companyName,
       };

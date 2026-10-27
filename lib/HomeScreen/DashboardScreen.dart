@@ -35,8 +35,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _ensureHiveOpen();
     _checkPermissions();
     _startLocationUpdates();
+  }
+
+  Future<void> _ensureHiveOpen() async {
+    if (!Hive.isBoxOpen('userdata')) {
+      await Hive.openBox('userdata');
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _startLocationUpdates() async {
@@ -256,38 +264,48 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                         ),
                       ],
                     ),
-                    child: ValueListenableBuilder<Box>(
-                      valueListenable: Hive.box('userdata').listenable(
-                        keys: ['profileImage', 'name'],
-                      ),
-                      builder: (context, box, _) {
-                        final img = box.get('profileImage')?.toString();
-                        final name =
-                            box.get('name')?.toString().trim() ?? '';
-                        final initial =
-                            name.isEmpty ? '?' : name[0].toUpperCase();
+                    child: Hive.isBoxOpen('userdata')
+                        ? ValueListenableBuilder<Box>(
+                            valueListenable: Hive.box('userdata').listenable(
+                              keys: ['profileImage', 'name'],
+                            ),
+                            builder: (context, box, _) {
+                              final img = box.get('profileImage')?.toString();
+                              final name =
+                                  box.get('name')?.toString().trim() ?? '';
+                              final initial =
+                                  name.isEmpty ? '?' : name[0].toUpperCase();
 
-                        if (img != null && img.trim().isNotEmpty) {
-                          return CircleAvatar(
+                              if (img != null && img.trim().isNotEmpty) {
+                                return CircleAvatar(
+                                  radius: 15,
+                                  backgroundColor: const Color(0xFF0F3D38),
+                                  backgroundImage: NetworkImage(img),
+                                );
+                              }
+                              return CircleAvatar(
+                                radius: 15,
+                                backgroundColor: const Color(0xFF0F3D38),
+                                child: Text(
+                                  initial,
+                                  style: const TextStyle(
+                                    color: Color(0xFFD4AF37),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : const CircleAvatar(
                             radius: 15,
-                            backgroundColor: const Color(0xFF0F3D38),
-                            backgroundImage: NetworkImage(img),
-                          );
-                        }
-                        return CircleAvatar(
-                          radius: 15,
-                          backgroundColor: const Color(0xFF0F3D38),
-                          child: Text(
-                            initial,
-                            style: const TextStyle(
+                            backgroundColor: Color(0xFF0F3D38),
+                            child: Icon(
+                              Icons.person,
+                              size: 16,
                               color: Color(0xFFD4AF37),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
                             ),
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ),
               ),

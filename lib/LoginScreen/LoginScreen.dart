@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
 import 'package:track_loved/LoginScreen/ForgotPasswordScreen.dart';
 import 'package:track_loved/LoginScreen/RegisterScreen.dart';
+import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -386,7 +388,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     );
                                     if (response.success == true) {
                                       await _saveOrClearCredentials();
-                                      var box = Hive.box("userdata");
+                                      final box = Hive.isBoxOpen("userdata")
+                                          ? Hive.box("userdata")
+                                          : await Hive.openBox("userdata");
                                       await box.put(
                                         "token",
                                         response.data!.token,
@@ -401,10 +405,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       );
                                       if (response.data?.user?.profileImage !=
                                               null &&
-                                          response
-                                              .data!
-                                              .user!
-                                              .profileImage!
+                                          response.data!.user!.profileImage!
                                               .trim()
                                               .isNotEmpty) {
                                         await box.put(
@@ -424,6 +425,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       await box.put(
                                         "email",
                                         response.data!.user!.email,
+                                      );
+                                      await box.put(
+                                        "role",
+                                        response.data!.user!.role,
+                                      );
+                                      if (response.data?.user?.phone != null) {
+                                        await box.put(
+                                          "phone",
+                                          response.data!.user!.phone,
+                                        );
+                                      }
+                                      await box.put(
+                                        "isParentConsentApproved",
+                                        true,
                                       );
                                       if (context.mounted) {
                                         final isLocationGranted =
@@ -467,9 +482,113 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           );
                                         }
                                       }
+                                    } else if (response
+                                            .isParentConsentPending ==
+                                        true) {
+                                      final childPh = response
+                                              .data
+                                              ?.user
+                                              ?.phone ??
+                                          _emailController.text.trim();
+                                      final parentPh = response
+                                          .data
+                                          ?.user
+                                          ?.parentPhone;
+
+                                      final pBox = Hive.isBoxOpen("userdata")
+                                          ? Hive.box("userdata")
+                                          : await Hive.openBox("userdata");
+                                      await pBox.put("role", "child");
+                                      await pBox.put("isParentConsentApproved", false);
+                                      if (childPh.isNotEmpty) {
+                                        await pBox.put("phone", childPh);
+                                      }
+                                      if (parentPh != null && parentPh.isNotEmpty) {
+                                        await pBox.put("parentPhone", parentPh);
+                                      }
+
+                                      if (context.mounted) {
+                                        Navigator.push(
+                                          context,
+                                          CupertinoPageRoute(
+                                            builder: (context) =>
+                                                WaitingParentApprovalScreen(
+                                                  childPhone: childPh,
+                                                  parentPhone: parentPh,
+                                                ),
+                                          ),
+                                        );
+                                      }
                                     }
                                   } catch (e) {
                                     log(e.toString());
+                                    if (e is DioException) {
+                                      final responseData = e.response?.data;
+                                      if (responseData is Map) {
+                                        final isPending =
+                                            responseData['isParentConsentPending'] ==
+                                                true ||
+                                            responseData['isParentConsentPending'] ==
+                                                'true' ||
+                                            (responseData['message']
+                                                    ?.toString()
+                                                    .toLowerCase()
+                                                    .contains(
+                                                      'parent consent',
+                                                    ) ==
+                                                true);
+
+                                        if (isPending && context.mounted) {
+                                          final childPh =
+                                              responseData['phone']
+                                                  ?.toString() ??
+                                              responseData['childPhone']
+                                                  ?.toString() ??
+                                              (responseData['data'] is Map
+                                                  ? responseData['data']['phone']
+                                                        ?.toString()
+                                                  : null);
+                                          final parentPh =
+                                              responseData['parentPhone']
+                                                  ?.toString() ??
+                                              responseData['parent_phone']
+                                                  ?.toString() ??
+                                              (responseData['data'] is Map
+                                                  ? (responseData['data']['parentPhone']
+                                                            ?.toString() ??
+                                                        responseData['data']['parent_phone']
+                                                            ?.toString())
+                                                  : null);
+
+                                          final pBox = Hive.isBoxOpen("userdata")
+                                              ? Hive.box("userdata")
+                                              : await Hive.openBox("userdata");
+                                          await pBox.put("role", "child");
+                                          await pBox.put("isParentConsentApproved", false);
+                                          final effectiveChildPh = childPh ?? _emailController.text.trim();
+                                          if (effectiveChildPh.isNotEmpty) {
+                                            await pBox.put("phone", effectiveChildPh);
+                                          }
+                                          if (parentPh != null && parentPh.isNotEmpty) {
+                                            await pBox.put("parentPhone", parentPh);
+                                          }
+
+                                          if (context.mounted) {
+                                            Navigator.push(
+                                              context,
+                                              CupertinoPageRoute(
+                                                builder: (context) =>
+                                                    WaitingParentApprovalScreen(
+                                                      childPhone:
+                                                          effectiveChildPh,
+                                                      parentPhone: parentPh,
+                                                    ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    }
                                   } finally {
                                     if (mounted) {
                                       setState(() {
@@ -533,9 +652,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(14.r),
                           ),
                         ),
-                        onPressed: () {
-                          
-                        },
+                        onPressed: () {},
                         icon: Icon(
                           Icons.g_mobiledata,
                           size: 32.sp,

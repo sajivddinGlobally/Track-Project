@@ -6,18 +6,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pinput/pinput.dart';
+import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
   final String email;
+  final String? phone;
   final String? parentPhone;
   final bool isChild;
 
   const OtpVerifyScreen({
     super.key,
     required this.email,
+    this.phone,
     this.parentPhone,
     this.isChild = false,
   });
@@ -357,10 +360,48 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             response.data?.user?.isProfileComplete,
                           );
                           await box.put("email", response.data?.user?.email);
-                          await box.put("role", response.data?.user?.role);
+                          final effectiveRole = response.data?.user?.role ??
+                              (widget.isChild ? 'child' : 'user');
+                          await box.put("role", effectiveRole);
+
+                          final effectivePhone = widget.phone ??
+                              response.data?.user?.phone ??
+                              '';
+                          if (effectivePhone.isNotEmpty) {
+                            await box.put("phone", effectivePhone);
+                          }
+                          if (widget.parentPhone != null &&
+                              widget.parentPhone!.isNotEmpty) {
+                            await box.put("parentPhone", widget.parentPhone);
+                          }
+
+                          final isChildRole = widget.isChild ||
+                              (effectiveRole == 'child');
+
+                          if (isChildRole) {
+                            await box.put("isParentConsentApproved", false);
+                          } else {
+                            await box.put("isParentConsentApproved", true);
+                          }
 
                           if (context.mounted) {
                             isNavigating = true;
+                            if (isChildRole) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      WaitingParentApprovalScreen(
+                                        childPhone: effectivePhone,
+                                        parentPhone: widget.parentPhone,
+                                        childName: response.data?.user?.name,
+                                      ),
+                                ),
+                                (route) => false,
+                              );
+                              return;
+                            }
+
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(

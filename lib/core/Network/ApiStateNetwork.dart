@@ -22,12 +22,14 @@ import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/BodyModel/deleteContactBodyModel.dart';
 import '../Data/BodyModel/locationSharingBodyModel.dart';
 import '../Data/BodyModel/UpdateLocationBodyModel.dart';
+import '../Data/BodyModel/updateJobPostBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
 import '../Data/ResponseModel/deleteContactResModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
+import '../Data/ResponseModel/updateJobPostResModel.dart';
 import '../Data/ResponseModel/updateProfileResModel.dart';
 import '../Data/ResponseModel/uploadImageResModel.dart';
 import '../Data/ResponseModel/LocationSharingReceivedResModel.dart';
@@ -41,6 +43,10 @@ import '../Data/ResponseModel/CreateJobPostResModel.dart';
 import '../Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
 import '../Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
 import '../Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
+import '../Data/BodyModel/CreateOpportunityReportBodyModel.dart';
+import '../Data/ResponseModel/CreateOpportunityReportResModel.dart';
+import '../Data/ResponseModel/GetMyCompanyJobPostsResModel.dart';
+import '../Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -173,6 +179,18 @@ abstract class ApiStateNetwork {
   Future<CreateJobPostResModel> createJobPost(
     @Body() CreateJobPostBodyModel body,
   );
+  @GET("/api/v1/business/my/job-posts")
+  Future<GetMyCompanyJobPostsResModel> getMyCompanyJobPosts(
+    @Query("page") int? page,
+    @Query("limit") int? limit,
+    @Query("search") String? search,
+    @Query("companyId") String? companyId,
+  );
+
+  @PATCH("/api/v1/business/job-posts")
+  Future<UpdateJobPostingResModel> updateJobPosting(
+    @Body() UpdateJobPostingBodyModel body,
+  );
 
   @POST("/api/v1/business/opportunities")
   Future<CreateBusinessOpportunityResModel> createBusinessOpportunity(
@@ -185,5 +203,18 @@ abstract class ApiStateNetwork {
     @Query("limit") int? limit,
     @Query("search") String? search,
     @Query("pincode") String? pincode,
+  );
+
+  @POST("/api/v1/business/opportunity-reports")
+  Future<CreateOpportunityReportResModel> createOpportunityReport(
+    @Body() CreateOpportunityReportBodyModel body,
+  );
+
+  @GET("/api/v1/business/my/opportunities")
+  Future<GetMyBusinessOpportunitiesResModel> getMyBusinessOpportunities(
+    @Query("page") int? page,
+    @Query("limit") int? limit,
+    @Query("search") String? search,
+    @Query("companyId") String? companyId,
   );
 }

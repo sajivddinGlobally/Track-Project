@@ -7,6 +7,8 @@ import 'package:track_loved/DrawerScreen/AddNetworkScreen/AddNetWorkScreen.dart'
 import 'package:track_loved/DrawerScreen/ExploreBusinessScreen.dart';
 import 'package:track_loved/DrawerScreen/Feedback_And_Google_Rating.dart';
 import 'package:track_loved/DrawerScreen/KnowYourLawScreen.dart';
+import 'package:track_loved/DrawerScreen/ManageMyApplicationsScreen.dart';
+import 'package:track_loved/DrawerScreen/ManageMyPostingsScreen.dart';
 import 'package:track_loved/DrawerScreen/NetworkLocationpermissions.dart';
 import 'package:track_loved/DrawerScreen/NetworkRequestScreen/NetworkingRequest.dart';
 import 'package:track_loved/DrawerScreen/PostBusinessOpportunitiesScreen.dart';
@@ -56,6 +58,7 @@ class AppDrawer extends StatelessWidget {
     final name = box.get('name');
     final email = box.get('email');
     final profileImage = box.get('profileImage')?.toString();
+    final role = box.get('role');
 
     return Drawer(
       width: 320.w,
@@ -128,12 +131,13 @@ class AppDrawer extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 32.r,
                       backgroundColor: const Color(0xFF0F3D38),
-                      backgroundImage: (profileImage != null &&
+                      backgroundImage:
+                          (profileImage != null &&
                               profileImage.trim().isNotEmpty)
                           ? NetworkImage(profileImage.trim())
                           : null,
-                      child: (profileImage == null ||
-                              profileImage.trim().isEmpty)
+                      child:
+                          (profileImage == null || profileImage.trim().isEmpty)
                           ? Text(
                               (name != null &&
                                       name.toString().trim().isNotEmpty)
@@ -163,69 +167,80 @@ class AppDrawer extends StatelessWidget {
               Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
-          // _buildDrawerItem(
-          //   icon: Icons.person_outline,
-          //   title: isHindi ? 'मेरी प्रोफ़ाइल' : 'My Profile',
-          //   onTap: () {
-          //     _navigateToScreen(context, const ProfileScreen());
-          //   },
-          // ),
-          _buildDrawerItem(
-            icon: Icons.person_add,
-            title: isHindi ? 'नेटवर्क जोड़ें' : 'Add Network',
-            onTap: () {
-              _navigateToScreen(context, const AddNetworkSearchScreen());
-            },
-          ),
 
-          _buildDrawerItem(
-            icon: Icons.location_pin,
-            title: isHindi
-                ? 'नेटवर्क स्थान अनुमतियाँ'
-                : 'Network Location Permissions',
-            onTap: () {
-              _navigateToScreen(context, NetworkLocationPermissionsScreen());
-            },
-          ),
+          if (role == 'user' || role == 'child')
+            _buildDrawerItem(
+              icon: Icons.person_add,
+              title: isHindi ? 'नेटवर्क जोड़ें' : 'Add Network',
+              onTap: () {
+                _navigateToScreen(context, const AddNetworkSearchScreen());
+              },
+            ),
 
-          _buildDrawerItem(
-            icon: Icons.people_alt,
-            title: isHindi ? 'नेटवर्किंग अनुरोध' : 'Networking Requests',
-            onTap: () {
-              _navigateToScreen(context, const NetworkingRequestScreen());
-            },
-          ),
+          if (role == 'user' || role == 'child')
+            _buildDrawerItem(
+              icon: Icons.location_pin,
+              title: isHindi
+                  ? 'नेटवर्क स्थान अनुमतियाँ'
+                  : 'Network Location Permissions',
+              onTap: () {
+                _navigateToScreen(context, NetworkLocationPermissionsScreen());
+              },
+            ),
+          if (role == 'user' || role == 'child')
+            _buildDrawerItem(
+              icon: Icons.people_alt,
+              title: isHindi ? 'नेटवर्किंग अनुरोध' : 'Networking Requests',
+              onTap: () {
+                _navigateToScreen(context, const NetworkingRequestScreen());
+              },
+            ),
+          if (role == 'user' || role == 'child')
+            _buildDrawerItem(
+              icon: Icons.favorite,
+              title: isHindi ? 'प्रियजनों को ट्रैक करें' : 'Track Loved Ones',
+              onTap: () {
+                _navigateToScreen(context, SearchLovedOnesScreen());
+              },
+            ),
+          if (role == "user" || role == "company")
+            _buildDrawerItem(
+              icon: Icons.business_center,
+              title: isHindi
+                  ? 'व्यापार के अवसर खोजें'
+                  : 'Explore Business Opportunities',
+              onTap: () {
+                _navigateToScreen(context, ExploreBusinessScreen());
+              },
+            ),
 
-          _buildDrawerItem(
-            icon: Icons.favorite,
-            title: isHindi ? 'प्रियजनों को ट्रैक करें' : 'Track Loved Ones',
-            onTap: () {
-              _navigateToScreen(context, SearchLovedOnesScreen());
-            },
-          ),
+          if (role == "company")
+            _buildDrawerItem(
+              icon: Icons.assignment_turned_in_outlined,
+              title: isHindi
+                  ? 'मेरे आवेदन (गोपनीयता डैशबोर्ड)'
+                  : 'Manage My Applications',
+              onTap: () {
+                _navigateToScreen(
+                  context,
+                  ManageMyApplicationsScreen(initialHindi: isHindi),
+                );
+              },
+            ),
 
-          _buildDrawerItem(
-            icon: Icons.business_center,
-            title: isHindi
-                ? 'व्यापार के अवसर खोजें'
-                : 'Explore Business Opportunities',
-            onTap: () {
-              _navigateToScreen(context, ExploreBusinessScreen());
-            },
-          ),
-
-          _buildDrawerItem(
-            icon: Icons.add_business,
-            title: isHindi
-                ? 'व्यापार के अवसर पोस्ट करें'
-                : 'Post Business Opportunities',
-            onTap: () {
-              _navigateToScreen(
-                context,
-                const PostBusinessOpportunitiesScreen(),
-              );
-            },
-          ),
+          if (role == "company")
+            _buildDrawerItem(
+              icon: Icons.add_business,
+              title: isHindi
+                  ? 'व्यापार के अवसर पोस्ट करें'
+                  : 'Post Business Opportunities',
+              onTap: () {
+                _navigateToScreen(
+                  context,
+                  const PostBusinessOpportunitiesScreen(),
+                );
+              },
+            ),
 
           _buildDrawerItem(
             icon: Icons.gavel,
@@ -235,22 +250,34 @@ class AppDrawer extends StatelessWidget {
             },
           ),
 
-          _buildDrawerItem(
-            icon: Icons.post_add,
-            title: isHindi
-                ? 'नौकरी के अवसर पोस्ट करें'
-                : 'Post Job Opportunities',
-            onTap: () {
-              _navigateToScreen(
-                context,
-                const PostJobOpportunitiesScreen(),
-              );
-            },
-          ),
+          if (role == "company")
+            _buildDrawerItem(
+              icon: Icons.post_add,
+              title: isHindi
+                  ? 'नौकरी के अवसर पोस्ट करें'
+                  : 'Post Job Opportunities',
+              onTap: () {
+                _navigateToScreen(context, const PostJobOpportunitiesScreen());
+              },
+            ),
+
+          if (role == "company")
+            _buildDrawerItem(
+              icon: Icons.admin_panel_settings_outlined,
+              title: isHindi
+                  ? 'प्रकाशित अवसर प्रबंधित करें'
+                  : 'Manage My Postings',
+              onTap: () {
+                _navigateToScreen(
+                  context,
+                  ManageMyPostingsScreen(initialHindi: isHindi),
+                );
+              },
+            ),
 
           _buildDrawerItem(
-            icon: Icons.feedback,
-            title: isHindi ? 'गूगल फीडबैक' : 'Google Feedback',
+            icon: Icons.feedback_outlined,
+            title: isHindi ? 'फीडबैक एवं बग रिपोर्ट' : 'Feedback & Bug Report',
             onTap: () {
               _navigateToScreen(
                 context,
@@ -314,7 +341,9 @@ class AppDrawer extends StatelessWidget {
                         onPressed: () async {
                           Navigator.pop(dialogContext);
 
-                          var box = Hive.box("userdata");
+                          final box = Hive.isBoxOpen("userdata")
+                              ? Hive.box("userdata")
+                              : await Hive.openBox("userdata");
                           await box.clear();
 
                           if (!context.mounted) return;

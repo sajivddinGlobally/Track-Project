@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/DrawerScreen/ManageMyPostingsScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
 import 'package:track_loved/complanyProfile/CompanyPendingVerificationView.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
@@ -25,14 +26,20 @@ class _PostJobOpportunitiesScreenState
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _jobTitleController = TextEditingController();
+  final TextEditingController _departmentCategoryController =
+      TextEditingController();
   final TextEditingController _employerController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _officeAddressController =
+      TextEditingController();
   final TextEditingController _pincodeInputController = TextEditingController();
   final TextEditingController _annualCtcController = TextEditingController();
   final TextEditingController _perksController = TextEditingController();
   final TextEditingController _reimbursementsController =
       TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _desiredProfileController =
+      TextEditingController();
   final TextEditingController _contactController = TextEditingController();
 
   bool _isHindi = false;
@@ -52,6 +59,11 @@ class _PostJobOpportunitiesScreenState
   bool _hasShownDialog = false;
   bool _isLoading = false;
   String? _companyId;
+
+  // DPDPA & IT Act Sec 79 Mandatory Compliance Assurances
+  bool _agreeAuthenticListing = false;
+  bool _agreeNoEmploymentRelationship = false;
+  bool _agreeAuthorizedRepresentative = false;
 
   @override
   void initState() {
@@ -170,13 +182,16 @@ class _PostJobOpportunitiesScreenState
   @override
   void dispose() {
     _jobTitleController.dispose();
+    _departmentCategoryController.dispose();
     _employerController.dispose();
     _locationController.dispose();
+    _officeAddressController.dispose();
     _pincodeInputController.dispose();
     _annualCtcController.dispose();
     _perksController.dispose();
     _reimbursementsController.dispose();
     _descriptionController.dispose();
+    _desiredProfileController.dispose();
     _contactController.dispose();
     super.dispose();
   }
@@ -315,20 +330,30 @@ class _PostJobOpportunitiesScreenState
             (Hive.box('userdata').get('companyState', defaultValue: '')
                 as String);
 
+        if (_desiredProfileController.text.trim().isNotEmpty) {
+          reqs.add(_desiredProfileController.text.trim());
+        }
+
         final body = CreateJobPostBodyModel(
           companyId: compId.toString(),
           jobTitle: _jobTitleController.text.trim(),
+          departmentCategory: _departmentCategoryController.text.trim(),
           employmentType: mapEmploymentType(_selectedJobType),
           hierarchyLevel: mapHierarchyLevel(_selectedLevel),
           city: _locationController.text.trim(),
+          officeAddress: _officeAddressController.text.trim(),
           state: stateVal.isNotEmpty ? stateVal : "Rajasthan",
           pincode: targetPin,
           annualCtcPackage: ctcNum,
           reimbursements: reimbursementsList,
           perksAndBenefits: perksList,
           jobDescription: _descriptionController.text.trim(),
+          desiredCandidateProfile: _desiredProfileController.text.trim(),
           requirements: reqs,
           applicationContactEmail: contactEmail,
+          authenticListingCertified: _agreeAuthenticListing,
+          noEmploymentRelationshipDeclared: _agreeNoEmploymentRelationship,
+          authorizedRepresentativeCertified: _agreeAuthorizedRepresentative,
         );
 
         log('Creating job post with body: ${body.toJson()}');
@@ -381,6 +406,26 @@ class _PostJobOpportunitiesScreenState
               ),
             ),
             actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) =>
+                          ManageMyPostingsScreen(initialHindi: _isHindi),
+                    ),
+                  );
+                },
+                child: Text(
+                  _isHindi ? 'मेरी पोस्ट देखें' : 'View In My Postings',
+                  style: TextStyle(
+                    color: const Color(0xFF5EEAD4),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.sp,
+                  ),
+                ),
+              ),
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogContext);
@@ -543,6 +588,61 @@ class _PostJobOpportunitiesScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 10.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ManageMyPostingsScreen(
+                                initialHindi: _isHindi,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16.r),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 5.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F3D38),
+                            borderRadius: BorderRadius.circular(16.r),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFE6C567,
+                              ).withValues(alpha: 0.6),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.admin_panel_settings_outlined,
+                                color: const Color(0xFFE6C567),
+                                size: 14.sp,
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                _isHindi
+                                    ? 'मेरी पोस्ट प्रबंधित करें'
+                                    : 'Manage My Postings',
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFE6C567),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
                   Container(
                     padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(
@@ -577,25 +677,32 @@ class _PostJobOpportunitiesScreenState
                   ),
                   SizedBox(height: 16.h),
                   Text(
-                    _isHindi ? 'नौकरी सूची बनाएं' : 'Create Job Listing',
+                    _isHindi
+                        ? 'नया व्यापार / नौकरी अवसर बनाएं'
+                        : 'CREATE NEW BUSINESS OPPORTUNITY POSTING',
                     style: TextStyle(
-                      fontSize: 22.sp,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: const Color(0xFFD4AF37),
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  SizedBox(height: 6.h),
+                  SizedBox(height: 4.h),
                   Text(
                     _isHindi
-                        ? 'मुआवजा, स्तर और लक्षित क्षेत्र निर्धारित करें।'
-                        : 'Define compensation, levels, and specific target areas.',
-                    style: TextStyle(fontSize: 13.sp, color: Colors.white70),
+                        ? '[ * से चिह्नित फ़ील्ड प्लेटफ़ॉर्म सेफ हार्बर बनाए रखने के लिए अनिवार्य हैं ]'
+                        : '[ Fields marked with * are mandatory to maintain Platform Safe Harbor ]',
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
+                      color: Colors.white70,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                   SizedBox(height: 20.h),
                   _sectionHeader(
                     _isHindi
-                        ? '1. पद एवं वरिष्ठता स्तर'
-                        : '1. Role & Seniority Level',
+                        ? '📋 अवसर विवरण (OPPORTUNITY DETAILS)'
+                        : '📋 OPPORTUNITY DETAILS',
                   ),
                   SizedBox(height: 10.h),
 
@@ -603,18 +710,33 @@ class _PostJobOpportunitiesScreenState
                   _buildTextField(
                     controller: _jobTitleController,
                     label: _isHindi
-                        ? 'पद का नाम / पदनाम *'
-                        : 'Job Title / Designation *',
+                        ? '* नौकरी / अवसर का शीर्षक *'
+                        : '* Job / Opportunity Title *',
+                    hint: 'e.g., Regional Sales Executive',
                     validatorMsg: _isHindi
-                        ? 'पद का नाम दर्ज करें'
-                        : 'Enter job title',
+                        ? 'पद का शीर्षक दर्ज करें'
+                        : 'Enter opportunity title',
                     icon: Icons.work_outline,
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // Department / Category
+                  _buildTextField(
+                    controller: _departmentCategoryController,
+                    label: _isHindi
+                        ? '* विभाग / श्रेणी *'
+                        : '* Department / Category *',
+                    hint: 'e.g., Customer Success, Sales, Operations',
+                    validatorMsg: _isHindi
+                        ? 'विभाग / श्रेणी दर्ज करें'
+                        : 'Enter department / category',
+                    icon: Icons.category_outlined,
                   ),
                   SizedBox(height: 16.h),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedJobType,
                     decoration: _inputDecoration(
-                      _isHindi ? 'रोजगार का प्रकार *' : 'Employment Type *',
+                      _isHindi ? '* रोजगार का प्रकार *' : '* Employment Type *',
                       icon: Icons.business_center_outlined,
                     ),
                     dropdownColor: const Color(0xFF003A35),
@@ -674,16 +796,79 @@ class _PostJobOpportunitiesScreenState
                         : '2. Location & Target Pin Codes',
                   ),
                   SizedBox(height: 10.h),
-                  // Location
+                  // Screen 1: Static Location Constraint Notice (Safe Harbor)
+                  Container(
+                    margin: EdgeInsets.only(bottom: 12.h),
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_off_outlined,
+                          color: const Color(0xFFD4AF37),
+                          size: 18.sp,
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'LOCATION SPECIFICATION (STATIC TEXT ONLY)',
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFD4AF37),
+                                ),
+                              ),
+                              SizedBox(height: 3.h),
+                              Text(
+                                _isHindi
+                                    ? 'चेतावनी: आपको इस पोस्ट में लाइव ट्रैकिंग लिंक, निरंतर जियोफेंस या रीयल-टाइम जीपीएस आवश्यकताओं को जोड़ने की सख्त मनाही है।'
+                                    : '⚠️ Compliance Notice: You are strictly prohibited from embedding live tracking links, continuous geofences, or real-time GPS requirements into this post.',
+                                style: TextStyle(
+                                  fontSize: 10.5.sp,
+                                  color: Colors.white70,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Location City
                   _buildTextField(
                     controller: _locationController,
                     label: _isHindi
-                        ? 'मूल शहर / स्थान *'
-                        : 'Base City / Location *',
+                        ? '* कार्य स्थल का शहर (City) *'
+                        : '* Work Location City *',
+                    hint: 'e.g., New Delhi, Delhi',
                     validatorMsg: _isHindi
-                        ? 'स्थान दर्ज करें'
-                        : 'Enter location',
+                        ? 'शहर दर्ज करें'
+                        : 'Enter location city',
                     icon: Icons.location_on_outlined,
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // Office Address (Optional)
+                  _buildTextField(
+                    controller: _officeAddressController,
+                    label: _isHindi
+                        ? 'कार्यालय का पता (वैकल्पिक)'
+                        : 'Office Address (Optional)',
+                    hint: 'e.g., 12, Barakhamba Road, Connaught Place',
+                    isRequired: false,
+                    validatorMsg: '',
+                    icon: Icons.apartment_outlined,
                   ),
                   SizedBox(height: 16.h),
 
@@ -795,8 +980,8 @@ class _PostJobOpportunitiesScreenState
                   SizedBox(height: 20.h),
                   _sectionHeader(
                     _isHindi
-                        ? '4. जिम्मेदारियां एवं आवेदन विवरण'
-                        : '4. Responsibilities & Application Details',
+                        ? '📝 विवरण एवं आवश्यकताएं (DESCRIPTION & REQUIREMENTS)'
+                        : '📝 DESCRIPTION & REQUIREMENTS',
                   ),
                   SizedBox(height: 10.h),
                   TextFormField(
@@ -805,7 +990,7 @@ class _PostJobOpportunitiesScreenState
                     keyboardType: TextInputType.text,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18.sp,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w500,
                     ),
                     autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -814,8 +999,15 @@ class _PostJobOpportunitiesScreenState
                       alignLabelWithHint: true,
                       isDense: true,
                       labelText: _isHindi
-                          ? 'नौकरी का विवरण एवं आवश्यकताएं *'
-                          : 'Job Description & Requirements *',
+                          ? '* अवसर का विवरण (Opportunity Description) *'
+                          : '* Opportunity Description *',
+                      hintText: _isHindi
+                          ? 'मुख्य जिम्मेदारियां और दैनिक कार्य यहां दर्ज करें'
+                          : 'Provide core responsibilities and daily tasks here',
+                      hintStyle: TextStyle(
+                        color: Colors.white30,
+                        fontSize: 13.sp,
+                      ),
                       labelStyle: TextStyle(
                         color: Colors.white60,
                         fontSize: 15.5.sp,
@@ -851,35 +1043,254 @@ class _PostJobOpportunitiesScreenState
                       if (value == null || value.trim().isEmpty) {
                         return _isHindi
                             ? 'विवरण दर्ज करें'
-                            : 'Enter job description';
+                            : 'Enter opportunity description';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 16.h),
+
+                  // Desired Candidate Profile
+                  _buildTextField(
+                    controller: _desiredProfileController,
+                    label: _isHindi
+                        ? 'इच्छित उम्मीदवार प्रोफ़ाइल (Desired Profile)'
+                        : 'Desired Candidate Profile',
+                    hint: _isHindi
+                        ? 'आवश्यक कौशल, योग्यता या अनुभव दर्ज करें'
+                        : 'Provide required skillsets, qualifications, or experience',
+                    isRequired: false,
+                    validatorMsg: '',
+                    maxLines: 2,
+                    icon: Icons.psychology_outlined,
+                  ),
+                  SizedBox(height: 16.h),
+
                   // Contact
                   _buildTextField(
                     controller: _contactController,
                     label: _isHindi
                         ? 'आवेदन संपर्क (ईमेल / फोन) *'
                         : 'Application Contact (Email / Phone) *',
+                    hint: 'e.g., hr@company.com or +91 9876543210',
                     validatorMsg: _isHindi
                         ? 'संपर्क जानकारी दर्ज करें'
                         : 'Enter application contact',
                     icon: Icons.contact_phone_outlined,
                   ),
-                  SizedBox(height: 30.h),
+                  SizedBox(height: 20.h),
+                  // ========================================================================
+                  // MANDATORY JOB POSTING COMPLIANCE DISCLOSURE
+                  // [IT Act Sec 79 & DPDP Act Sec 6 Purpose Limitation]
+                  // ========================================================================
+                  Container(
+                    padding: EdgeInsets.all(14.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF041E1A),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.gavel_rounded,
+                              color: const Color(0xFFD4AF37),
+                              size: 20.sp,
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                _isHindi
+                                    ? 'अनिवार्य नौकरी पोस्टिंग अनुपालन प्रकटीकरण'
+                                    : 'MANDATORY JOB POSTING COMPLIANCE DISCLOSURE',
+                                style: TextStyle(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFD4AF37),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          '[IT Act Sec 79 & DPDP Act Sec 6 Purpose Limitation]',
+                          style: TextStyle(
+                            fontSize: 10.5.sp,
+                            color: Colors.white54,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          _isHindi
+                              ? 'इस अवसर को प्रकाशित करके, कंपनी स्पष्ट रूप से निम्नलिखित का प्रतिनिधित्व करती है:'
+                              : 'By publishing this opportunity, the Company explicitly represents, warrants, and covenants the following to Track Loved Ones App:',
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          '1. Authentic Listing: Valid, existing opening within legal organization. Data gathering/profiling strictly prohibited.',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          '2. Fee Prohibition: No fee, security deposit, processing charge, or laptop/device payment will ever be demanded.',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          '3. Complete Location Blindness: Zero access to real-time geographic tracking assets of applicants. Location is static text only.',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        const Divider(color: Colors.white24, height: 1),
+                        SizedBox(height: 10.h),
+                        // Checkbox 1
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _agreeAuthenticListing,
+                              activeColor: const Color(0xFFD4AF37),
+                              checkColor: const Color(0xFF072420),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (val) {
+                                setState(
+                                  () => _agreeAuthenticListing = val ?? false,
+                                );
+                              },
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                _isHindi
+                                    ? '* मैं सत्यापित करता/करती हूँ कि यह अवसर एक वैध, सक्रिय अवसर है और आवेदक से किसी भी भुगतान या वित्तीय जमा की मांग नहीं करता है।'
+                                    : '* I verify that this opportunity represents a legitimate, active opening and does not demand any payment, registration fees, or financial token deposits from the applicant.',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.h),
+                        // Checkbox 2
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _agreeNoEmploymentRelationship,
+                              activeColor: const Color(0xFFD4AF37),
+                              checkColor: const Color(0xFF072420),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (val) {
+                                setState(
+                                  () => _agreeNoEmploymentRelationship =
+                                      val ?? false,
+                                );
+                              },
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                _isHindi
+                                    ? '* मैं स्पष्ट रूप से घोषित करता/करती हूँ कि यह पोस्टिंग Track Loved Ones ऐप और आवेदक के बीच, या ऐप और कंपनी के बीच नियोक्ता-कर्मचारी संबंध स्थापित नहीं करती है। Track Loved Ones ऐप केवल एक सूचना मध्यस्थ है।'
+                                    : '* I explicitly declare that this posting DOES NOT constitute or imply an employer-employee, master-servant, or contractual labor relationship between Track Loved Ones App and the applicant, nor between Track Loved Ones App and the posting entity. Track Loved Ones App is solely a technology intermediary.',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.h),
+                        // Checkbox 3
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: _agreeAuthorizedRepresentative,
+                              activeColor: const Color(0xFFD4AF37),
+                              checkColor: const Color(0xFF072420),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              onChanged: (val) {
+                                setState(
+                                  () => _agreeAuthorizedRepresentative =
+                                      val ?? false,
+                                );
+                              },
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                _isHindi
+                                    ? '* (आवश्यक) मैं प्रमाणित करता/करती हूँ कि मैं एक अधिकृत कॉर्पोरेट प्रतिनिधि हूँ और इस पोस्ट की वैधता के लिए एकमात्र कानूनी दायित्व स्वीकार करता/करती हूँ।'
+                                    : '* (Required) I certify that I am an authorized corporate representative and accept sole legal and penal liability for the validity of this post.',
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
                   SizedBox(
                     width: double.infinity,
                     height: 50.h,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B4F4A),
+                        backgroundColor:
+                            (_agreeAuthenticListing &&
+                                _agreeNoEmploymentRelationship &&
+                                _agreeAuthorizedRepresentative)
+                            ? const Color(0xFF0B4F4A)
+                            : Colors.white24,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25.r),
                         ),
                       ),
-                      onPressed: _isLoading ? null : _submitJob,
+                      // Gate publish until mandatory legal checkboxes are satisfied
+                      onPressed:
+                          (_isLoading ||
+                              !_agreeAuthenticListing ||
+                              !_agreeNoEmploymentRelationship ||
+                              !_agreeAuthorizedRepresentative)
+                          ? null
+                          : _submitJob,
                       child: _isLoading
                           ? SizedBox(
                               height: 22.h,
@@ -891,12 +1302,13 @@ class _PostJobOpportunitiesScreenState
                             )
                           : Text(
                               _isHindi
-                                  ? 'नौकरी सूची प्रकाशित करें'
-                                  : 'Publish Job Listing',
+                                  ? '🚀 अवसर को नेटवर्क पर प्रकाशित करें'
+                                  : '🚀 PUBLISH OPPORTUNITY TO THE NETWORK',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16.sp,
+                                fontSize: 14.5.sp,
+                                letterSpacing: 0.5,
                               ),
                             ),
                     ),
@@ -927,6 +1339,8 @@ class _PostJobOpportunitiesScreenState
     required String label,
     required String validatorMsg,
     required IconData icon,
+    String? hint,
+    bool isRequired = true,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
   }) {
@@ -943,6 +1357,8 @@ class _PostJobOpportunitiesScreenState
       decoration: InputDecoration(
         isDense: true,
         labelText: label,
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.white30, fontSize: 13.sp),
         labelStyle: TextStyle(color: Colors.white60, fontSize: 15.5.sp),
         prefixIcon: Icon(icon, color: Colors.white60, size: 24.sp),
         filled: true,
@@ -970,7 +1386,7 @@ class _PostJobOpportunitiesScreenState
         ),
       ),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
+        if (isRequired && (value == null || value.trim().isEmpty)) {
           return validatorMsg;
         }
         return null;

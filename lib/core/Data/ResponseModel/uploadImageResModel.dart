@@ -170,7 +170,7 @@ class User {
 
 class Location {
     String? type;
-    List<int>? coordinates;
+    List<double>? coordinates;
 
     Location({
         this.type,
@@ -179,7 +179,13 @@ class Location {
 
     factory Location.fromJson(Map<String, dynamic> json) => Location(
         type: json["type"],
-        coordinates: json["coordinates"] == null ? [] : List<int>.from(json["coordinates"]!.map((x) => x)),
+        coordinates: json["coordinates"] == null
+            ? []
+            : List<double>.from(
+                json["coordinates"]!.map(
+                  (x) => x is num ? x.toDouble() : double.tryParse(x.toString()) ?? 0.0,
+                ),
+              ),
     );
 
     Map<String, dynamic> toJson() => {

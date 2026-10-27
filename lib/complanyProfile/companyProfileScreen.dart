@@ -34,8 +34,8 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
       widget.isEdit ||
       widget.existingData != null ||
       (ref.read(getBussinessProfileProvider).value?.data?.isNotEmpty == true) ||
-      (Hive.box('userdata')
-              .get('isCompanyProfileComplete', defaultValue: false) as bool);
+      (Hive.box('userdata').get('isCompanyProfileComplete', defaultValue: false)
+          as bool);
 
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -61,6 +61,12 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
   ];
 
   String? _selectedState;
+
+  // DPDPA & IT Act Intermediary Safe Harbor Mandatory Checkboxes
+  bool _agreePurposeLimitation = false;
+  bool _agreeSurveillanceProhibition = false;
+  bool _agreeDataErasure = false;
+  bool _agreeNoEmploymentContract = false;
   static const List<String> _indianStates = [
     'Andaman and Nicobar Islands',
     'Andhra Pradesh',
@@ -105,20 +111,24 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
     super.initState();
     final box = Hive.box('userdata');
     final profileData = ref.read(getBussinessProfileProvider).value?.data;
-    final datum = widget.existingData ??
+    final datum =
+        widget.existingData ??
         (profileData != null && profileData.isNotEmpty
             ? profileData.first
             : null);
 
-    _companyNameController.text = datum?.registeredCompanyName ??
+    _companyNameController.text =
+        datum?.registeredCompanyName ??
         box.get('companyName', defaultValue: '');
-    _emailController.text = datum?.companyEmail ??
+    _emailController.text =
+        datum?.companyEmail ??
         datum?.ownerContact?.email ??
         box.get(
           'companyEmail',
           defaultValue: box.get('email', defaultValue: ''),
         );
-    _phoneController.text = datum?.companyPhoneNumber ??
+    _phoneController.text =
+        datum?.companyPhoneNumber ??
         datum?.ownerContact?.phone ??
         box.get(
           'companyPhone',
@@ -128,14 +138,15 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         datum?.gstNumber ?? box.get('companyGst', defaultValue: '');
     _panController.text =
         datum?.companyPanNumber ?? box.get('companyPan', defaultValue: '');
-    _addressController.text = datum?.registeredCorporateAddress ??
+    _addressController.text =
+        datum?.registeredCorporateAddress ??
         box.get('companyAddress', defaultValue: '');
     _cityController.text =
         datum?.city ?? box.get('companyCity', defaultValue: '');
     _pincodeController.text =
         datum?.pincode ?? box.get('companyPincode', defaultValue: '');
-    _websiteController.text = datum?.officialWebsite ??
-        box.get('companyWebsite', defaultValue: '');
+    _websiteController.text =
+        datum?.officialWebsite ?? box.get('companyWebsite', defaultValue: '');
 
     final savedType = datum?.companyType ?? box.get('companyType');
     if (savedType != null && _companyTypes.contains(savedType)) {
@@ -164,6 +175,24 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
   }
 
   void _saveProfile() async {
+    if (!_agreePurposeLimitation ||
+        !_agreeSurveillanceProhibition ||
+        !_agreeDataErasure ||
+        !_agreeNoEmploymentContract) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isHindi
+                ? 'कृपया आगे बढ़ने से पहले सभी 4 अनिवार्य वैधानिक समझौतों को स्वीकार करें।'
+                : 'Please accept all 4 mandatory DPDPA statutory terms before proceeding.',
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -180,6 +209,38 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
               : 'https://$rawWebsite';
         }
 
+        final complianceRecord = {
+          "compliance_ledger_event": "USER_REGISTRATION_CONSENT_RECORD",
+          "schema_version": "TLO-DPDPA-V1.2-2026",
+          "timestamp_iso8601": DateTime.now().toUtc().toIso8601String(),
+          "session_metadata": {
+            "client_platform": "Flutter Mobile",
+            "locale": _isHindi ? "hi_IN" : "en_IN",
+          },
+          "party_identities": {
+            "account_role": "business_employer",
+            "registered_entity_name": _companyNameController.text.trim(),
+            "corporate_identifier":
+                _gstController.text.trim().toUpperCase().isNotEmpty
+                ? _gstController.text.trim().toUpperCase()
+                : _panController.text.trim().toUpperCase(),
+            "authorized_signatory_email": _emailController.text.trim(),
+          },
+          "legal_declarations_logged": {
+            "notice_text_version_id": "NOTICE-B2B-2026-V1",
+            "unbundled_selections": {
+              "purpose_limitation_agreed": _agreePurposeLimitation,
+              "location_tracking_blindness_acknowledged":
+                  _agreeSurveillanceProhibition,
+              "applicant_erasure_mandate_verified": _agreeDataErasure,
+              "no_employment_relationship_acknowledged":
+                  _agreeNoEmploymentContract,
+            },
+            "binding_string":
+                "I, acting as an authorized corporate agent for this legal entity, give free, informed, specific, unconditional, and unambiguous consent to process our business data as an information intermediary. We acknowledge full restriction from real-time mapping layers and accept data erasure protocols under the DPDP Act, 2023.",
+          },
+        };
+
         final body = BusinessProfileBodyModel(
           registeredCompanyName: _companyNameController.text.trim(),
           companyType: _selectedCompanyType,
@@ -192,6 +253,7 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
           state: _selectedState,
           pincode: _pincodeController.text.trim(),
           officialWebsite: formattedWebsite,
+          complianceLedger: complianceRecord,
         );
 
         final authService = ref.read(authServiceProvider);
@@ -238,11 +300,11 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
                   child: Text(
                     _isHindi
                         ? (isEditMode
-                            ? 'प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!'
-                            : 'सत्यापन के लिए सबमिट किया गया!')
+                              ? 'प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!'
+                              : 'सत्यापन के लिए सबमिट किया गया!')
                         : (isEditMode
-                            ? 'Profile Updated Successfully!'
-                            : 'Submitted for Verification!'),
+                              ? 'Profile Updated Successfully!'
+                              : 'Submitted for Verification!'),
                     style: TextStyle(
                       fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
@@ -256,11 +318,11 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
               response.message ??
                   (_isHindi
                       ? (isEditMode
-                          ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
-                          : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण सत्यापन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
+                            ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
+                            : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण सत्यापन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
                       : (isEditMode
-                          ? 'Your company profile details have been successfully updated.'
-                          : 'Your company profile & KYC details have been successfully submitted for verification.')),
+                            ? 'Your company profile details have been successfully updated.'
+                            : 'Your company profile & KYC details have been successfully submitted for verification.')),
               style: TextStyle(
                 fontSize: 13.5.sp,
                 color: Colors.white70,
@@ -340,8 +402,7 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
       key: _scaffoldKey,
       drawer: AppDrawer(isHindi: _isHindi),
       appBar: AppBarScreen(
-        titleEn:
-            _isEditMode ? 'Edit Company Profile' : 'Company Profile & KYC',
+        titleEn: _isEditMode ? 'Edit Company Profile' : 'Company Profile & KYC',
         titleHi: _isEditMode
             ? 'कंपनी प्रोफ़ाइल संपादित करें'
             : 'कंपनी प्रोफ़ाइल और केवाईसी',
@@ -817,9 +878,266 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
                         isRequired: false,
                         keyboardType: TextInputType.url,
                       ),
-                      SizedBox(height: 32.h),
+                      SizedBox(height: 24.h),
 
-                      // Submit for Verification Button
+                      // ========================================================================
+                      // 1. The Corporate Intermediary Agreement (Intermediary Safe Harbor Guard)
+                      // Section 4 & Section 5 DPDP Act, 2023 Compliance
+                      // ========================================================================
+                      Container(
+                        padding: EdgeInsets.all(14.w),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF041E1A),
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: const Color(0xFFD4AF37),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.verified_user_outlined,
+                                  color: const Color(0xFFD4AF37),
+                                  size: 22.sp,
+                                ),
+                                SizedBox(width: 8.w),
+                                Expanded(
+                                  child: Text(
+                                    _isHindi
+                                        ? 'नियोक्ता मध्यस्थ सूचना एवं वैधानिक सहमति'
+                                        : 'TRACK LOVED ONES: EMPLOYER INTERMEDIARY NOTICE',
+                                    style: TextStyle(
+                                      fontSize: 12.5.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFD4AF37),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              '[Section 4 & Section 5 DPDP Act, 2023 Compliance]',
+                              style: TextStyle(
+                                fontSize: 10.5.sp,
+                                color: Colors.white54,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              _isHindi
+                                  ? 'हमारा प्लेटफॉर्म वयस्क नौकरी आवेदकों और व्यापार अवसर चाहने वालों के बीच संबंध सुगम बनाने के लिए केवल एक सूचना मध्यस्थ के रूप में कार्य करता है। नियोक्ता खाते के संचालन के लिए आपको निम्नलिखित कानूनी रूप से बाध्यकारी शर्तों से सहमत होना होगा:'
+                                  : 'Our platform acts strictly as an information intermediary to facilitate connections between adult job applicants and business opportunity seekers. To operate an employer account, you must review and agree to the following legally binding terms:',
+                              style: TextStyle(
+                                fontSize: 11.5.sp,
+                                color: Colors.white70,
+                                height: 1.3,
+                              ),
+                            ),
+                            SizedBox(height: 12.h),
+                            const Divider(color: Colors.white24, height: 1),
+                            SizedBox(height: 10.h),
+
+                            // Term 1: Recruitment Specific Purpose Limitation
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _agreePurposeLimitation,
+                                  activeColor: const Color(0xFFD4AF37),
+                                  checkColor: const Color(0xFF072420),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  onChanged: (val) => setState(
+                                    () =>
+                                        _agreePurposeLimitation = val ?? false,
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '(Mandatory) RECRUITMENT SPECIFIC PURPOSE LIMITATION',
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFE6C567),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        _isHindi
+                                            ? 'मैं सहमत हूँ कि यह कॉर्पोरेट खाता उम्मीदवार डेटा (नाम, ईमेल, संपर्क नंबर और बायोडाटा) को केवल सक्रिय रोजगार मूल्यांकन के लिए संसाधित करेगा। कोई भी डेटा बाहरी विज्ञापन या मार्केटिंग में साझा या बेचा नहीं जाएगा।'
+                                            : 'I agree that this corporate account will process candidate data (names, emails, contact numbers, and resumes) strictly for active employment evaluation. No data obtained here will be reused, sold, or shared with external advertising or marketing data pools.',
+                                        style: TextStyle(
+                                          fontSize: 10.5.sp,
+                                          color: Colors.white70,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // Term 2: Surveillance & Location Tracking Prohibition
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _agreeSurveillanceProhibition,
+                                  activeColor: const Color(0xFFD4AF37),
+                                  checkColor: const Color(0xFF072420),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  onChanged: (val) => setState(
+                                    () => _agreeSurveillanceProhibition =
+                                        val ?? false,
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '(Mandatory) SURVEILLANCE & LOCATION TRACKING PROHIBITION',
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFE6C567),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        _isHindi
+                                            ? 'मैं स्वीकार करता/करती हूँ कि Track Loved Ones ऐप एक उपभोक्ता व्यक्तिगत सुरक्षा उपकरण है। व्यावसायिक प्रोफ़ाइल को रीयल-टाइम पृष्ठभूमि स्थान नेटवर्क में कोई अधिकार या दृश्यता नहीं है। हम लाइव मानचित्र से पूर्णतः अनभिज्ञ (blinded) हैं।'
+                                            : 'I acknowledge that Track Loved Ones App is a consumer personal safety utility. Business profiles have zero entitlement, access, or visibility into the real-time background location network. I agree our company will not attempt to intercept candidate coordinates, and we verify we are blinded from the platform live map.',
+                                        style: TextStyle(
+                                          fontSize: 10.5.sp,
+                                          color: Colors.white70,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // Term 3: Data Erasure Compliance Acknowledgement
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _agreeDataErasure,
+                                  activeColor: const Color(0xFFD4AF37),
+                                  checkColor: const Color(0xFF072420),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  onChanged: (val) => setState(
+                                    () => _agreeDataErasure = val ?? false,
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '(Mandatory) DATA ERASURE COMPLIANCE ACKNOWLEDGEMENT',
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFE6C567),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        _isHindi
+                                            ? 'मैं सत्यापित करता/करती हूँ कि यदि कोई आवेदक DPDP अधिनियम के तहत आवेदन वापस लेता है, तो हमारी कंपनी तुरंत अपने आंतरिक लेजर से उनके बायोडाटा, संपर्क विवरण और संचार इतिहास के सभी स्थानीय स्नैपशॉट को हटा देगी।'
+                                            : 'I verify that if an applicant exercises their "Right to be Forgotten" under the DPDP Act and withdraws their job application, our company will immediately delete and strip all local snapshots of their resume, contact details, and communication history from our internal company ledgers.',
+                                        style: TextStyle(
+                                          fontSize: 10.5.sp,
+                                          color: Colors.white70,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // Term 4: No Employment or Contractual Relationship Disclaimer
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _agreeNoEmploymentContract,
+                                  activeColor: const Color(0xFFD4AF37),
+                                  checkColor: const Color(0xFF072420),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                  onChanged: (val) => setState(
+                                    () => _agreeNoEmploymentContract =
+                                        val ?? false,
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '(Mandatory) NO EMPLOYMENT OR CONTRACTUAL RELATIONSHIP DISCLAIMER',
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFFE6C567),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        _isHindi
+                                            ? 'मैं स्पष्ट रूप से स्वीकार और सहमत करता/करती हूँ कि Track Loved Ones ऐप केवल आवेदकों और नियोक्ताओं के बीच सूचना हस्तांतरण की सुविधा प्रदान करने वाला एक तकनीकी मध्यस्थ है। किसी भी परिस्थिति में पंजीकरण, सदस्यता या अवसर पोस्ट करने से Track Loved Ones ऐप और कंपनी के बीच, या ऐप और किसी नौकरी चाहने वाले के बीच नियोक्ता-कर्मचारी संबंध, एजेंसी, साझेदारी, संयुक्त उद्यम या श्रम-ठेकेदार व्यवस्था नहीं बनती है। कंपनी अपनी भर्ती प्रथाओं और पोस्टिंग के लिए एकमात्र परिचालन दायित्व वहन करती है।'
+                                            : 'I explicitly acknowledge and agree that Track Loved Ones App acts solely as a technological intermediary facilitating information transfers between applicants and employers. Under no circumstances does registration, subscription, or posting an opportunity create an employer-employee relationship, agency, partnership, joint venture, or labor-contractor arrangement between Track Loved Ones App and the company, or between Track Loved Ones App and any job seeker. The company retains sole operational liability for its hiring practices and postings.',
+                                        style: TextStyle(
+                                          fontSize: 10.5.sp,
+                                          color: Colors.white70,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 24.h),
+
+                      // Submit for Verification / Activate Workspace Button
                       Container(
                         width: double.infinity,
                         height: 54.h,
@@ -864,21 +1182,25 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
                                           ? Icons.check_circle_outline_rounded
                                           : Icons.verified_user_rounded,
                                       color: const Color(0xFF072420),
-                                      size: 22.sp,
+                                      size: 20.sp,
                                     ),
                                     SizedBox(width: 8.w),
-                                    Text(
-                                      _isHindi
-                                          ? (_isEditMode
-                                              ? 'प्रोफ़ाइल अपडेट करें'
-                                              : 'सत्यापन के लिए सबमिट करें')
-                                          : (_isEditMode
-                                              ? 'Update Profile'
-                                              : 'Submit for Verification'),
-                                      style: TextStyle(
-                                        color: const Color(0xFF072420),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16.sp,
+                                    Flexible(
+                                      child: Text(
+                                        _isHindi
+                                            ? (_isEditMode
+                                                  ? 'कॉर्पोरेट साख अपडेट करें और सहेजें'
+                                                  : 'कॉर्पोरेट साख की पुष्टि करें और कार्यक्षेत्र सक्रिय करें')
+                                            : (_isEditMode
+                                                  ? 'UPDATE CREDENTIALS & WORKSPACE'
+                                                  : 'CONFIRM CORPORATE CREDENTIALS & ACTIVATE WORKSPACE'),
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: const Color(0xFF072420),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12.5.sp,
+                                          letterSpacing: 0.3,
+                                        ),
                                       ),
                                     ),
                                   ],
