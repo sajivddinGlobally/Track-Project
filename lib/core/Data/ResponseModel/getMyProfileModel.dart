@@ -3,6 +3,7 @@
 //     final getMyProfileModel = getMyProfileModelFromJson(jsonString);
 
 import 'dart:convert';
+import 'UpdateConsentsResModel.dart';
 
 GetMyProfileModel getMyProfileModelFromJson(String str) =>
     GetMyProfileModel.fromJson(json.decode(str));
@@ -80,6 +81,7 @@ class User {
   String? permanentCountry;
   DateTime? createdAt;
   DateTime? updatedAt;
+  UserConsents? consents;
 
   User({
     this.location,
@@ -116,6 +118,7 @@ class User {
     this.permanentCountry,
     this.createdAt,
     this.updatedAt,
+    this.consents,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -159,6 +162,9 @@ class User {
     updatedAt: json["updatedAt"] == null
         ? null
         : DateTime.tryParse(json["updatedAt"].toString()),
+    consents: json["consents"] == null
+        ? null
+        : UserConsents.fromJson(json["consents"]),
   );
 
   Map<String, dynamic> toJson() => {

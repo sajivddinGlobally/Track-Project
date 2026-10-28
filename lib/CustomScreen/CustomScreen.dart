@@ -214,7 +214,7 @@ class AppDrawer extends StatelessWidget {
               },
             ),
 
-          if (role == "company")
+          if (role == "user")
             _buildDrawerItem(
               icon: Icons.assignment_turned_in_outlined,
               title: isHindi

@@ -190,6 +190,9 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
   // ========================================================================
   void _showEditJobDialog(MyCompanyJobPostItem job) {
     final titleController = TextEditingController(text: job.jobTitle ?? '');
+    final ctcController = TextEditingController(
+      text: job.annualCtcPackage != null ? job.annualCtcPackage.toString() : '',
+    );
     final descController = TextEditingController(
       text: job.jobDescription ?? '',
     );
@@ -288,6 +291,32 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                 SizedBox(height: 10.h),
 
                 Text(
+                  _isHindi
+                      ? 'वार्षिक सीटीसी पैकेज (₹ / Year)'
+                      : 'Annual CTC Package (₹ / Year)',
+                  style: TextStyle(color: Colors.white70, fontSize: 12.5.sp),
+                ),
+                SizedBox(height: 4.h),
+                TextField(
+                  controller: ctcController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: Colors.white, fontSize: 13.5.sp),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. 1400000',
+                    hintStyle: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 13.sp,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF072420),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10.h),
+
+                Text(
                   _isHindi ? 'नौकरी विवरण' : 'Description / Requirements',
                   style: TextStyle(color: Colors.white70, fontSize: 12.5.sp),
                 ),
@@ -346,18 +375,47 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
               onPressed: isLoading
                   ? null
                   : () async {
+                      if (titleController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red.shade800,
+                            behavior: SnackBarBehavior.floating,
+                            content: Text(
+                              _isHindi
+                                  ? 'कृपया पद का शीर्षक दर्ज करें'
+                                  : 'Please enter job title',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.sp,
+                              ),
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
                       setDialogState(() {
                         isLoading = true;
                       });
                       try {
+                        final ctcVal = num.tryParse(
+                          ctcController.text.trim().replaceAll(',', ''),
+                        );
                         final service = ref.read(authServiceProvider);
                         final res = await service.updateJobPosting(
                           UpdateJobPostingBodyModel(
                             id: job.id,
+                            companyId: job.companyId,
                             jobTitle: titleController.text.trim(),
-                            jobDescription: descController.text.trim(),
-                            applicationContactEmail: contactController.text
-                                .trim(),
+                            annualCtcPackage: ctcVal,
+                            jobDescription:
+                                descController.text.trim().isNotEmpty
+                                ? descController.text.trim()
+                                : null,
+                            applicationContactEmail:
+                                contactController.text.trim().isNotEmpty
+                                ? contactController.text.trim()
+                                : null,
                           ),
                         );
                         if (res.success == true) {
@@ -373,9 +431,10 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                                 backgroundColor: const Color(0xFF0F3D38),
                                 behavior: SnackBarBehavior.floating,
                                 content: Text(
-                                  _isHindi
-                                      ? '✅ नौकरी की आवश्यकताएं सफलतापूर्वक अपडेट कर दी गईं!'
-                                      : '✅ Job requirements updated within compliance boundaries.',
+                                  res.message ??
+                                      (_isHindi
+                                          ? '✅ नौकरी सफलतापूर्वक अपडेट कर दी गई!'
+                                          : '✅ Job post updated successfully.'),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 13.sp,
@@ -461,6 +520,7 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
   void _showDeleteJobDialog(MyCompanyJobPostItem job) {
     bool check1 = false;
     bool check2 = false;
+    bool isDeleting = false;
     final applicantsCount = job.applicants?.length ?? job.applicationCount ?? 0;
     final refCode = (job.id != null && job.id!.length >= 6)
         ? 'TLO-JOB-${job.id!.substring(job.id!.length - 6).toUpperCase()}'
@@ -595,7 +655,7 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogCtx),
+                onPressed: isDeleting ? null : () => Navigator.pop(dialogCtx),
                 child: Text(
                   _isHindi ? 'रद्द करें' : 'Cancel',
                   style: TextStyle(color: Colors.white60, fontSize: 13.5.sp),
@@ -603,57 +663,151 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isReadyToDelete
+                  backgroundColor: (isReadyToDelete && !isDeleting)
                       ? const Color(0xFFDC2626)
                       : Colors.white24,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                 ),
-                onPressed: !isReadyToDelete
+                onPressed: (!isReadyToDelete || isDeleting)
                     ? null
-                    : () {
-                        Navigator.pop(dialogCtx);
-
-                        // 1. Backend Data Cascade State Change
-                        setState(() {
-                          job.status = 'PURGED';
-                        });
-
-                        // 2. Compliance Ledger Log
-                        _logJobCloseLedger(
-                          referenceId: refCode,
-                          activeApplicants: applicantsCount,
-                        );
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: const Color(0xFF0F3D38),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              side: const BorderSide(color: Color(0xFFEF4444)),
-                            ),
-                            content: Text(
-                              _isHindi
-                                  ? '🗑️ पोस्ट हटा दी गई। पब्लिक फीड से हटाई गई और सभी $applicantsCount आवेदकों के डेटा टोकन नष्ट कर दिए गए।'
-                                  : '🗑️ Post purged from public feed. Candidate tokens revoked & compliance ledger updated.',
-                              style: TextStyle(
-                                fontSize: 12.5.sp,
-                                color: Colors.white,
+                    : () async {
+                        if (job.id == null || job.id!.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color(0xFFDC2626),
+                              content: Text(
+                                _isHindi
+                                    ? 'अमान्य नौकरी आईडी'
+                                    : 'Invalid Job Post ID.',
                               ),
                             ),
-                          ),
-                        );
+                          );
+                          return;
+                        }
+
+                        setModalState(() {
+                          isDeleting = true;
+                        });
+
+                        try {
+                          final res = await ref
+                              .read(authServiceProvider)
+                              .deleteJobPostData(job.id!);
+
+                          if (res.success == true) {
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                            }
+
+                            // 1. Backend Data Cascade State Change
+                            setState(() {
+                              job.status = 'PURGED';
+                            });
+
+                            // 2. Compliance Ledger Log
+                            _logJobCloseLedger(
+                              referenceId: refCode,
+                              activeApplicants: applicantsCount,
+                            );
+
+                            // 3. Refresh postings provider
+                            ref
+                                .read(myCompanyJobPostsProvider.notifier)
+                                .refresh();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFF0F3D38),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    side: const BorderSide(
+                                      color: Color(0xFF10B981),
+                                    ),
+                                  ),
+                                  content: Text(
+                                    res.message ??
+                                        (_isHindi
+                                            ? '🗑️ पोस्ट सफलतापूर्वक हटा दी गई।'
+                                            : '🗑️ Job post deleted successfully.'),
+                                    style: TextStyle(
+                                      fontSize: 12.5.sp,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          } else {
+                            setModalState(() {
+                              isDeleting = false;
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                  content: Text(
+                                    res.message ??
+                                        (_isHindi
+                                            ? 'हटाने में विफलता हुई!'
+                                            : 'Failed to delete job post.'),
+                                    style: TextStyle(
+                                      fontSize: 12.5.sp,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          setModalState(() {
+                            isDeleting = false;
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: const Color(0xFFDC2626),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                                content: Text(
+                                  e.toString().replaceAll("Exception: ", ""),
+                                  style: TextStyle(
+                                    fontSize: 12.5.sp,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       },
-                child: Text(
-                  _isHindi ? 'स्थायी रूप से हटाएं' : 'Confirm Deletion',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13.5.sp,
-                  ),
-                ),
+                child: isDeleting
+                    ? SizedBox(
+                        width: 18.w,
+                        height: 18.h,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _isHindi ? 'स्थायी रूप से हटाएं' : 'Confirm Deletion',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5.sp,
+                        ),
+                      ),
               ),
             ],
           );

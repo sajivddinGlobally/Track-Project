@@ -21,20 +21,81 @@ class GetMyCompanyJobPostsResModel {
     this.pagination,
   });
 
-  factory GetMyCompanyJobPostsResModel.fromJson(Map<String, dynamic> json) =>
-      GetMyCompanyJobPostsResModel(
-        success: json["success"],
-        message: json["message"],
-        counts: json["counts"] == null ? null : Counts.fromJson(json["counts"]),
-        data: json["data"] == null
-            ? []
-            : List<MyCompanyJobPostItem>.from(
-                json["data"]!.map((x) => MyCompanyJobPostItem.fromJson(x)),
-              ),
-        pagination: json["pagination"] == null
-            ? null
-            : Pagination.fromJson(json["pagination"]),
-      );
+  factory GetMyCompanyJobPostsResModel.fromJson(Map<String, dynamic> json) {
+    List<MyCompanyJobPostItem> items = [];
+    Counts? counts;
+    Pagination? pagination;
+
+    final rawData = json["data"];
+    if (rawData != null) {
+      if (rawData is List) {
+        for (final elem in rawData) {
+          if (elem is Map) {
+            items.add(MyCompanyJobPostItem.fromJson(
+                Map<String, dynamic>.from(elem)));
+          }
+        }
+      } else if (rawData is Map) {
+        final dataMap = Map<String, dynamic>.from(rawData);
+        final rawPosts = dataMap["posts"];
+        if (rawPosts is List) {
+          for (final elem in rawPosts) {
+            if (elem is Map) {
+              items.add(MyCompanyJobPostItem.fromJson(
+                  Map<String, dynamic>.from(elem)));
+            }
+          }
+        }
+        if (dataMap.containsKey("totalPosts") ||
+            dataMap.containsKey("totalApplicants")) {
+          counts = Counts(
+            totalPosts: dataMap["totalPosts"] is int
+                ? dataMap["totalPosts"] as int
+                : int.tryParse(dataMap["totalPosts"]?.toString() ?? '0') ?? 0,
+            totalApplicants: dataMap["totalApplicants"] is int
+                ? dataMap["totalApplicants"] as int
+                : int.tryParse(dataMap["totalApplicants"]?.toString() ?? '0') ?? 0,
+          );
+        }
+        if (dataMap.containsKey("page") ||
+            dataMap.containsKey("totalPages") ||
+            dataMap.containsKey("total")) {
+          pagination = Pagination(
+            page: dataMap["page"] is int
+                ? dataMap["page"] as int
+                : int.tryParse(dataMap["page"]?.toString() ?? '1') ?? 1,
+            totalPages: dataMap["totalPages"] is int
+                ? dataMap["totalPages"] as int
+                : int.tryParse(dataMap["totalPages"]?.toString() ?? '0') ?? 0,
+            total: dataMap["total"] is int
+                ? dataMap["total"] as int
+                : int.tryParse(dataMap["total"]?.toString() ?? '0') ??
+                    (dataMap["totalPosts"] is int
+                        ? dataMap["totalPosts"] as int
+                        : 0),
+          );
+        }
+      }
+    }
+
+    if (counts == null && json["counts"] != null && json["counts"] is Map) {
+      counts = Counts.fromJson(Map<String, dynamic>.from(json["counts"] as Map));
+    }
+    if (pagination == null &&
+        json["pagination"] != null &&
+        json["pagination"] is Map) {
+      pagination =
+          Pagination.fromJson(Map<String, dynamic>.from(json["pagination"] as Map));
+    }
+
+    return GetMyCompanyJobPostsResModel(
+      success: json["success"] as bool?,
+      message: json["message"] as String?,
+      counts: counts,
+      data: items,
+      pagination: pagination,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "success": success,

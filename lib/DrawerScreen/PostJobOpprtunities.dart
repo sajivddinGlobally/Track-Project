@@ -447,17 +447,6 @@ class _PostJobOpportunitiesScreenState
         log('Error creating job post: $e');
         if (!mounted) return;
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'नौकरी पोस्ट करने में त्रुटि: ${e.toString().replaceAll('Exception: ', '')}'
-                  : 'Failed to post job: ${e.toString().replaceAll('Exception: ', '')}',
-              style: const TextStyle(color: Colors.white),
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
       }
     }
   }

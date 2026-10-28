@@ -43,12 +43,23 @@ import '../Data/BodyModel/CreateJobPostBodyModel.dart';
 import '../Data/ResponseModel/CreateJobPostResModel.dart';
 import '../Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
 import '../Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
+import '../Data/BodyModel/UpdateConsentsBodyModel.dart';
+import '../Data/ResponseModel/UpdateConsentsResModel.dart';
 import '../Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
 import '../Data/BodyModel/CreateOpportunityReportBodyModel.dart';
 import '../Data/ResponseModel/CreateOpportunityReportResModel.dart';
 import '../Data/ResponseModel/GetMyCompanyJobPostsResModel.dart';
 import '../Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
 import '../Data/ResponseModel/GetLawContentResModel.dart';
+import '../Data/ResponseModel/DeleteJobPostResModel.dart';
+import '../Data/BodyModel/SubmitGrievanceBodyModel.dart';
+import '../Data/ResponseModel/SubmitGrievanceResModel.dart';
+import '../Data/BodyModel/RequestDataSummaryBodyModel.dart';
+import '../Data/ResponseModel/RequestDataSummaryResModel.dart';
+import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
+import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
+import '../Data/ResponseModel/DeleteUserAccountResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -470,6 +481,15 @@ class Authservice {
     }
   }
 
+  Future<DeleteJobPostResModel> deleteJobPostData(String id) async {
+    try {
+      final response = await api.deleteJobPost(id);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<GetMyBusinessOpportunitiesResModel> getMyBusinessOpportunitiesData({
     int? page,
     int? limit,
@@ -483,6 +503,68 @@ class Authservice {
         search,
         companyId,
       );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<UpdateConsentsResModel> updateConsentsData(
+    UpdateConsentsBodyModel body,
+  ) async {
+    try {
+      final response = await api.updateConsents(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<SubmitGrievanceResModel> submitGrievanceData(
+    SubmitGrievanceBodyModel body,
+  ) async {
+    try {
+      final response = await api.submitGrievance(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<RequestDataSummaryResModel> requestDataSummaryData(
+    RequestDataSummaryBodyModel body,
+  ) async {
+    try {
+      final response = await api.requestDataSummary(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetMyJobApplicationsResModel> getMyJobApplicationsData() async {
+    try {
+      final response = await api.getMyJobApplications();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<SendDeletionOtpResModel> sendDeleteAccountOtpData() async {
+    try {
+      final response = await api.sendDeleteAccountOtp();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DeleteUserAccountResModel> deleteUserAccountData(
+    DeleteUserAccountBodyModel body,
+  ) async {
+    try {
+      final response = await api.deleteUserAccount(body);
       return response;
     } catch (e) {
       rethrow;

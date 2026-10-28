@@ -47,6 +47,17 @@ import '../Data/BodyModel/CreateOpportunityReportBodyModel.dart';
 import '../Data/ResponseModel/CreateOpportunityReportResModel.dart';
 import '../Data/ResponseModel/GetMyCompanyJobPostsResModel.dart';
 import '../Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
+import '../Data/BodyModel/UpdateConsentsBodyModel.dart';
+import '../Data/ResponseModel/UpdateConsentsResModel.dart';
+import '../Data/ResponseModel/DeleteJobPostResModel.dart';
+import '../Data/BodyModel/SubmitGrievanceBodyModel.dart';
+import '../Data/ResponseModel/SubmitGrievanceResModel.dart';
+import '../Data/BodyModel/RequestDataSummaryBodyModel.dart';
+import '../Data/ResponseModel/RequestDataSummaryResModel.dart';
+import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
+import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
+import '../Data/ResponseModel/DeleteUserAccountResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -192,6 +203,11 @@ abstract class ApiStateNetwork {
     @Body() UpdateJobPostingBodyModel body,
   );
 
+  @DELETE("/api/v1/business/job-posts/{id}")
+  Future<DeleteJobPostResModel> deleteJobPost(
+    @Path("id") String id,
+  );
+
   @POST("/api/v1/business/opportunities")
   Future<CreateBusinessOpportunityResModel> createBusinessOpportunity(
     @Body() CreateBusinessOpportunityBodyModel body,
@@ -216,5 +232,31 @@ abstract class ApiStateNetwork {
     @Query("limit") int? limit,
     @Query("search") String? search,
     @Query("companyId") String? companyId,
+  );
+
+  @PATCH("/api/v1/auth/update-consents")
+  Future<UpdateConsentsResModel> updateConsents(
+    @Body() UpdateConsentsBodyModel body,
+  );
+
+  @POST("/api/v1/compliance/grievance/submit")
+  Future<SubmitGrievanceResModel> submitGrievance(
+    @Body() SubmitGrievanceBodyModel body,
+  );
+
+  @POST("/api/v1/auth/request-data-summary")
+  Future<RequestDataSummaryResModel> requestDataSummary(
+    @Body() RequestDataSummaryBodyModel body,
+  );
+
+  @GET("/api/v1/business/job-applications/me")
+  Future<GetMyJobApplicationsResModel> getMyJobApplications();
+
+  @POST("/api/v1/auth/delete-account/send-otp")
+  Future<SendDeletionOtpResModel> sendDeleteAccountOtp();
+
+  @DELETE("/api/v1/auth/user_delete")
+  Future<DeleteUserAccountResModel> deleteUserAccount(
+    @Body() DeleteUserAccountBodyModel body,
   );
 }
