@@ -11,6 +11,7 @@ import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 
 class DynamicDashboardScreen extends ConsumerStatefulWidget {
   const DynamicDashboardScreen({super.key});
@@ -38,6 +39,24 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     _ensureHiveOpen();
     _checkPermissions();
     _startLocationUpdates();
+    _syncFcmTokenIfAvailable();
+  }
+
+  Future<void> _syncFcmTokenIfAvailable() async {
+    try {
+      final box = Hive.isBoxOpen('userdata')
+          ? Hive.box('userdata')
+          : await Hive.openBox('userdata');
+      final fcmToken = box.get('fcm_token')?.toString();
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        FcmNotificationService.syncFcmToken(
+          fcmToken,
+          authService: ref.read(authServiceProvider),
+        );
+      }
+    } catch (e) {
+      debugPrint('[FCM] Error checking fcm token: $e');
+    }
   }
 
   Future<void> _ensureHiveOpen() async {
@@ -146,7 +165,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     try {
       await ref
           .read(authServiceProvider)
-          .updateLocation(
+          .updateUserLocationData(
             latitude: position.latitude,
             longitude: position.longitude,
           );

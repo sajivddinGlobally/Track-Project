@@ -70,6 +70,10 @@ import '../Data/ResponseModel/CompanyTransferSendOtpResModel.dart';
 import '../Data/ResponseModel/CompanyTransferLookupResModel.dart';
 import '../Data/BodyModel/CompanyTransferExecuteBodyModel.dart';
 import '../Data/ResponseModel/CompanyTransferExecuteResModel.dart';
+import '../Data/BodyModel/UpdateUserLocationBodyModel.dart';
+import '../Data/BodyModel/UpdateFcmTokenBodyModel.dart';
+import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
+import '../Data/ResponseModel/FriendLocationResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -288,9 +292,48 @@ class Authservice {
     }
   }
 
-  Future<dynamic> getLocation({required String id}) async {
+  Future<FriendLocationResModel> getLocation({required String id}) async {
     try {
       final response = await api.getLocation(id);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<FriendLocationSharingStatusResModel> getFriendLocationSharingStatusData(
+    String id,
+  ) async {
+    try {
+      final response = await api.getFriendLocationSharingStatus(id);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> updateUserLocationData({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final body = UpdateUserLocationBodyModel(
+        location: LocationPoint(
+          type: "Point",
+          coordinates: [longitude, latitude], // Longitude first per GeoJSON
+        ),
+      );
+      final response = await api.updateUserLocation(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> updateFcmTokenData(String fcmToken) async {
+    try {
+      final body = UpdateFcmTokenBodyModel(fcmToken: fcmToken);
+      final response = await api.updateFcmToken(body);
       return response;
     } catch (e) {
       rethrow;

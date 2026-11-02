@@ -59,6 +59,7 @@ dependencies:
   flutter_secure_storage: ^10.3.4
   file_picker: ^11.0.3
   crypto: ^3.0.8
+  webview_flutter: ^4.13.1
 
 dev_dependencies:
   flutter_test:

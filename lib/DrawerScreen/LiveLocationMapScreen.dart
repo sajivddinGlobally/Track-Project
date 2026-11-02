@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
+import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Utils/AddressText.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 // Socket server root (no /api/v1 path).
-const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
+// const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
+const String kSocketBaseUrl = 'https://api.tracklovedones.com';
 
-class LiveLocationMapScreen extends StatefulWidget {
+class LiveLocationMapScreen extends ConsumerStatefulWidget {
   final LocationSharingUser user;
   final bool isHindi;
 
@@ -22,10 +25,11 @@ class LiveLocationMapScreen extends StatefulWidget {
   });
 
   @override
-  State<LiveLocationMapScreen> createState() => _LiveLocationMapScreenState();
+  ConsumerState<LiveLocationMapScreen> createState() =>
+      _LiveLocationMapScreenState();
 }
 
-class _LiveLocationMapScreenState extends State<LiveLocationMapScreen> {
+class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
   final MapController _mapController = MapController();
   io.Socket? _socket;
 
@@ -46,6 +50,26 @@ class _LiveLocationMapScreenState extends State<LiveLocationMapScreen> {
     if (lat != null && lng != null) _position = LatLng(lat, lng);
     _updatedAt = widget.user.updatedAt;
     _connect();
+    if (_position == null && widget.user.userId != null) {
+      _fetchFriendLocation(widget.user.userId!);
+    }
+  }
+
+  Future<void> _fetchFriendLocation(String friendId) async {
+    try {
+      final res = await ref.read(authServiceProvider).getLocation(id: friendId);
+      if (_disposed || !mounted) return;
+      if (res.success == true && res.data?.location?.coordinates != null) {
+        final coords = res.data!.location!.coordinates;
+        if (coords.length >= 2) {
+          final lat = coords[1];
+          final lng = coords[0];
+          _moveTo(LatLng(lat, lng), res.data?.updatedAt);
+        }
+      }
+    } catch (e) {
+      debugPrint('[LiveLocationMap] Fetch location error: $e');
+    }
   }
 
   Future<void> _connect() async {

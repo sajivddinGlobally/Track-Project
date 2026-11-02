@@ -528,12 +528,12 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
-  Future<dynamic> getLocation(String id) async {
+  Future<FriendLocationResModel> getLocation(String id) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<dynamic>(
+    final _options = _setStreamType<FriendLocationResModel>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -543,8 +543,43 @@ class _ApiStateNetwork implements ApiStateNetwork {
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
-    final _result = await _dio.fetch(_options);
-    final _value = _result.data;
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late FriendLocationResModel _value;
+    try {
+      _value = FriendLocationResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<FriendLocationSharingStatusResModel> getFriendLocationSharingStatus(
+    String id,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<FriendLocationSharingStatusResModel>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/network/friend/${id}/location-sharing',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late FriendLocationSharingStatusResModel _value;
+    try {
+      _value = FriendLocationSharingStatusResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
     return _value;
   }
 
@@ -1542,6 +1577,50 @@ class _ApiStateNetwork implements ApiStateNetwork {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;
     }
+    return _value;
+  }
+
+  @override
+  Future<dynamic> updateUserLocation(UpdateUserLocationBodyModel body) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<dynamic>(
+      Options(method: 'PATCH', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/auth/userprofile_update',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch(_options);
+    final _value = _result.data;
+    return _value;
+  }
+
+  @override
+  Future<dynamic> updateFcmToken(UpdateFcmTokenBodyModel body) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<dynamic>(
+      Options(method: 'PATCH', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/auth/fcm-token',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch(_options);
+    final _value = _result.data;
     return _value;
   }
 

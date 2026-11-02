@@ -67,6 +67,10 @@ import '../Data/ResponseModel/CompanyTransferSendOtpResModel.dart';
 import '../Data/ResponseModel/CompanyTransferLookupResModel.dart';
 import '../Data/BodyModel/CompanyTransferExecuteBodyModel.dart';
 import '../Data/ResponseModel/CompanyTransferExecuteResModel.dart';
+import '../Data/BodyModel/UpdateUserLocationBodyModel.dart';
+import '../Data/BodyModel/UpdateFcmTokenBodyModel.dart';
+import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
+import '../Data/ResponseModel/FriendLocationResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -146,12 +150,17 @@ abstract class ApiStateNetwork {
   ]);
 
   @GET("/api/v1/network/friend/{id}/location")
-  Future<dynamic> getLocation(@Path("id") String id);
+  Future<FriendLocationResModel> getLocation(@Path("id") String id);
 
   @PATCH("/api/v1/network/friend/{id}/location-sharing")
   Future<dynamic> locationSharing(
     @Path("id") String id,
     @Body() LocationSharingBodyModel body,
+  );
+
+  @GET("/api/v1/network/friend/{id}/location-sharing")
+  Future<FriendLocationSharingStatusResModel> getFriendLocationSharingStatus(
+    @Path("id") String id,
   );
 
   @GET("/api/v1/network/location-sharing/received")
@@ -313,4 +322,10 @@ abstract class ApiStateNetwork {
   Future<CompanyTransferExecuteResModel> executeCompanyTransfer(
     @Body() CompanyTransferExecuteBodyModel body,
   );
+
+  @PATCH("/api/v1/auth/userprofile_update")
+  Future<dynamic> updateUserLocation(@Body() UpdateUserLocationBodyModel body);
+
+  @PATCH("/api/v1/auth/fcm-token")
+  Future<dynamic> updateFcmToken(@Body() UpdateFcmTokenBodyModel body);
 }

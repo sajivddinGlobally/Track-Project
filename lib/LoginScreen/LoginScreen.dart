@@ -15,6 +15,7 @@ import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -440,6 +441,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "isParentConsentApproved",
                                         true,
                                       );
+                                      final cachedFcm =
+                                          box.get("fcm_token")?.toString();
+                                      if (cachedFcm != null &&
+                                          cachedFcm.isNotEmpty) {
+                                        FcmNotificationService.syncFcmToken(
+                                          cachedFcm,
+                                          authService: service,
+                                        );
+                                      }
                                       if (context.mounted) {
                                         final isLocationGranted =
                                             await Permission.location.isGranted;
