@@ -4,10 +4,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
-import 'package:track_loved/DrawerScreen/ManageMyApplicationsScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getBusinessOpportunitiesProvider.dart';
+import 'package:track_loved/DrawerScreen/provider/getMyJobApplicationsProvider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/CreateOpportunityReportBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
@@ -20,20 +22,32 @@ class ExploreBusinessScreen extends ConsumerStatefulWidget {
       _ExploreBusinessScreenState();
 }
 
-class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
+class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
+  late TabController _tabController;
   bool _isHindi = false;
   String _searchQuery = '';
+  bool _isFirewallBannerExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    var box = Hive.box('userdata');
+    var role = box.get('role');
     final trimmedQuery = _searchQuery.trim();
     final isPincode =
         trimmedQuery.isNotEmpty && RegExp(r'^\d+$').hasMatch(trimmedQuery);
@@ -46,6 +60,8 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
     final asyncOpportunities = ref.watch(
       getBusinessOpportunitiesProvider(filter),
     );
+    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final bool isKeyboardOpen = keyboardHeight > 80;
 
     return Scaffold(
       drawer: AppDrawer(isHindi: _isHindi),
@@ -62,239 +78,469 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
           });
         },
       ),
-      body: SafeArea(
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 700),
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Search Bar
-                Container(
-                  height: 48.h,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24.r),
-                    border: Border.all(color: const Color(0xFFDCDFE4)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: SafeArea(
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 700),
+              padding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: isKeyboardOpen ? 8.h : 12.h,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Bar
+                  Container(
+                    height: 44.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24.r),
+                      border: Border.all(color: const Color(0xFFDCDFE4)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 14.w),
+                    alignment: Alignment.center,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
+                      style: TextStyle(
+                        fontSize: 13.5.sp,
+                        color: Colors.black87,
                       ),
-                    ],
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(vertical: 8.h),
+                        hintText: _isHindi
+                            ? 'शहर, पिनकोड या व्यापार प्रकार से खोजें...'
+                            : 'Search by city, pincode, or business type...',
+                        hintStyle: TextStyle(
+                          color: Colors.black45,
+                          fontSize: 12.5.sp,
+                        ),
+                        border: InputBorder.none,
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: const Color(0xFF0B4F4A),
+                          size: 19.sp,
+                        ),
+                        prefixIconConstraints: BoxConstraints(
+                          minWidth: 32.w,
+                          minHeight: 32.h,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  size: 18.sp,
+                                  color: Colors.black45,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
                   ),
-                  padding: EdgeInsets.symmetric(horizontal: 14.w),
-                  alignment: Alignment.center,
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
+                  SizedBox(height: isKeyboardOpen ? 8.h : 12.h),
+                  // Corporate Location Firewall & Intermediary Notice Banner (Responsive & Collapsible)
+                  InkWell(
+                    onTap: () {
                       setState(() {
-                        _searchQuery = val;
+                        _isFirewallBannerExpanded = !_isFirewallBannerExpanded;
                       });
                     },
-                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10.h),
-                      hintText: _isHindi
-                          ? 'शहर, पिनकोड या व्यापार प्रकार से खोजें...'
-                          : 'Search by city, pincode, or business type...',
-                      hintStyle: TextStyle(
-                        color: Colors.black45,
-                        fontSize: 13.sp,
-                      ),
-                      border: InputBorder.none,
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: const Color(0xFF0B4F4A),
-                        size: 20.sp,
-                      ),
-                      prefixIconConstraints: BoxConstraints(
-                        minWidth: 32.w,
-                        minHeight: 32.h,
-                      ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.clear,
-                                size: 18.sp,
-                                color: Colors.black45,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _searchController.clear();
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-
-                // Corporate Location Firewall & Intermediary Notice Banner
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 14.w,
-                    vertical: 10.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F3D38),
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(
-                      color: const Color(0xFF14B8A6).withValues(alpha: 0.4),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: (isKeyboardOpen || !_isFirewallBannerExpanded)
+                            ? 7.h
+                            : 10.h,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(5.r),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF072420),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.security_rounded,
-                              size: 16.sp,
-                              color: const Color(0xFF5EEAD4),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: Text(
-                              _isHindi
-                                  ? 'स्थान गोपनीयता सुरक्षा (Corporate Location Firewall)'
-                                  : 'Corporate Location Firewall Active',
-                              style: TextStyle(
-                                fontSize: 13.5.sp,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF5EEAD4),
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6.w,
-                              vertical: 2.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF14B8A6,
-                              ).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4.r),
-                            ),
-                            child: Text(
-                              _isHindi ? '100% सुरक्षित' : 'PROTECTED',
-                              style: TextStyle(
-                                fontSize: 10.5.sp,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF5EEAD4),
-                              ),
-                            ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F3D38),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.4),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      SizedBox(height: 6.h),
-                      Text(
-                        _isHindi
-                            ? 'कंपनियों और नियोक्ताओं के पास आपके GPS स्थान, स्थान इतिहास या निजी सर्कल तक कोई पहुंच नहीं है।'
-                            : 'Recruiters and companies have zero access to your GPS location, location history, or private circles.',
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        _isHindi
-                            ? 'मध्यस्थ सूचना: सूचियाँ स्वतंत्र कंपनियों द्वारा सीधे अपलोड की जाती हैं। यह मंच पोस्टिंग की जांच नहीं करता और विवादों के लिए कोई कानूनी दायित्व नहीं रखता। आवेदन करने से पहले स्वयं जांच करें।'
-                            : 'Intermediary Notice: Listings are uploaded directly by independent external companies. The Platform does not pre-screen, vet, or verify these postings and holds no legal liability for disputes. Users must perform their own due diligence before applying.',
-                        style: TextStyle(
-                          fontSize: 11.5.sp,
-                          color: Colors.white70,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 14.h),
-
-                // Section Title & Manage Applications Shortcut
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _isHindi
-                            ? 'सक्रिय विस्तार सूचियाँ'
-                            : 'Active Expansion Listings',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(5.r),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF072420),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.security_rounded,
+                                  size: 15.sp,
+                                  color: const Color(0xFF5EEAD4),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  _isHindi
+                                      ? 'स्थान गोपनीयता सुरक्षा (Firewall Active)'
+                                      : 'Corporate Location Firewall Active',
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF5EEAD4),
+                                    letterSpacing: 0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 6.w,
+                                  vertical: 2.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF14B8A6,
+                                  ).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                                child: Text(
+                                  _isHindi ? '100% सुरक्षित' : 'PROTECTED',
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF5EEAD4),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Icon(
+                                (isKeyboardOpen || !_isFirewallBannerExpanded)
+                                    ? Icons.keyboard_arrow_down_rounded
+                                    : Icons.keyboard_arrow_up_rounded,
+                                color: const Color(0xFF5EEAD4),
+                                size: 18.sp,
+                              ),
+                            ],
+                          ),
+                          if (!isKeyboardOpen && _isFirewallBannerExpanded) ...[
+                            SizedBox(height: 6.h),
+                            Text(
+                              _isHindi
+                                  ? 'कंपनियों और नियोक्ताओं के पास आपके GPS स्थान, स्थान इतिहास या निजी सर्कल तक कोई पहुंच नहीं है।'
+                                  : 'Recruiters and companies have zero access to your GPS location, location history, or private circles.',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                height: 1.3,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              _isHindi
+                                  ? 'मध्यस्थ सूचना: सूचियाँ स्वतंत्र कंपनियों द्वारा सीधे अपलोड की जाती हैं। यह मंच पोस्टिंग की जांच नहीं करता और विवादों के लिए कोई कानूनी दायित्व नहीं रखता। आवेदन करने से पहले स्वयं जांच करें।'
+                                  : 'Intermediary Notice: Listings are uploaded directly by independent external companies. The Platform does not pre-screen, vet, or verify these postings and holds no legal liability for disputes. Users must perform their own due diligence before applying.',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: Colors.white70,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ManageMyApplicationsScreen(
-                              initialHindi: _isHindi,
+                  ),
+                  if (!isKeyboardOpen) ...[
+                    SizedBox(height: 12.h),
+                    // Section Title
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _isHindi
+                                ? 'व्यापार एवं नौकरी के अवसर'
+                                : 'Explore Opportunities & Jobs',
+                            style: TextStyle(
+                              fontSize: 17.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                  ] else ...[
+                    SizedBox(height: 6.h),
+                  ],
+                  // Opportunities List from Backend API
+                  Expanded(
+                    child: asyncOpportunities.when(
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                      error: (error, stack) => Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.w),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 48.sp,
+                                color: Colors.white70,
+                              ),
+                              SizedBox(height: 12.h),
+                              Text(
+                                _isHindi
+                                    ? 'डेटा लोड करने में समस्या आई'
+                                    : 'Failed to load opportunities',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 6.h),
+                              Text(
+                                error.toString(),
+                                style: TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 12.sp,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 16.h),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: const Color(0xFF0B4F4A),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  ref.invalidate(
+                                    getBusinessOpportunitiesProvider(filter),
+                                  );
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: Text(
+                                  _isHindi ? 'पुनः प्रयास करें' : 'Retry',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      data: (response) {
+                        final rawBusiness = response.businessPosts;
+                        final rawJobs = response.jobPosts;
+
+                        bool isJobItem(BusinessOpportunityItem item) {
+                          if ((item.requiredInvest != null &&
+                                  item.requiredInvest.toString() != '0') ||
+                              (item.opportunityType != null &&
+                                  item.opportunityType!.trim().isNotEmpty) ||
+                              (item.opportunityHeadline != null &&
+                                  item.opportunityHeadline!
+                                      .trim()
+                                      .isNotEmpty)) {
+                            return false;
+                          }
+                          return item.isJob;
+                        }
+
+                        final businessList = rawBusiness
+                            .where((item) => !isJobItem(item))
+                            .toList();
+
+                        final Set<String> seenJobIds = {};
+                        final List<BusinessOpportunityItem> jobList = [];
+                        for (final j in [
+                          ...rawJobs,
+                          ...rawBusiness.where((item) => isJobItem(item)),
+                        ]) {
+                          final id = j.id ?? '_';
+                          if (!seenJobIds.contains(id)) {
+                            seenJobIds.add(id);
+                            jobList.add(j);
+                          }
+                        }
+
+                        final filteredBusiness = _filterList(
+                          businessList,
+                          _searchQuery,
+                        );
+                        final filteredJobs = _filterList(jobList, _searchQuery);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Tab Bar for Business vs Jobs
+                            TabBar(
+                              padding: EdgeInsets.zero,
+                              labelPadding: EdgeInsets.symmetric(
+                                horizontal: 4.w,
+                              ),
+                              controller: _tabController,
+                              indicatorColor: const Color(0xFFE6C567),
+                              indicatorWeight: 3,
+                              labelColor: const Color(0xFFE6C567),
+                              unselectedLabelColor: Colors.white70,
+                              labelStyle: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              unselectedLabelStyle: TextStyle(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+
+                              tabs: [
+                                Tab(
+                                  height: 38.h,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.business_center_rounded,
+                                        size: 16.sp,
+                                      ),
+                                      SizedBox(width: 6.w),
+                                      Flexible(
+                                        child: Text(
+                                          _isHindi
+                                              ? 'व्यापार अवसर'
+                                              : 'Business',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Tab(
+                                  height: 38.h,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.work_rounded, size: 16.sp),
+                                      SizedBox(width: 6.w),
+                                      Flexible(
+                                        child: Text(
+                                          _isHindi
+                                              ? 'नौकरी अवसर'
+                                              : 'Job Openings',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: isKeyboardOpen ? 6.h : 10.h),
+                            // TabBarView Content
+                            Expanded(
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildBusinessTab(
+                                    filteredBusiness,
+                                    role,
+                                    filter,
+                                  ),
+                                  _buildJobsTab(filteredJobs, role, filter),
+                                ],
+                              ),
+                            ),
+                          ],
                         );
                       },
-                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                  ),
+                  if (!isKeyboardOpen) ...[
+                    SizedBox(height: 6.h),
+
+                    // Dynamic Legal Disclaimer Anchor (Statically Pinned to Feed Stream Bottom)
+                    InkWell(
+                      onTap: () => _showLegalDisclaimersBottomSheet(context),
+                      borderRadius: BorderRadius.circular(8.r),
                       child: Container(
+                        width: double.infinity,
                         padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 5.h,
+                          vertical: 8.h,
+                          horizontal: 12.w,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0F3D38),
-                          borderRadius: BorderRadius.circular(20.r),
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8.r),
                           border: Border.all(
-                            color: const Color(
-                              0xFFE6C567,
-                            ).withValues(alpha: 0.6),
+                            color: Colors.white.withValues(alpha: 0.15),
                           ),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.assignment_turned_in_outlined,
+                              Icons.gavel_rounded,
+                              size: 15.sp,
                               color: const Color(0xFFE6C567),
-                              size: 14.sp,
                             ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              _isHindi ? 'मेरे आवेदन' : 'My Applications',
-                              style: TextStyle(
-                                fontSize: 11.5.sp,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFFE6C567),
+                            SizedBox(width: 6.w),
+                            Flexible(
+                              child: Text(
+                                _isHindi
+                                    ? 'कानूनी अस्वीकरण (Legal Disclaimers & Intermediary Notice)'
+                                    : 'Legal Disclaimers & Intermediary Safe Harbor Notice',
+                                style: TextStyle(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFE6C567),
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: const Color(0xFFE6C567),
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -302,443 +548,773 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                       ),
                     ),
                   ],
-                ),
-                SizedBox(height: 10.h),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                // Opportunities List from Backend API
-                Expanded(
-                  child: asyncOpportunities.when(
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                    error: (error, stack) => Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20.w),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48.sp,
-                              color: Colors.white70,
-                            ),
-                            SizedBox(height: 12.h),
-                            Text(
-                              _isHindi
-                                  ? 'डेटा लोड करने में समस्या आई'
-                                  : 'Failed to load opportunities',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            SizedBox(height: 6.h),
-                            Text(
-                              error.toString(),
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 12.sp,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 16.h),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF0B4F4A),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                              ),
-                              onPressed: () {
-                                ref.invalidate(
-                                  getBusinessOpportunitiesProvider(filter),
-                                );
-                              },
-                              icon: const Icon(Icons.refresh),
-                              label: Text(
-                                _isHindi ? 'पुनः प्रयास करें' : 'Retry',
-                              ),
-                            ),
-                          ],
+  Widget _buildBusinessTab(
+    List<BusinessOpportunityItem> list,
+    String? role,
+    BusinessOpportunitiesFilter filter,
+  ) {
+    if (list.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.business_center_outlined,
+                  size: 54.sp,
+                  color: Colors.white38,
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  _isHindi
+                      ? 'कोई व्यापार अवसर नहीं मिला'
+                      : 'No business opportunities found',
+                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF0B4F4A),
+      backgroundColor: Colors.white,
+      onRefresh: () async {
+        ref.invalidate(getBusinessOpportunitiesProvider(filter));
+      },
+      child: ListView.builder(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          final item = list[index];
+          return _buildBusinessOpportunityCard(item, role);
+        },
+      ),
+    );
+  }
+
+  Widget _buildJobsTab(
+    List<BusinessOpportunityItem> list,
+    String? role,
+    BusinessOpportunitiesFilter filter,
+  ) {
+    if (list.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.work_outline_rounded,
+                  size: 54.sp,
+                  color: Colors.white38,
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  _isHindi
+                      ? 'कोई नौकरी का अवसर नहीं मिला'
+                      : 'No job openings found',
+                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF0B4F4A),
+      backgroundColor: Colors.white,
+      onRefresh: () async {
+        ref.invalidate(getBusinessOpportunitiesProvider(filter));
+      },
+      child: ListView.builder(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: list.length,
+        itemBuilder: (context, index) {
+          final item = list[index];
+          return _buildJobOpeningCard(item, role);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBusinessOpportunityCard(
+    BusinessOpportunityItem item,
+    String? role,
+  ) {
+    final location = [
+      item.city,
+      item.state,
+    ].where((s) => s != null && s.trim().isNotEmpty).join(', ');
+
+    final inv = _formatInvestment(item.requiredInvest);
+
+    final companyName = item.ownerName.isNotEmpty
+        ? item.ownerName
+        : (item.companyType?.isNotEmpty == true
+              ? item.companyType!
+              : 'Verified Business');
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFDCDFE4), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 6.w,
+                  runSpacing: 4.h,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B4F4A).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        item.opportunityType ?? 'Opportunity',
+                        style: TextStyle(
+                          fontSize: 11.5.sp,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0B4F4A),
                         ),
                       ),
                     ),
-                    data: (response) {
-                      final list = response.data ?? [];
-                      if (list.isEmpty) {
-                        return Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(20.w),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.business_center_outlined,
-                                  size: 54.sp,
-                                  color: Colors.white38,
-                                ),
-                                SizedBox(height: 12.h),
-                                Text(
-                                  _isHindi
-                                      ? 'कोई व्यापार अवसर नहीं मिला'
-                                      : 'No business opportunities found',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14.sp,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                    if (item.companyType != null &&
+                        item.companyType!.trim().isNotEmpty)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Text(
+                          item.companyType!,
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    if (location.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 14.sp,
+                            color: const Color(0xFF0B4F4A),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            location,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        );
-                      }
-
-                      return RefreshIndicator(
-                        color: const Color(0xFF0B4F4A),
-                        backgroundColor: Colors.white,
-                        onRefresh: () async {
-                          ref.invalidate(
-                            getBusinessOpportunitiesProvider(filter),
-                          );
-                        },
-                        child: ListView.builder(
-                          itemCount: list.length,
-                          itemBuilder: (context, index) {
-                            final item = list[index];
-                            final location = [item.city, item.state]
-                                .where((s) => s != null && s.trim().isNotEmpty)
-                                .join(', ');
-
-                            String inv =
-                                item.requiredInvest?.toString() ?? 'N/A';
-                            if (inv != 'N/A' &&
-                                !inv.startsWith('₹') &&
-                                !inv.toLowerCase().contains('rs')) {
-                              inv = '₹$inv';
-                            }
-
-                            final companyName = item.ownerName.isNotEmpty
-                                ? item.ownerName
-                                : (item.companyType?.isNotEmpty == true
-                                      ? item.companyType!
-                                      : 'Verified Business');
-
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 16.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16.r),
-                                border: Border.all(
-                                  color: const Color(0xFFDCDFE4),
-                                  width: 1,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              padding: EdgeInsets.all(16.w),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 10.w,
-                                                vertical: 4.h,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFF0B4F4A,
-                                                ).withValues(alpha: 0.08),
-                                                borderRadius:
-                                                    BorderRadius.circular(6.r),
-                                              ),
-                                              child: Text(
-                                                item.opportunityType ??
-                                                    'Opportunity',
-                                                style: TextStyle(
-                                                  fontSize: 11.5.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: const Color(
-                                                    0xFF0B4F4A,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            if (location.isNotEmpty) ...[
-                                              SizedBox(width: 8.w),
-                                              Expanded(
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.location_on,
-                                                      size: 14.sp,
-                                                      color: const Color(
-                                                        0xFF0B4F4A,
-                                                      ),
-                                                    ),
-                                                    SizedBox(width: 4.w),
-                                                    Flexible(
-                                                      child: Text(
-                                                        location,
-                                                        style: TextStyle(
-                                                          fontSize: 12.sp,
-                                                          color: Colors.black54,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      // Screen 2: Report Listing Anchor (Applicant Feed Safe Harbor)
-                                      InkWell(
-                                        onTap: () =>
-                                            _showReportAbuseBottomSheet(
-                                              context,
-                                              item,
-                                            ),
-                                        borderRadius: BorderRadius.circular(
-                                          6.r,
-                                        ),
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8.w,
-                                            vertical: 4.h,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withValues(
-                                              alpha: 0.08,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              6.r,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.red.withValues(
-                                                alpha: 0.25,
-                                              ),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.flag_outlined,
-                                                size: 13.sp,
-                                                color: Colors.red.shade700,
-                                              ),
-                                              SizedBox(width: 4.w),
-                                              Text(
-                                                _isHindi ? 'रिपोर्ट' : 'Report',
-                                                style: TextStyle(
-                                                  fontSize: 11.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.red.shade700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 10.h),
-                                  Text(
-                                    item.opportunityHeadline ??
-                                        'Business Opportunity',
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Text(
-                                    companyName,
-                                    style: TextStyle(
-                                      fontSize: 13.5.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF0B4F4A),
-                                    ),
-                                  ),
-                                  SizedBox(height: 12.h),
-                                  Row(
-                                    children: [
-                                      _infoBadge(
-                                        Icons.account_balance_wallet,
-                                        _isHindi ? 'निवेश' : 'Investment',
-                                        inv,
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      _infoBadge(
-                                        Icons.aspect_ratio,
-                                        _isHindi ? 'क्षेत्र' : 'Area',
-                                        item.area ?? 'N/A',
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Row(
-                                    children: [
-                                      _infoBadge(
-                                        Icons.trending_up,
-                                        _isHindi ? 'रिटर्न' : 'Returns',
-                                        item.expectedReturn?.toString() ??
-                                            'N/A',
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      _infoBadge(
-                                        Icons.pin_drop,
-                                        _isHindi ? 'पिनकोड' : 'Pincode',
-                                        item.pincode ?? 'N/A',
-                                      ),
-                                    ],
-                                  ),
-                                  if (item.opportunityDescription?.isNotEmpty ==
-                                      true) ...[
-                                    SizedBox(height: 12.h),
-                                    Text(
-                                      item.opportunityDescription!,
-                                      style: TextStyle(
-                                        fontSize: 13.sp,
-                                        color: Colors.black54,
-                                        height: 1.35,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                  SizedBox(height: 16.h),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 44.h,
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF0B4F4A,
-                                        ),
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10.r,
-                                          ),
-                                        ),
-                                      ),
-                                      // Preserved original direct contact call (wrapped inside statutory data transference dialog)
-                                      // onPressed: () {
-                                      //   _showContactDialog(context, item);
-                                      // },
-                                      onPressed: () {
-                                        _showDataTransferenceDialog(
-                                          context,
-                                          item,
-                                        );
-                                      },
-                                      icon: Icon(
-                                        Icons.send_rounded,
-                                        size: 15.sp,
-                                        color: Colors.white,
-                                      ),
-                                      label: Text(
-                                        _isHindi
-                                            ? 'आवेदन करें / प्रोफ़ाइल साझा करें'
-                                            : 'Apply / Share Profile',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13.5.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                        ],
+                      ),
+                  ],
                 ),
-                SizedBox(height: 6.h),
-
-                // Dynamic Legal Disclaimer Anchor (Statically Pinned to Feed Stream Bottom)
+              ),
+              SizedBox(width: 8.w),
+              if (role == "user")
                 InkWell(
-                  onTap: () => _showLegalDisclaimersBottomSheet(context),
-                  borderRadius: BorderRadius.circular(8.r),
+                  onTap: () => _showReportAbuseBottomSheet(context, item),
+                  borderRadius: BorderRadius.circular(6.r),
                   child: Container(
-                    width: double.infinity,
                     padding: EdgeInsets.symmetric(
-                      vertical: 8.h,
-                      horizontal: 12.w,
+                      horizontal: 8.w,
+                      vertical: 4.h,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8.r),
+                      color: Colors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6.r),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.15),
+                        color: Colors.red.withValues(alpha: 0.25),
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.gavel_rounded,
-                          size: 15.sp,
-                          color: const Color(0xFFE6C567),
+                          Icons.flag_outlined,
+                          size: 13.sp,
+                          color: Colors.red.shade700,
                         ),
-                        SizedBox(width: 6.w),
-                        Flexible(
-                          child: Text(
-                            _isHindi
-                                ? 'कानूनी अस्वीकरण (Legal Disclaimers & Intermediary Notice)'
-                                : 'Legal Disclaimers & Intermediary Safe Harbor Notice',
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFE6C567),
-                              decoration: TextDecoration.underline,
-                              decorationColor: const Color(0xFFE6C567),
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                        SizedBox(width: 4.w),
+                        Text(
+                          _isHindi ? 'à¤°à¤¿à¤ªà¥‹à¤°à¥à¤Ÿ' : 'Report',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            item.opportunityHeadline ?? 'Business Opportunity',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-        ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              _infoBadge(
+                Icons.account_balance_wallet,
+                _isHindi ? 'निवेश' : 'Investment',
+                inv,
+              ),
+              SizedBox(width: 8.w),
+              _infoBadge(
+                Icons.aspect_ratio,
+                _isHindi ? 'à¤•à¥à¤·à¥‡à¤¤à¥à¤°' : 'Area',
+                item.area ?? 'N/A',
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              _infoBadge(
+                Icons.trending_up,
+                _isHindi ? 'à¤°à¤¿à¤Ÿà¤°à¥à¤¨' : 'Returns',
+                item.expectedReturn?.toString() ?? 'N/A',
+              ),
+              SizedBox(width: 8.w),
+              _infoBadge(
+                Icons.pin_drop,
+                _isHindi ? 'à¤ªà¤¿à¤¨à¤•à¥‹à¤¡' : 'Pincode',
+                item.pincode ?? 'N/A',
+              ),
+            ],
+          ),
+          if (item.opportunityDescription?.isNotEmpty == true) ...[
+            SizedBox(height: 12.h),
+            Text(
+              item.opportunityDescription!,
+              style: TextStyle(
+                fontSize: 13.sp,
+                color: Colors.black54,
+                height: 1.35,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          SizedBox(height: 16.h),
+          if (role == "user")
+            SizedBox(
+              width: double.infinity,
+              height: 44.h,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B4F4A),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                onPressed: () {
+                  _showDataTransferenceDialog(context, item);
+                },
+                icon: Icon(
+                  Icons.send_rounded,
+                  size: 15.sp,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _isHindi
+                      ? 'à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¥‡à¤‚ / à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤¾à¤à¤¾ à¤•à¤°à¥‡à¤‚'
+                      : 'Apply / Share Profile',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5.sp,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
+  }
+
+  Widget _buildJobOpeningCard(BusinessOpportunityItem item, String? role) {
+    final location = [
+      item.city,
+      item.state,
+    ].where((s) => s != null && s.trim().isNotEmpty).join(', ');
+
+    final ctc = _formatCtc(item.annualCtcPackage);
+
+    final employerName = item.ownerName.isNotEmpty
+        ? item.ownerName
+        : (item.companyType?.isNotEmpty == true
+              ? item.companyType!
+              : 'Hiring Company');
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFDCDFE4), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(16.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 6.w,
+                  runSpacing: 4.h,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B4F4A).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        (item.employmentType?.isNotEmpty == true
+                                ? item.employmentType!
+                                : 'Full-Time')
+                            .toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0B4F4A),
+                        ),
+                      ),
+                    ),
+                    if (item.hierarchyLevel?.isNotEmpty == true)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD97706).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Text(
+                          item.hierarchyLevel!.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFD97706),
+                          ),
+                        ),
+                      ),
+                    if (location.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 14.sp,
+                            color: const Color(0xFF0B4F4A),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            location,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              if (role == "user")
+                InkWell(
+                  onTap: () => _showReportAbuseBottomSheet(context, item),
+                  borderRadius: BorderRadius.circular(6.r),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border.all(
+                        color: Colors.red.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.flag_outlined,
+                          size: 13.sp,
+                          color: Colors.red.shade700,
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          _isHindi ? 'à¤°à¤¿à¤ªà¥‹à¤°à¥à¤Ÿ' : 'Report',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            item.jobTitle ?? 'Job Opportunity',
+            style: TextStyle(
+              fontSize: 16.5.sp,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            children: [
+              _infoBadge(
+                Icons.currency_rupee_rounded,
+                _isHindi
+                    ? 'à¤µà¤¾à¤°à¥à¤·à¤¿à¤• à¤ªà¥ˆà¤•à¥‡à¤œ'
+                    : 'Annual CTC',
+                ctc,
+              ),
+              SizedBox(width: 8.w),
+              _infoBadge(
+                Icons.pin_drop,
+                _isHindi ? 'à¤ªà¤¿à¤¨à¤•à¥‹à¤¡' : 'Pincode',
+                item.pincode ?? 'N/A',
+              ),
+            ],
+          ),
+          if (item.jobDescription?.isNotEmpty == true) ...[
+            SizedBox(height: 12.h),
+            Text(
+              item.jobDescription!,
+              style: TextStyle(
+                fontSize: 13.sp,
+                color: Colors.black54,
+                height: 1.35,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (item.requirements != null && item.requirements!.isNotEmpty) ...[
+            SizedBox(height: 12.h),
+            Text(
+              _isHindi
+                  ? 'à¤†à¤µà¤¶à¥à¤¯à¤• à¤¯à¥‹à¤—à¥à¤¯à¤¤à¤¾ / à¤•à¥Œà¤¶à¤²:'
+                  : 'Key Requirements:',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 4.h,
+              children: item.requirements!.take(4).map((req) {
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 12.sp,
+                        color: const Color(0xFF0B4F4A),
+                      ),
+                      SizedBox(width: 4.w),
+                      Flexible(
+                        child: Text(
+                          req,
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            color: const Color(0xFF334155),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          if (item.perksAndBenefits != null &&
+              item.perksAndBenefits!.isNotEmpty) ...[
+            SizedBox(height: 10.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 4.h,
+              children: item.perksAndBenefits!.take(3).map((perk) {
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.star_outline_rounded,
+                        size: 12.sp,
+                        color: const Color(0xFF92400E),
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        perk,
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF92400E),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          SizedBox(height: 16.h),
+          if (role == "user")
+            SizedBox(
+              width: double.infinity,
+              height: 44.h,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B4F4A),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                onPressed: () {
+                  _showDataTransferenceDialog(context, item);
+                },
+                icon: Icon(
+                  Icons.send_rounded,
+                  size: 15.sp,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _isHindi
+                      ? 'à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¥‡à¤‚ / à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤¾à¤à¤¾ à¤•à¤°à¥‡à¤‚'
+                      : 'Apply / Share Profile',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5.sp,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatInvestment(dynamic inv) {
+    if (inv == null) return 'N/A';
+    final rawStr = inv.toString().trim();
+    if (rawStr.isEmpty) return 'N/A';
+
+    if (rawStr.toLowerCase().contains('lakh') ||
+        rawStr.toLowerCase().contains('lac') ||
+        rawStr.toLowerCase().contains('cr') ||
+        rawStr.toLowerCase().contains('crore') ||
+        rawStr.toLowerCase().contains('k')) {
+      if (!rawStr.startsWith('₹') && !rawStr.toLowerCase().contains('rs')) {
+        return '₹$rawStr';
+      }
+      return rawStr;
+    }
+
+    num? val;
+    if (inv is num) {
+      val = inv;
+    } else {
+      val = num.tryParse(rawStr.replaceAll(RegExp(r'[^\d.]'), ''));
+    }
+
+    if (val != null) {
+      if (val >= 10000000) {
+        final cr = val / 10000000;
+        final formattedCr = (cr == cr.roundToDouble())
+            ? cr.toInt().toString()
+            : cr.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+        return '₹$formattedCr Cr';
+      } else if (val >= 100000) {
+        final lacs = val / 100000;
+        final formattedLacs = (lacs == lacs.roundToDouble())
+            ? lacs.toInt().toString()
+            : lacs.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+        return '₹$formattedLacs Lakhs';
+      } else {
+        return '₹$val';
+      }
+    }
+
+    if (!rawStr.startsWith('₹') && !rawStr.toLowerCase().contains('rs')) {
+      return '₹$rawStr';
+    }
+    return rawStr;
+  }
+
+  String _formatCtc(dynamic ctc) {
+    if (ctc == null) return 'Disclosed on apply';
+    final rawStr = ctc.toString().trim();
+    if (rawStr.isEmpty) return 'Disclosed on apply';
+
+    if (rawStr.toLowerCase().contains('lpa') ||
+        rawStr.toLowerCase().contains('lakh') ||
+        rawStr.toLowerCase().contains('cr')) {
+      if (!rawStr.startsWith('₹') && !rawStr.toLowerCase().contains('rs')) {
+        return '₹$rawStr';
+      }
+      return rawStr;
+    }
+
+    num? val;
+    if (ctc is num) {
+      val = ctc;
+    } else {
+      val = num.tryParse(rawStr.replaceAll(RegExp(r'[^\d.]'), ''));
+    }
+    if (val == null || val <= 0) return 'Disclosed on apply';
+
+    if (val >= 10000000) {
+      final cr = val / 10000000;
+      final formattedCr = (cr == cr.roundToDouble())
+          ? cr.toInt().toString()
+          : cr.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+      return '₹$formattedCr Cr PA';
+    } else if (val >= 100000) {
+      final lacs = val / 100000;
+      final formattedLacs = (lacs == lacs.roundToDouble())
+          ? lacs.toInt().toString()
+          : lacs.toStringAsFixed(1).replaceAll(RegExp(r'\.?0+$'), '');
+      return '₹$formattedLacs LPA';
+    }
+    return '₹$val / yr';
+  }
+
+  List<BusinessOpportunityItem> _filterList(
+    List<BusinessOpportunityItem> list,
+    String query,
+  ) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list.where((item) {
+      final title =
+          (item.isJob ? item.jobTitle : item.opportunityHeadline) ?? '';
+      final type = item.opportunityType ?? '';
+      final empType = item.employmentType ?? '';
+      final city = item.city ?? '';
+      final state = item.state ?? '';
+      final pin = item.pincode ?? '';
+      final company = item.ownerName;
+      final reqs = item.requirements?.join(' ') ?? '';
+      return title.toLowerCase().contains(q) ||
+          type.toLowerCase().contains(q) ||
+          empType.toLowerCase().contains(q) ||
+          city.toLowerCase().contains(q) ||
+          state.toLowerCase().contains(q) ||
+          pin.toLowerCase().contains(q) ||
+          company.toLowerCase().contains(q) ||
+          reqs.toLowerCase().contains(q);
+    }).toList();
   }
 
   Widget _infoBadge(IconData icon, String label, String value) {
@@ -1280,7 +1856,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
 
                                 final reportBody =
                                     CreateOpportunityReportBodyModel(
-                                      postID : oppId,
+                                      postID: oppId,
                                       reasonCategory:
                                           reasons[selectedReasonIndex!]['key'],
                                       additionalDetails:
@@ -1590,10 +2166,30 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
               : 'Business Partner');
 
     final jobTitle =
-        item.opportunityHeadline ?? (item.opportunityType ?? 'Opportunity');
-    final TextEditingController preferredLocationController =
-        TextEditingController();
+        item.jobTitle ??
+        item.opportunityHeadline ??
+        (item.opportunityType ?? 'Opportunity');
+
+    final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
+    final initialName = box?.get('name')?.toString() ?? '';
+    final initialEmail = box?.get('email')?.toString() ?? '';
+    final initialPhone =
+        box?.get('phone')?.toString() ?? box?.get('mobile')?.toString() ?? '';
+
+    final TextEditingController nameController = TextEditingController(
+      text: initialName,
+    );
+    final TextEditingController emailController = TextEditingController(
+      text: initialEmail,
+    );
+    final TextEditingController phoneController = TextEditingController(
+      text: initialPhone,
+    );
+    final TextEditingController commentController = TextEditingController();
     bool isAuthorized = false;
+    PlatformFile? selectedResumeFile;
+    bool isPickingFile = false;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -1604,7 +2200,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
           final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
           return Container(
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.88,
+              maxHeight: MediaQuery.of(context).size.height * 0.90,
               maxWidth: 600.w,
             ),
             decoration: BoxDecoration(
@@ -1697,93 +2293,404 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                   ),
                   SizedBox(height: 14.h),
 
-                  // Static Information Packet transferred Card
+                  // ==========================================================
+                  // 👤 APPLICANT INFORMATION FORM CARD
+                  // ==========================================================
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(12.w),
+                    padding: EdgeInsets.all(14.w),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F8FB),
+                      color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(
-                        color: const Color(0xFFE5E7EB),
+                        color: const Color(0xFFE2E8F0),
                         width: 1.2,
                       ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _isHindi
-                              ? 'हस्तांतरित होने वाला विशिष्ट स्थिर डेटा पैकेट:'
-                              : 'Specific static information packet being transferred:',
-                          style: TextStyle(
-                            fontSize: 13.5.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0B4F4A),
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.badge_outlined,
+                              size: 18.sp,
+                              color: const Color(0xFF0B4F4A),
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              _isHindi
+                                  ? 'आवेदक प्रोफ़ाइल विवरण (हस्तांतरित डेटा):'
+                                  : 'Applicant Profile Details (Transmitted Data):',
+                              style: TextStyle(
+                                fontSize: 13.5.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0B4F4A),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12.h),
+                        _buildApplyInputField(
+                          label: _isHindi
+                              ? 'पूरा नाम *'
+                              : 'Applicant Full Name *',
+                          controller: nameController,
+                          hintText: _isHindi
+                              ? 'अपना नाम दर्ज करें'
+                              : 'Enter your full name',
+                          icon: Icons.person_outline_rounded,
+                        ),
+                        SizedBox(height: 10.h),
+                        _buildApplyInputField(
+                          label: _isHindi
+                              ? '10-अंकीय मोबाइल नंबर *'
+                              : '10-Digit Mobile Number *',
+                          controller: phoneController,
+                          hintText: 'e.g. 9876543210',
+                          icon: Icons.phone_android_rounded,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        SizedBox(height: 10.h),
+                        _buildApplyInputField(
+                          label: _isHindi ? 'ईमेल पता *' : 'Email Address *',
+                          controller: emailController,
+                          hintText: 'candidate@example.com',
+                          icon: Icons.alternate_email_rounded,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+
+                  // ==========================================================
+                  // 📄 UPLOAD RESUME / PROPOSAL DOCUMENT (.PDF / .DOC / .DOCX) CARD
+                  // ==========================================================
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: selectedResumeFile != null
+                          ? const Color(0xFFF0FDF4)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: selectedResumeFile != null
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFFCBD5E1),
+                        width: selectedResumeFile != null ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              selectedResumeFile != null
+                                  ? Icons.file_present_rounded
+                                  : Icons.upload_file_rounded,
+                              size: 18.sp,
+                              color: selectedResumeFile != null
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF0B4F4A),
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                _isHindi
+                                    ? 'बायोडाटा दस्तावेज़ (.pdf, .doc, .docx - अधिकतम 5MB):'
+                                    : 'Attach Resume Document (.pdf, .doc, .docx - Max 5MB):',
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0B4F4A),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         SizedBox(height: 8.h),
+                        if (selectedResumeFile == null) ...[
+                          Text(
+                            _isHindi
+                                ? 'कंपनी को भेजने के लिए अपना बायोडाटा (.pdf, .doc, .docx) चुनें (अधिकतम 5 MB):'
+                                : 'Select your professional resume (.pdf, .doc, .docx) to transmit to the employer (Max 5 MB):',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.black54,
+                              height: 1.3,
+                            ),
+                          ),
+                          SizedBox(height: 10.h),
+                          InkWell(
+                            onTap: isPickingFile
+                                ? null
+                                : () async {
+                                    setModalState(() => isPickingFile = true);
+                                    try {
+                                      final result = await FilePicker.pickFiles(
+                                        type: FileType.custom,
+                                        allowedExtensions: [
+                                          'pdf',
+                                          'doc',
+                                          'docx',
+                                        ],
+                                      );
+                                      if (result != null &&
+                                          result.files.isNotEmpty) {
+                                        final picked = result.files.first;
+                                        if (picked.size > 5 * 1024 * 1024) {
+                                          if (sheetCtx.mounted) {
+                                            ScaffoldMessenger.of(
+                                              sheetCtx,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                backgroundColor:
+                                                    Colors.redAccent,
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                                content: Text(
+                                                  _isHindi
+                                                      ? 'बायोडाटा फ़ाइल का आकार 5 MB से कम होना चाहिए।'
+                                                      : 'Resume file size must be less than 5 MB.',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } else {
+                                          setModalState(() {
+                                            selectedResumeFile = picked;
+                                          });
+                                        }
+                                      }
+                                    } catch (e) {
+                                      log('FilePicker error: $e');
+                                    } finally {
+                                      setModalState(
+                                        () => isPickingFile = false,
+                                      );
+                                    }
+                                  },
+                            borderRadius: BorderRadius.circular(8.r),
+                            child: Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                vertical: 11.h,
+                                horizontal: 14.w,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8.r),
+                                border: Border.all(
+                                  color: const Color(0xFF94A3B8),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (isPickingFile) ...[
+                                    SizedBox(
+                                      width: 16.w,
+                                      height: 16.h,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF0B4F4A),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                  ] else ...[
+                                    Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      size: 18.sp,
+                                      color: const Color(0xFF0B4F4A),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                  ],
+                                  Text(
+                                    _isHindi
+                                        ? 'दस्तावेज़ चुनें (.pdf / .doc / .docx)'
+                                        : 'Select Resume (.pdf / .doc / .docx)',
+                                    style: TextStyle(
+                                      color: const Color(0xFF0B4F4A),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13.sp,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          // File Attached Info Card
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 10.h,
+                              horizontal: 12.w,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8.r),
+                              border: Border.all(
+                                color: const Color(0xFFA7F3D0),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(6.r),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEE2E8),
+                                    borderRadius: BorderRadius.circular(6.r),
+                                  ),
+                                  child: Icon(
+                                    Icons.picture_as_pdf_rounded,
+                                    color: const Color(0xFFDC2626),
+                                    size: 22.sp,
+                                  ),
+                                ),
+                                SizedBox(width: 10.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        selectedResumeFile!.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        '${(selectedResumeFile!.size / 1024).toStringAsFixed(1)} KB • Attached for Transmission',
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          color: const Color(0xFF16A34A),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: 6.w),
+                                InkWell(
+                                  onTap: () {
+                                    setModalState(
+                                      () => selectedResumeFile = null,
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(4.r),
+                                  child: Container(
+                                    padding: EdgeInsets.all(4.r),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 18.sp,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+
+                  // ==========================================================
+                  // 📝 OPTIONAL COMMENT / NOTE CARD
+                  // ==========================================================
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: const Color(0xFFE2E8F0),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Row(
                           children: [
                             Icon(
-                              Icons.check_circle_rounded,
-                              size: 17.sp,
+                              Icons.edit_note_rounded,
+                              size: 19.sp,
                               color: const Color(0xFF0B4F4A),
                             ),
                             SizedBox(width: 8.w),
-                            Expanded(
-                              child: Text(
-                                'Full Professional Name',
-                                style: TextStyle(
-                                  fontSize: 13.5.sp,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            Text(
+                              _isHindi
+                                  ? 'टिप्पणी / संदेश (वैकल्पिक):'
+                                  : 'Comment / Note to Employer (Optional):',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0B4F4A),
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 6.h),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              size: 17.sp,
-                              color: const Color(0xFF0B4F4A),
+                        SizedBox(height: 8.h),
+                        TextField(
+                          controller: commentController,
+                          maxLines: 2,
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 13.5.sp,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: _isHindi
+                                ? 'नियोक्ता के लिए कोई संदेश या पसंदीदा कार्य स्थान...'
+                                : 'e.g. Interested in this role, immediately available...',
+                            hintStyle: TextStyle(
+                              fontSize: 12.5.sp,
+                              color: Colors.black38,
                             ),
-                            SizedBox(width: 8.w),
-                            Expanded(
-                              child: Text(
-                                'Verified Mobile Number & Email Address',
-                                style: TextStyle(
-                                  fontSize: 13.5.sp,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            fillColor: Colors.white,
+                            filled: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 10.h,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFCBD5E1),
                               ),
                             ),
-                          ],
-                        ),
-                        SizedBox(height: 6.h),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              size: 17.sp,
-                              color: const Color(0xFF0B4F4A),
-                            ),
-                            SizedBox(width: 8.w),
-                            Expanded(
-                              child: Text(
-                                'Uploaded Resume Document (.pdf/.docx)',
-                                style: TextStyle(
-                                  fontSize: 13.5.sp,
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFCBD5E1),
                               ),
                             ),
-                          ],
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF0B4F4A),
+                                width: 1.4,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1832,58 +2739,6 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                             fontSize: 13.sp,
                             color: const Color(0xFF166534),
                             height: 1.35,
-                          ),
-                        ),
-                        SizedBox(height: 10.h),
-                        Text(
-                          _isHindi
-                              ? 'यदि आप अपनी पसंद का कार्य स्थान दर्ज करना चाहते हैं, तो नीचे टाइप करें (वैकल्पिक):'
-                              : 'If you wish to state a preferred work location, please type it below at your own discretion:',
-                          style: TextStyle(
-                            fontSize: 13.5.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                        TextField(
-                          controller: preferredLocationController,
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 14.sp,
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'e.g., New Delhi, Work From Remote',
-                            hintStyle: TextStyle(
-                              fontSize: 13.sp,
-                              color: Colors.black38,
-                            ),
-                            fillColor: Colors.white,
-                            filled: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 10.h,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFCBD5E1),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.r),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF0B4F4A),
-                                width: 1.4,
-                              ),
-                            ),
                           ),
                         ),
                       ],
@@ -1967,6 +2822,57 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                   ),
                   SizedBox(height: 12.h),
 
+                  // ⚠️ NO-EMPLOYER RELATIONSHIP NOTICE
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(
+                        color: const Color(0xFFFCA5A5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              size: 16.sp,
+                              color: const Color(0xFFDC2626),
+                            ),
+                            SizedBox(width: 6.w),
+                            Text(
+                              _isHindi
+                                  ? '⚠️ कोई नियोक्ता संबंध नहीं सूचना (NO-EMPLOYER NOTICE)'
+                                  : '⚠️ NO-EMPLOYER RELATIONSHIP NOTICE:',
+                              style: TextStyle(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFB91C1C),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 5.h),
+                        Text(
+                          _isHindi
+                              ? 'आवेदन करके, आप स्वीकार करते हैं कि Track Loved Ones App स्वतंत्र पक्षों को जोड़ने वाला केवल एक सूचना स्थल है। यह ऐप आपको रोजगार नहीं देता, अवसर को प्रायोजित नहीं करता, कार्यस्थलों की जांच नहीं करता या भर्ती एजेंसी के रूप में कार्य नहीं करता। इस प्रोफ़ाइल को सबमिट करने से आपके और ऐप के बीच कोई सेवा अनुबंध या श्रम सुरक्षा स्थापित नहीं होती है।'
+                              : 'By tapping apply, you acknowledge that Track Loved Ones App is strictly an information venue linking independent parties. Track Loved Ones App does not employ you, sponsor the opportunity, screen employer workplaces, or act as a hiring agency. No employment relationship, contract of service, or labor protections are established between you and Track Loved Ones App by submitting this profile.',
+                          style: TextStyle(
+                            fontSize: 11.5.sp,
+                            color: const Color(0xFF991B1B),
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+
                   // Mandatory Authorization Checkbox
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1985,10 +2891,10 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                       Expanded(
                         child: Text(
                           _isHindi
-                              ? '(अनिवार्य) \'Confirm\' पर क्लिक करके, मैं Track Loved Ones को इन कानूनी शर्तों के तहत अपनी प्रोफ़ाइल नाम, संपर्क विवरण और बायोडाटा $companyName को प्रेषित करने का स्पष्ट निर्देश देता/देती हूँ।'
-                              : '(Required) By clicking "Confirm", you explicitly direct Track Loved Ones to transmit your profile name, contact details, and resume text to $companyName under these statutory terms.',
+                              ? '(अनिवार्य) मैं Track Loved Ones App को इस स्थिर बायोडाटा पैकेट को नियोक्ता ($companyName) को प्रेषित करने के लिए अधिकृत करता/करती हूँ। मैं समझता/समझती हूँ कि मैं इस आवेदन को कभी भी वापस ले सकता/सकती हूँ, जिससे नियोक्ता को मेरा डेटा मिटाने का संकेत मिलेगा।'
+                              : '(Required) I authorize Track Loved Ones App to transmit this static resume packet to the employer ($companyName). I understand I can withdraw this application at any time, signaling the employer to erase my data.',
                           style: TextStyle(
-                            fontSize: 13.sp,
+                            fontSize: 12.5.sp,
                             fontWeight: FontWeight.w500,
                             color: Colors.black87,
                             height: 1.35,
@@ -2005,50 +2911,201 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                     height: 48.h,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isAuthorized
+                        backgroundColor: (isAuthorized && !isSubmitting)
                             ? const Color(0xFF0B4F4A)
                             : const Color(0xFFE2E8F0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.r),
                         ),
-                        elevation: isAuthorized ? 2 : 0,
+                        elevation: (isAuthorized && !isSubmitting) ? 2 : 0,
                       ),
-                      onPressed: !isAuthorized
+                      onPressed: (!isAuthorized || isSubmitting)
                           ? null
-                          : () {
-                              Navigator.pop(sheetCtx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFF0B4F4A),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  content: Text(
-                                    _isHindi
-                                        ? 'प्रोफ़ाइल सुरक्षित रूप से प्रेषित की गई। नियोक्ता संपर्क विवरण प्रदर्शित किए जा रहे हैं।'
-                                        : 'Profile packet transmitted under DPDP consent. Revealing employer contact.',
-                                    style: TextStyle(
-                                      fontSize: 13.5.sp,
-                                      color: Colors.white,
+                          : () async {
+                              final name = nameController.text.trim();
+                              final email = emailController.text.trim();
+                              final phone = phoneController.text.trim();
+                              final comment = commentController.text.trim();
+
+                              if (name.isEmpty) {
+                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.redAccent,
+                                    behavior: SnackBarBehavior.floating,
+                                    content: Text(
+                                      _isHindi
+                                          ? 'कृपया अपना पूरा नाम दर्ज करें।'
+                                          : 'Please enter your full name.',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                );
+                                return;
+                              }
+
+                              final cleanPhone = phone.replaceAll(
+                                RegExp(r'\D'),
+                                '',
                               );
-                              // Proceed to contact display
-                              _showContactDialog(context, item);
+                              if (cleanPhone.length < 10) {
+                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.redAccent,
+                                    behavior: SnackBarBehavior.floating,
+                                    content: Text(
+                                      _isHindi
+                                          ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'
+                                          : 'Please enter a valid 10-digit mobile number.',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (email.isEmpty ||
+                                  !email.contains('@') ||
+                                  !email.contains('.')) {
+                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.redAccent,
+                                    behavior: SnackBarBehavior.floating,
+                                    content: Text(
+                                      _isHindi
+                                          ? 'कृपया एक मान्य ईमेल पता दर्ज करें।'
+                                          : 'Please enter a valid email address.',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final postId = item.id ?? '';
+                              if (postId.isEmpty) {
+                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: Colors.redAccent,
+                                    behavior: SnackBarBehavior.floating,
+                                    content: Text(
+                                      _isHindi
+                                          ? 'अमान्य पोस्ट आईडी।'
+                                          : 'Invalid post ID.',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setModalState(() => isSubmitting = true);
+
+                              try {
+                                File? resumeFile;
+                                if (selectedResumeFile?.path != null) {
+                                  resumeFile = File(selectedResumeFile!.path!);
+                                }
+
+                                final response = await ref
+                                    .read(authServiceProvider)
+                                    .applyJobProfileData(
+                                      postId: postId,
+                                      name: name,
+                                      email: email,
+                                      phone: phone,
+                                      comment: comment.isNotEmpty
+                                          ? comment
+                                          : null,
+                                      resume: resumeFile,
+                                    );
+
+                                ref.invalidate(getMyJobApplicationsProvider);
+
+                                if (sheetCtx.mounted) {
+                                  Navigator.pop(sheetCtx);
+                                }
+
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: const Color(0xFF0B4F4A),
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      content: Text(
+                                        response.message ??
+                                            (_isHindi
+                                                ? 'आवेदन एवं प्रोफ़ाइल सुरक्षित रूप से जमा की गई।'
+                                                : 'Application and profile submitted successfully!'),
+                                        style: TextStyle(
+                                          fontSize: 13.5.sp,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                  _showContactDialog(context, item);
+                                }
+                              } catch (e) {
+                                log('Apply Job Profile Error: $e');
+                                if (sheetCtx.mounted) {
+                                  setModalState(() => isSubmitting = false);
+                                  ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      content: Text(
+                                        _isHindi
+                                            ? 'आवेदन सबमिट करने में त्रुटि: ${e.toString().replaceAll('Exception: ', '')}'
+                                            : 'Failed to submit application: ${e.toString().replaceAll('Exception: ', '')}',
+                                        style: TextStyle(
+                                          fontSize: 13.5.sp,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
                             },
-                      child: Text(
-                        _isHindi
-                            ? 'पुष्टि करें एवं आवेदन प्रेषित करें'
-                            : 'CONFIRM & TRANSMIT APPLICATION',
-                        style: TextStyle(
-                          color: isAuthorized ? Colors.white : Colors.black38,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.sp,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
+                      child: isSubmitting
+                          ? SizedBox(
+                              width: 22.w,
+                              height: 22.h,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _isHindi
+                                  ? '🚀 प्रोफ़ाइल साझा करें एवं आवेदन जमा करें'
+                                  : '🚀 SHARE PROFILE AND SUBMIT APPLICATION',
+                              style: TextStyle(
+                                color: isAuthorized
+                                    ? Colors.white
+                                    : Colors.black38,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5.sp,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -2088,12 +3145,81 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
     );
   }
 
+  Widget _buildApplyInputField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0B4F4A),
+          ),
+        ),
+        SizedBox(height: 5.h),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: TextStyle(color: Colors.black87, fontSize: 13.5.sp),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hintText,
+            hintStyle: TextStyle(fontSize: 12.5.sp, color: Colors.black38),
+            prefixIcon: Icon(icon, size: 18.sp, color: const Color(0xFF0B4F4A)),
+            prefixIconConstraints: BoxConstraints(
+              minWidth: 36.w,
+              minHeight: 36.h,
+            ),
+            fillColor: Colors.white,
+            filled: true,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: 9.h,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.r),
+              borderSide: const BorderSide(
+                color: Color(0xFF0B4F4A),
+                width: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showContactDialog(BuildContext context, BusinessOpportunityItem item) {
     final companyName = item.ownerName.isNotEmpty
         ? item.ownerName
         : (item.companyType?.isNotEmpty == true
               ? item.companyType!
               : 'Business Partner');
+
+    final contactName = item.contactPersonName?.isNotEmpty == true
+        ? item.contactPersonName
+        : (item.ownerName.isNotEmpty ? item.ownerName : null);
+    final contactPhone = item.mobileNumber?.isNotEmpty == true
+        ? item.mobileNumber
+        : item.applicationContactPhone;
+    final contactEmail = item.businessEmail?.isNotEmpty == true
+        ? item.businessEmail
+        : item.applicationContactEmail;
 
     showDialog(
       context: context,
@@ -2114,9 +3240,13 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _isHindi
-                  ? 'इस विस्तार अवसर के प्रतिनिधि से संपर्क करें:'
-                  : 'Get in touch with the representative for this expansion opportunity:',
+              item.isJob
+                  ? (_isHindi
+                        ? 'इस नौकरी अवसर के प्रतिनिधि से संपर्क करें:'
+                        : 'Get in touch with the employer for this job opening:')
+                  : (_isHindi
+                        ? 'इस विस्तार अवसर के प्रतिनिधि से संपर्क करें:'
+                        : 'Get in touch with the representative for this expansion opportunity:'),
               style: TextStyle(fontSize: 13.sp, color: Colors.black54),
             ),
             SizedBox(height: 12.h),
@@ -2130,7 +3260,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (item.contactPersonName?.isNotEmpty == true) ...[
+                  if (contactName?.isNotEmpty == true) ...[
                     Row(
                       children: [
                         Icon(
@@ -2141,7 +3271,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                         SizedBox(width: 8.w),
                         Expanded(
                           child: Text(
-                            item.contactPersonName!,
+                            contactName!,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13.5.sp,
@@ -2153,7 +3283,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                     ),
                     SizedBox(height: 8.h),
                   ],
-                  if (item.mobileNumber?.isNotEmpty == true) ...[
+                  if (contactPhone?.isNotEmpty == true) ...[
                     Row(
                       children: [
                         Icon(
@@ -2164,7 +3294,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                         SizedBox(width: 8.w),
                         Expanded(
                           child: Text(
-                            item.mobileNumber!,
+                            contactPhone!,
                             style: TextStyle(
                               fontSize: 13.sp,
                               color: Colors.black87,
@@ -2176,7 +3306,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                     ),
                     SizedBox(height: 8.h),
                   ],
-                  if (item.businessEmail?.isNotEmpty == true) ...[
+                  if (contactEmail?.isNotEmpty == true) ...[
                     Row(
                       children: [
                         Icon(
@@ -2187,7 +3317,7 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen> {
                         SizedBox(width: 8.w),
                         Expanded(
                           child: Text(
-                            item.businessEmail!,
+                            contactEmail!,
                             style: TextStyle(
                               fontSize: 13.sp,
                               color: Colors.black87,

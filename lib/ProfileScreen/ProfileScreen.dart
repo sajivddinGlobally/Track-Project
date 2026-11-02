@@ -1361,8 +1361,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       Text(
                         _isHindi
-                            ? 'मोबाइल नंबर (OTP सत्यापित) *'
-                            : 'Mobile Number (OTP Verified) *',
+                            ? 'मोबाइल नंबर *'
+                            // : 'Mobile Number (OTP Verified) *',
+                            : 'Mobile Number *',
                         style: TextStyle(
                           fontSize: 15.sp,
                           color: Colors.white60,
@@ -1372,6 +1373,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       SizedBox(height: 2.h),
                       TextFormField(
                         controller: _mobileController,
+                        readOnly: true,
                         focusNode: _mobileFocusNode,
                         keyboardType: TextInputType.phone,
                         onChanged: (val) {
@@ -1419,66 +1421,66 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
               ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  _mobileFocusNode.requestFocus();
-                  _mobileController.selection = TextSelection.fromPosition(
-                    TextPosition(offset: _mobileController.text.length),
-                  );
-                },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                  child: Icon(
-                    Icons.edit_outlined,
-                    color: Color(0xFFD4AF37),
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              TextButton(
-                onPressed: () {
-                  if (_mobileController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          _isHindi
-                              ? 'कृपया पहले मोबाइल नंबर दर्ज करें।'
-                              : 'Please enter a mobile number first.',
-                        ),
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    );
-                    return;
-                  }
-                  _showOtpVerificationDialog();
-                },
-                style: TextButton.styleFrom(
-                  backgroundColor: _isMobileVerified
-                      ? Colors.green.withValues(alpha: 0.2)
-                      : const Color(0xFFD4AF37).withValues(alpha: 0.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                ),
-                child: Text(
-                  _isMobileVerified
-                      ? (_isHindi ? 'सत्यापित ✓' : 'Verified ✓')
-                      : (_isHindi ? 'OTP सत्यापित करें' : 'Verify OTP'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _isMobileVerified
-                        ? Colors.greenAccent
-                        : const Color(0xFFD4AF37),
-                  ),
-                ),
-              ),
+              // GestureDetector(
+              //   behavior: HitTestBehavior.opaque,
+              //   onTap: () {
+              //     _mobileFocusNode.requestFocus();
+              //     _mobileController.selection = TextSelection.fromPosition(
+              //       TextPosition(offset: _mobileController.text.length),
+              //     );
+              //   },
+              //   child: const Padding(
+              //     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              //     child: Icon(
+              //       Icons.edit_outlined,
+              //       color: Color(0xFFD4AF37),
+              //       size: 20,
+              //     ),
+              //   ),
+              // ),
+              // const SizedBox(width: 4),
+              // TextButton(
+              //   onPressed: () {
+              //     if (_mobileController.text.trim().isEmpty) {
+              //       ScaffoldMessenger.of(context).showSnackBar(
+              //         SnackBar(
+              //           content: Text(
+              //             _isHindi
+              //                 ? 'कृपया पहले मोबाइल नंबर दर्ज करें।'
+              //                 : 'Please enter a mobile number first.',
+              //           ),
+              //           backgroundColor: Colors.redAccent,
+              //         ),
+              //       );
+              //       return;
+              //     }
+              //     _showOtpVerificationDialog();
+              //   },
+              //   style: TextButton.styleFrom(
+              //     backgroundColor: _isMobileVerified
+              //         ? Colors.green.withValues(alpha: 0.2)
+              //         : const Color(0xFFD4AF37).withValues(alpha: 0.2),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(10),
+              //     ),
+              //     padding: const EdgeInsets.symmetric(
+              //       horizontal: 10,
+              //       vertical: 6,
+              //     ),
+              //   ),
+              //   child: Text(
+              //     _isMobileVerified
+              //         ? (_isHindi ? 'सत्यापित ✓' : 'Verified ✓')
+              //         : (_isHindi ? 'OTP सत्यापित करें' : 'Verify OTP'),
+              //     style: TextStyle(
+              //       fontSize: 12,
+              //       fontWeight: FontWeight.bold,
+              //       color: _isMobileVerified
+              //           ? Colors.greenAccent
+              //           : const Color(0xFFD4AF37),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ],

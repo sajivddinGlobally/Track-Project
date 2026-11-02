@@ -8,7 +8,7 @@ import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getMyJobApplicationsProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyJobApplicationsResModel.dart';
 
-/// Data Model for a candidate application entry
+/// Data Model for a candidate application entry (Jobs & Business Opportunities)
 class CandidateApplicationItem {
   final String id;
   final String companyName;
@@ -22,6 +22,13 @@ class CandidateApplicationItem {
   bool activeShare;
   final String? resumeUrl;
   final String? comment;
+  final bool isJob;
+  final String? typeTag;
+  final String? packageOrInvestment;
+  final String? location;
+  final String? applicantName;
+  final String? applicantEmail;
+  final String? applicantPhone;
 
   CandidateApplicationItem({
     required this.id,
@@ -36,6 +43,13 @@ class CandidateApplicationItem {
     this.activeShare = true,
     this.resumeUrl,
     this.comment,
+    this.isJob = true,
+    this.typeTag,
+    this.packageOrInvestment,
+    this.location,
+    this.applicantName,
+    this.applicantEmail,
+    this.applicantPhone,
   });
 }
 
@@ -49,29 +63,24 @@ class ManageMyApplicationsScreen extends ConsumerStatefulWidget {
 }
 
 class _ManageMyApplicationsScreenState
-    extends ConsumerState<ManageMyApplicationsScreen> {
+    extends ConsumerState<ManageMyApplicationsScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late bool _isHindi;
+  late TabController _tabController;
   final Set<String> _withdrawnApplicationIds = {};
-
-  // Closed / Terminated Applications
-  final List<Map<String, dynamic>> _closedApplications = [
-    {
-      'company': 'TechCorp Solutions',
-      'position': 'Customer Success Lead',
-      'status': 'Closed / Withdrawn by Company',
-      'date': '15-Oct-2026',
-      'complianceNote':
-          'Corporate access tokens have been automatically revoked. The employer can no longer view your files.',
-      'complianceNoteHi':
-          'कॉर्पोरेट एक्सेस टोकन स्वतः रद्द कर दिए गए हैं। नियोक्ता अब आपकी फाइलें नहीं देख सकता।',
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
     _isHindi = widget.initialHindi;
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   String _formatDate(String? rawDate) {
@@ -108,7 +117,8 @@ class _ManageMyApplicationsScreenState
     final s = status.toLowerCase();
     if (s.contains('shortlist') ||
         s.contains('accept') ||
-        s.contains('hired')) {
+        s.contains('hired') ||
+        s == 'open') {
       return const Color(0xFF10B981);
     }
     if (s.contains('reject') || s.contains('close') || s.contains('withdraw')) {
@@ -120,7 +130,7 @@ class _ManageMyApplicationsScreenState
   String _getStatusDisplay(String? rawStatus) {
     if (rawStatus == null || rawStatus.isEmpty) return 'Under Review';
     final s = rawStatus.toLowerCase();
-    if (s == 'open') return 'Under Review';
+    if (s == 'open') return 'Active / Open';
     if (s == 'shortlisted') return 'Shortlisted';
     if (s == 'hired') return 'Hired';
     if (s == 'rejected') return 'Rejected';
@@ -133,48 +143,114 @@ class _ManageMyApplicationsScreenState
         .join(' ');
   }
 
+  String? _formatCtc(dynamic ctc) {
+    if (ctc == null) return null;
+    num? val;
+    if (ctc is num) {
+      val = ctc;
+    } else {
+      val = num.tryParse(ctc.toString().replaceAll(RegExp(r'[^\d.]'), ''));
+    }
+    if (val == null || val <= 0) return null;
+    if (val >= 100000) {
+      final lacs = val / 100000;
+      if (lacs == lacs.roundToDouble()) {
+        return '₹${lacs.toInt()} LPA';
+      } else {
+        return '₹${lacs.toStringAsFixed(2)} LPA';
+      }
+    }
+    return '₹$val / yr';
+  }
+
+  String? _formatInvestment(dynamic inv) {
+    if (inv == null) return null;
+    num? val;
+    if (inv is num) {
+      val = inv;
+    } else {
+      val = num.tryParse(inv.toString().replaceAll(RegExp(r'[^\d.]'), ''));
+    }
+    if (val != null && val >= 100000) {
+      final lacs = val / 100000;
+      if (lacs == lacs.roundToDouble()) {
+        return '₹${lacs.toInt()} Lakhs';
+      } else {
+        return '₹${lacs.toStringAsFixed(2)} Lakhs';
+      }
+    }
+    String s = inv.toString();
+    if (!s.startsWith('₹') && !s.toLowerCase().contains('rs')) {
+      return '₹$s';
+    }
+    return s;
+  }
+
   List<CandidateApplicationItem> _mapApplications(
-    List<JobApplicationItemData> items,
+    List<MyApplicationEntry> items,
   ) {
     final List<CandidateApplicationItem> mapped = [];
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      final app = item.application;
       final post = item.post;
-
-      final rawId = app?.id ?? post?.id ?? 'APP-${i + 101}';
+      final profile = item.applicantProfile;
+      final rawId = item.applicationId ?? post?.id ?? 'APP-${i + 101}';
       final company =
-          (post?.ownerId?.name != null &&
-              post!.ownerId!.name!.trim().isNotEmpty)
-          ? post.ownerId!.name!
-          : 'Registered Employer';
-      final position =
-          (post?.jobTitle != null && post!.jobTitle!.trim().isNotEmpty)
-          ? post.jobTitle!
-          : 'Job Application';
+          (post?.ownerName != null && post!.ownerName.trim().isNotEmpty)
+          ? post.ownerName
+          : 'Registered Entity';
+
+      final isJob = item.isJob;
+      final position = isJob
+          ? (post?.jobTitle != null && post!.jobTitle!.trim().isNotEmpty
+                ? post.jobTitle!
+                : 'Job Application')
+          : (post?.opportunityHeadline != null &&
+                    post!.opportunityHeadline!.trim().isNotEmpty
+                ? post.opportunityHeadline!
+                : (post?.opportunityType != null &&
+                          post!.opportunityType!.trim().isNotEmpty
+                      ? post.opportunityType!
+                      : 'Business Opportunity'));
 
       String refCode;
       if (post?.id != null && post!.id!.length >= 6) {
+        final prefix = isJob ? 'TLO-JOB' : 'TLO-BIZ';
         refCode =
-            'TLO-JOB-${post.id!.substring(post.id!.length - 6).toUpperCase()}';
-      } else if (app?.id != null && app!.id!.length >= 6) {
+            '$prefix-${post.id!.substring(post.id!.length - 6).toUpperCase()}';
+      } else if (item.applicationId != null &&
+          item.applicationId!.length >= 6) {
+        final prefix = isJob ? 'TLO-JOB' : 'TLO-BIZ';
         refCode =
-            'TLO-JOB-${app.id!.substring(app.id!.length - 6).toUpperCase()}';
+            '$prefix-${item.applicationId!.substring(item.applicationId!.length - 6).toUpperCase()}';
       } else {
-        refCode = 'TLO-JOB-${101 + i}';
+        refCode = '${isJob ? "TLO-JOB" : "TLO-BIZ"}-${101 + i}';
       }
 
-      final appliedDate = _formatDate(app?.createdAt);
+      final appliedDate = _formatDate(item.appliedAt);
       final rawStatus = post?.status ?? 'Under Review';
       final status = _getStatusDisplay(rawStatus);
       final statusColor = _getStatusColor(rawStatus);
-      final sharedInfo =
-          (item.resumeUploaded == true ||
-              (app?.resumeUrl != null && app!.resumeUrl!.isNotEmpty))
+
+      final resumeUrl = profile?.resumeUrl;
+      final hasResume = resumeUrl != null && resumeUrl.trim().isNotEmpty;
+      final sharedInfo = hasResume
           ? 'Name, Phone, Email, Static Resume (.pdf)'
           : 'Name, Phone, Email';
 
       final isWithdrawn = _withdrawnApplicationIds.contains(rawId);
+
+      String? packageOrInvestment;
+      if (isJob) {
+        packageOrInvestment = _formatCtc(post?.annualCtcPackage);
+      } else {
+        packageOrInvestment = _formatInvestment(post?.requiredInvest);
+      }
+
+      final locationParts = [
+        post?.city,
+        post?.state,
+      ].where((e) => e != null && e.trim().isNotEmpty).join(', ');
 
       mapped.add(
         CandidateApplicationItem(
@@ -192,8 +268,15 @@ class _ManageMyApplicationsScreenState
           sharedInfo: sharedInfo,
           isWithdrawn: isWithdrawn,
           activeShare: !isWithdrawn,
-          resumeUrl: app?.resumeUrl,
-          comment: app?.comment,
+          resumeUrl: resumeUrl,
+          comment: item.comment,
+          isJob: isJob,
+          typeTag: isJob ? post?.employmentType : post?.opportunityType,
+          packageOrInvestment: packageOrInvestment,
+          location: locationParts.isNotEmpty ? locationParts : null,
+          applicantName: profile?.name,
+          applicantEmail: profile?.email,
+          applicantPhone: profile?.phone,
         ),
       );
     }
@@ -271,8 +354,8 @@ class _ManageMyApplicationsScreenState
           children: [
             Text(
               _isHindi
-                  ? 'कंपनी: ${app.companyName}\nपद: ${app.position} (${app.referenceCode})'
-                  : 'Company: ${app.companyName}\nPosition: ${app.position} (${app.referenceCode})',
+                  ? 'कंपनी/संस्थान: ${app.companyName}\n${app.isJob ? 'पद' : 'अवसर'}: ${app.position} (${app.referenceCode})'
+                  : 'Organization: ${app.companyName}\n${app.isJob ? 'Position' : 'Opportunity'}: ${app.position} (${app.referenceCode})',
               style: TextStyle(
                 color: const Color(0xFFE6C567),
                 fontSize: 13.5.sp,
@@ -290,7 +373,7 @@ class _ManageMyApplicationsScreenState
               child: Text(
                 _isHindi
                     ? '⚠️ DPDP Act, 2023 (वैधानिक अधिकार): इस पर क्लिक करते ही कंपनी का टोकन तुरंत रद्द (active_share = false) हो जाएगा। कंपनी को सूचित किया जाएगा कि "उम्मीदवार ने सहमति वापस ले ली है। डेटा अब उपलब्ध नहीं है।"'
-                    : '⚠️ DPDP Act, 2023 (Statutory Erasure): Immediately executes token nullification (active_share = false). The company\'s console will display: "This candidate has withdrawn consent. Data is no longer accessible."',
+                    : '⚠️ DPDP Act, 2023 (Statutory Erasure): Immediately executes token nullification (active_share = false). The company\'s console will display: "This applicant has withdrawn consent. Data is no longer accessible."',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12.5.sp,
@@ -403,7 +486,7 @@ class _ManageMyApplicationsScreenState
         content: Text(
           _isHindi
               ? 'यह कार्रवाई सभी सक्रिय कंपनियों को DPDP अधिनियम के तहत आपके पेशेवर रिकॉर्ड और बायोडाटा को अपनी आंतरिक प्रणालियों से तत्काल प्रभाव से मिटाने का वैधानिक निर्देश भेजेगी।'
-              : 'This action immediately signals all active employers to scrub your professional files and contact records from their internal systems under the DPDP Act, 2023.',
+              : 'This action immediately signals all active organizations to scrub your professional files and contact records from their internal systems under the DPDP Act, 2023.',
           style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.4),
         ),
         actions: [
@@ -473,9 +556,6 @@ class _ManageMyApplicationsScreenState
   @override
   Widget build(BuildContext context) {
     final applicationsAsync = ref.watch(getMyJobApplicationsProvider);
-    final activeApplications = applicationsAsync.valueOrNull != null
-        ? _mapApplications(applicationsAsync.value!.data)
-        : <CandidateApplicationItem>[];
 
     return Scaffold(
       drawer: AppDrawer(isHindi: _isHindi),
@@ -497,360 +577,219 @@ class _ManageMyApplicationsScreenState
           child: Container(
             constraints: const BoxConstraints(maxWidth: 700),
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            child: RefreshIndicator(
-              color: const Color(0xFF5EEAD4),
-              backgroundColor: const Color(0xFF0F3D38),
-              onRefresh: () async {
-                ref.invalidate(getMyJobApplicationsProvider);
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                children: [
-                  // Top Header Pill
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 8.h,
-                      horizontal: 12.w,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF072420),
-                      borderRadius: BorderRadius.circular(8.r),
-                      border: Border.all(
-                        color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.dashboard_customize_rounded,
-                          color: const Color(0xFF5EEAD4),
-                          size: 16.sp,
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          _isHindi
-                              ? 'उम्मीदवार गोपनीयता कॉकपिट (Candidate Privacy Cockpit)'
-                              : 'Candidate Privacy Cockpit',
-                          style: TextStyle(
-                            fontSize: 13.5.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF5EEAD4),
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
+            child: applicationsAsync.when(
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: Color(0xFF5EEAD4)),
+              ),
+              error: (error, stack) => Center(
+                child: Container(
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F3D38),
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
                     ),
                   ),
-                  SizedBox(height: 10.h),
-
-                  // ==========================================================
-                  // 🔒 SECURITY LOG BANNER
-                  // ==========================================================
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(12.w),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F3D38),
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: const Color(0xFF14B8A6).withValues(alpha: 0.4),
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(6.r),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF072420),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.lock_outline_rounded,
-                            color: const Color(0xFF5EEAD4),
-                            size: 18.sp,
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _isHindi
-                                    ? '🔒 सुरक्षा लॉग: शून्य स्थान दृश्यता (Zero Map Visibility)'
-                                    : '🔒 SECURITY LOG: Zero Map Visibility',
-                                style: TextStyle(
-                                  fontSize: 13.5.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF5EEAD4),
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                _isHindi
-                                    ? 'नीचे दिए गए अवसरों के पास केवल वही स्थिर रेज़्युमे पैकेट है जिसे आपने आवेदन के समय अधिकृत किया था। उनके पास आपकी लाइव लोकेशन या मैप का शून्य एक्सेस है।'
-                                    : 'The opportunities below only hold the static resume packet you authorized at the time of application. They have zero map or location visibility.',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.white70,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-
-                  // ==========================================================
-                  // 💼 SUBMITTED APPLICATIONS (Active Opportunities)
-                  // ==========================================================
-                  Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.work_outline_rounded,
-                        color: const Color(0xFFE6C567),
-                        size: 18.sp,
+                        Icons.error_outline_rounded,
+                        color: const Color(0xFFF87171),
+                        size: 32.sp,
                       ),
-                      SizedBox(width: 8.w),
+                      SizedBox(height: 8.h),
                       Text(
                         _isHindi
-                            ? 'जमा किए गए आवेदन (सक्रिय अवसर)'
-                            : 'SUBMITTED APPLICATIONS (Active Opportunities)',
+                            ? 'आवेदन लोड करने में विफल'
+                            : 'Failed to load applications',
                         style: TextStyle(
-                          fontSize: 14.sp,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFFE6C567),
-                          letterSpacing: 0.2,
+                          fontSize: 14.sp,
                         ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        error.toString(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF14B8A6),
+                          foregroundColor: const Color(0xFF002E29),
+                        ),
+                        onPressed: () =>
+                            ref.refresh(getMyJobApplicationsProvider),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
+                ),
+              ),
+              data: (res) {
+                final jobApps = _mapApplications(res.jobApplications);
+                final bizApps = _mapApplications(res.businessApplications);
+                final allApps = [...jobApps, ...bizApps];
+                final profile = res.profile;
+                final counts = res.counts;
 
-                  applicationsAsync.when(
-                    loading: () => Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24.h),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF5EEAD4),
-                        ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Header Pill
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: 7.h,
+                        horizontal: 12.w,
                       ),
-                    ),
-                    error: (error, stack) => Container(
-                      padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0F3D38),
-                        borderRadius: BorderRadius.circular(10.r),
+                        color: const Color(0xFF072420),
+                        borderRadius: BorderRadius.circular(8.r),
                         border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.3),
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
                         ),
                       ),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.error_outline_rounded,
-                            color: const Color(0xFFF87171),
-                            size: 28.sp,
+                            Icons.dashboard_customize_rounded,
+                            color: const Color(0xFF5EEAD4),
+                            size: 16.sp,
                           ),
-                          SizedBox(height: 8.h),
+                          SizedBox(width: 8.w),
                           Text(
                             _isHindi
-                                ? 'आवेदन लोड करने में विफल'
-                                : 'Failed to load applications',
+                                ? 'उम्मीदवार गोपनीयता कॉकपिट (Privacy Cockpit)'
+                                : 'Candidate Privacy Cockpit',
                             style: TextStyle(
-                              color: Colors.white,
+                              fontSize: 13.sp,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14.sp,
-                            ),
-                          ),
-                          SizedBox(height: 6.h),
-                          Text(
-                            error.toString(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12.sp,
-                            ),
-                          ),
-                          SizedBox(height: 12.h),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF14B8A6),
-                              foregroundColor: const Color(0xFF002E29),
-                            ),
-                            onPressed: () =>
-                                ref.refresh(getMyJobApplicationsProvider),
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: Text(
-                              _isHindi ? 'पुनः प्रयास करें' : 'Retry',
+                              color: const Color(0xFF5EEAD4),
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    data: (res) {
-                      final apps = _mapApplications(res.data);
-                      if (apps.isEmpty) {
-                        return Container(
-                          padding: EdgeInsets.all(16.w),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(10.r),
+                    SizedBox(height: 8.h),
+
+                    // Security Log Banner
+                    _buildSecurityLogBanner(),
+                    SizedBox(height: 8.h),
+                    // Tabs: Job Applications vs Business Applications
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F3D38),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorColor: const Color(0xFFE6C567),
+                        indicatorWeight: 3,
+                        labelColor: const Color(0xFFE6C567),
+                        unselectedLabelColor: Colors.white70,
+                        labelStyle: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        unselectedLabelStyle: TextStyle(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        tabs: [
+                          Tab(
+                            icon: const Icon(Icons.work_rounded, size: 17),
+                            text: _isHindi
+                                ? 'नौकरी आवेदन (${jobApps.length})'
+                                : 'Job Applications (${jobApps.length})',
                           ),
-                          child: Center(
-                            child: Text(
-                              _isHindi
-                                  ? 'कोई सक्रिय आवेदन नहीं मिला।'
-                                  : 'No active applications found.',
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 13.sp,
-                              ),
+                          Tab(
+                            icon: const Icon(
+                              Icons.business_center_rounded,
+                              size: 17,
+                            ),
+                            text: _isHindi
+                                ? 'व्यापार आवेदन (${bizApps.length})'
+                                : 'Business Applications (${bizApps.length})',
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+
+                    // TabBarView Content
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildApplicationsList(jobApps, isJobTab: true),
+                          _buildApplicationsList(bizApps, isJobTab: false),
+                        ],
+                      ),
+                    ),
+
+                    if (allApps.any((a) => !a.isWithdrawn)) ...[
+                      SizedBox(height: 6.h),
+                      InkWell(
+                        onTap: () => _confirmRevokeAllTokens(allApps),
+                        borderRadius: BorderRadius.circular(8.r),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: 8.h,
+                            horizontal: 10.w,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.25),
                             ),
                           ),
-                        );
-                      }
-                      return Column(
-                        children: apps
-                            .map((app) => _buildApplicationCard(app))
-                            .toList(),
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: 18.h),
-
-                  // ==========================================================
-                  // 🚫 CLOSED / TERMINATED OPPORTUNITIES (Access Expired)
-                  // ==========================================================
-                  // Row(
-                  //   children: [
-                  //     Icon(
-                  //       Icons.block_flipped,
-                  //       color: const Color(0xFFF87171),
-                  //       size: 18.sp,
-                  //     ),
-                  //     SizedBox(width: 8.w),
-                  //     Text(
-                  //       _isHindi
-                  //           ? 'बंद / समाप्त अवसर (एक्सेस समाप्त)'
-                  //           : 'CLOSED / TERMINATED OPPORTUNITIES (Access Expired)',
-                  //       style: TextStyle(
-                  //         fontSize: 14.sp,
-                  //         fontWeight: FontWeight.bold,
-                  //         color: const Color(0xFFF87171),
-                  //         letterSpacing: 0.2,
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
-                  // SizedBox(height: 8.h),
-
-                  // ..._closedApplications.map(
-                  //   (closed) => _buildClosedCard(closed),
-                  // ),
-
-                  // SizedBox(height: 20.h),
-
-                  // // ==========================================================
-                  // // 🔄 STATUTORY CONSENT WITHDRAWAL PANEL
-                  // // ==========================================================
-                  // Container(
-                  //   padding: EdgeInsets.all(14.w),
-                  //   decoration: BoxDecoration(
-                  //     color: const Color(0xFF0F3D38),
-                  //     borderRadius: BorderRadius.circular(12.r),
-                  //     border: Border.all(
-                  //       color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
-                  //       width: 1.2,
-                  //     ),
-                  //   ),
-                  //   child: Column(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       Row(
-                  //         children: [
-                  //           Icon(
-                  //             Icons.security_update_warning_rounded,
-                  //             color: const Color(0xFFFBBF24),
-                  //             size: 18.sp,
-                  //           ),
-                  //           SizedBox(width: 8.w),
-                  //           Expanded(
-                  //             child: Text(
-                  //               _isHindi
-                  //                   ? 'वैधानिक सहमति वापसी पैनल (Statutory Consent Withdrawal)'
-                  //                   : 'STATUTORY CONSENT WITHDRAWAL PANEL',
-                  //               style: TextStyle(
-                  //                 fontSize: 13.5.sp,
-                  //                 fontWeight: FontWeight.bold,
-                  //                 color: const Color(0xFFFBBF24),
-                  //               ),
-                  //             ),
-                  //           ),
-                  //         ],
-                  //       ),
-                  //       SizedBox(height: 8.h),
-                  //       Text(
-                  //         _isHindi
-                  //             ? 'इस बटन पर टैप करने से सभी सक्रिय नियोक्ताओं को DPDP अधिनियम, 2023 के तहत आपकी पेशेवर फ़ाइलों और संपर्कों को अपने आंतरिक डेटाबेस से तुरंत हटाने (Scrub/Erase) का कानूनी निर्देश जाता है।'
-                  //             : 'Tapping this immediately signals all active employers to scrub your professional files and contact logs from their internal records under the DPDP Act, 2023.',
-                  //         style: TextStyle(
-                  //           fontSize: 12.sp,
-                  //           color: Colors.white70,
-                  //           height: 1.35,
-                  //         ),
-                  //       ),
-                  //       SizedBox(height: 12.h),
-                  //       SizedBox(
-                  //         width: double.infinity,
-                  //         height: 44.h,
-                  //         child: ElevatedButton.icon(
-                  //           style: ElevatedButton.styleFrom(
-                  //             backgroundColor: const Color(0xFFD97706),
-                  //             foregroundColor: Colors.white,
-                  //             shape: RoundedRectangleBorder(
-                  //               borderRadius: BorderRadius.circular(8.r),
-                  //             ),
-                  //           ),
-                  //           onPressed: () =>
-                  //               _confirmRevokeAllTokens(activeApplications),
-                  //           icon: Icon(
-                  //             Icons.power_settings_new_rounded,
-                  //             size: 18.sp,
-                  //           ),
-                  //           label: Text(
-                  //             _isHindi
-                  //                 ? 'सभी कॉर्पोरेट डेटा एक्सेस टोकन रद्द करें'
-                  //                 : 'Revoke All Corporate Data Access Tokens',
-                  //             style: TextStyle(
-                  //               fontSize: 13.sp,
-                  //               fontWeight: FontWeight.bold,
-                  //             ),
-                  //           ),
-                  //         ),
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
-                  SizedBox(height: 20.h),
-                ],
-              ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.power_settings_new_rounded,
+                                size: 14.sp,
+                                color: const Color(0xFFF87171),
+                              ),
+                              SizedBox(width: 6.w),
+                              Flexible(
+                                child: Text(
+                                  _isHindi
+                                      ? 'सभी कॉर्पोरेट डेटा एक्सेस टोकन रद्द करें (Bulk Consent Revocation)'
+                                      : 'Revoke All Corporate Data Access Tokens (Bulk Erasure)',
+                                  style: TextStyle(
+                                    fontSize: 11.5.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFF87171),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -858,11 +797,301 @@ class _ManageMyApplicationsScreenState
     );
   }
 
-  // Application Card UI Component
+  Widget _buildSecurityLogBanner() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F3D38),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            color: const Color(0xFF5EEAD4),
+            size: 16.sp,
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              _isHindi
+                  ? '🔒 सुरक्षा लॉग: नियोक्ता केवल आपके द्वारा अधिकृत स्थिर प्रोफ़ाइल देख सकते हैं। उनके पास आपके GPS मैप या लाइव लोकेशन का शून्य एक्सेस है।'
+                  : '🔒 Security Log: Organizations only hold authorized static resume packets. They have zero GPS map or location visibility.',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.white70,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileOverview(
+    JobProfileDetails? profile,
+    JobProfileCounts? counts,
+  ) {
+    final name = profile?.name ?? 'Applicant';
+    final email = profile?.email ?? '';
+    final phone = profile?.phone ?? '';
+    final hasResume =
+        profile?.resumeUrl != null && profile!.resumeUrl!.trim().isNotEmpty;
+    final totalCount = counts?.totalApplications ?? 0;
+    final jobCount = counts?.jobApplicationCount ?? 0;
+    final bizCount = counts?.businessApplicationCount ?? 0;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F3D38),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(
+          color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18.r,
+                backgroundColor: const Color(0xFF072420),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF5EEAD4),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Wrap(
+                      spacing: 8.w,
+                      runSpacing: 2.h,
+                      children: [
+                        if (email.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.email_outlined,
+                                size: 11.sp,
+                                color: Colors.white60,
+                              ),
+                              SizedBox(width: 3.w),
+                              Text(
+                                email,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (phone.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.phone_outlined,
+                                size: 11.sp,
+                                color: Colors.white60,
+                              ),
+                              SizedBox(width: 3.w),
+                              Text(
+                                phone,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (hasResume)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6.r),
+                    border: Border.all(
+                      color: const Color(0xFF14B8A6).withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf_rounded,
+                        size: 12.sp,
+                        color: const Color(0xFF5EEAD4),
+                      ),
+                      SizedBox(width: 3.w),
+                      Text(
+                        _isHindi ? 'बायोडाटा' : 'Resume',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF5EEAD4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF072420),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Row(
+              children: [
+                _buildStatCol(
+                  _isHindi ? 'कुल आवेदन' : 'Total Applied',
+                  totalCount.toString(),
+                  const Color(0xFFE6C567),
+                ),
+                Container(width: 1, height: 22.h, color: Colors.white12),
+                _buildStatCol(
+                  _isHindi ? 'नौकरियां' : 'Jobs',
+                  jobCount.toString(),
+                  const Color(0xFF5EEAD4),
+                ),
+                Container(width: 1, height: 22.h, color: Colors.white12),
+                _buildStatCol(
+                  _isHindi ? 'व्यापार अवसर' : 'Business',
+                  bizCount.toString(),
+                  const Color(0xFFFBBF24),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCol(String label, String count, Color countColor) {
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.bold,
+              color: countColor,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5.sp,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplicationsList(
+    List<CandidateApplicationItem> apps, {
+    required bool isJobTab,
+  }) {
+    if (apps.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isJobTab
+                    ? Icons.work_outline_rounded
+                    : Icons.business_center_outlined,
+                size: 46.sp,
+                color: Colors.white38,
+              ),
+              SizedBox(height: 10.h),
+              Text(
+                isJobTab
+                    ? (_isHindi
+                          ? 'आपने अभी तक किसी नौकरी के लिए आवेदन नहीं किया है।'
+                          : 'You haven\'t applied to any job postings yet.')
+                    : (_isHindi
+                          ? 'आपने अभी तक किसी व्यापार अवसर के लिए आवेदन नहीं किया है।'
+                          : 'You haven\'t applied to any business opportunities yet.'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: const Color(0xFF5EEAD4),
+      backgroundColor: const Color(0xFF0F3D38),
+      onRefresh: () async {
+        ref.invalidate(getMyJobApplicationsProvider);
+      },
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: EdgeInsets.symmetric(vertical: 6.h),
+        itemCount: apps.length,
+        itemBuilder: (context, index) {
+          return _buildApplicationCard(apps[index]);
+        },
+      ),
+    );
+  }
+
   Widget _buildApplicationCard(CandidateApplicationItem app) {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.all(14.w),
+      padding: EdgeInsets.all(13.w),
       decoration: BoxDecoration(
         color: const Color(0xFF0F3D38),
         borderRadius: BorderRadius.circular(12.r),
@@ -882,7 +1111,7 @@ class _ManageMyApplicationsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Company & Status
+          // Header: Organization & Status
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -893,8 +1122,12 @@ class _ManageMyApplicationsScreenState
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Icon(
-                  Icons.business_rounded,
-                  color: const Color(0xFF5EEAD4),
+                  app.isJob
+                      ? Icons.work_rounded
+                      : Icons.business_center_rounded,
+                  color: app.isJob
+                      ? const Color(0xFF5EEAD4)
+                      : const Color(0xFFE6C567),
                   size: 20.sp,
                 ),
               ),
@@ -904,31 +1137,28 @@ class _ManageMyApplicationsScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      app.companyName,
+                      app.isJob
+                          ? '• ${_isHindi ? 'पद' : 'Position'}: ${app.position}'
+                          : '• ${_isHindi ? 'अवसर' : 'Opportunity'}: ${app.position}',
                       style: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      '• Position: ${app.position}',
-                      style: TextStyle(
-                        fontSize: 13.sp,
+                        fontSize: 12.5.sp,
                         color: const Color(0xFFE6C567),
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    SizedBox(height: 1.h),
                     Text(
                       '• Ref Code: ${app.referenceCode}',
-                      style: TextStyle(fontSize: 12.sp, color: Colors.white60),
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        color: Colors.white60,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: app.isWithdrawn
                       ? Colors.grey.withValues(alpha: 0.2)
@@ -943,7 +1173,7 @@ class _ManageMyApplicationsScreenState
                 child: Text(
                   app.status,
                   style: TextStyle(
-                    fontSize: 11.5.sp,
+                    fontSize: 11.sp,
                     fontWeight: FontWeight.bold,
                     color: app.isWithdrawn ? Colors.white60 : app.statusColor,
                   ),
@@ -951,9 +1181,102 @@ class _ManageMyApplicationsScreenState
               ),
             ],
           ),
-          SizedBox(height: 10.h),
 
-          // Metadata row
+          // Badges row: Type Tag, CTC / Investment, Location
+          if (app.typeTag != null ||
+              app.packageOrInvestment != null ||
+              app.location != null) ...[
+            SizedBox(height: 8.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 4.h,
+              children: [
+                if (app.typeTag != null && app.typeTag!.isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 7.w,
+                      vertical: 2.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Text(
+                      app.typeTag!.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF5EEAD4),
+                      ),
+                    ),
+                  ),
+                if (app.packageOrInvestment != null)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 7.w,
+                      vertical: 2.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE6C567).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          app.isJob
+                              ? Icons.currency_rupee_rounded
+                              : Icons.account_balance_wallet_outlined,
+                          size: 11.sp,
+                          color: const Color(0xFFE6C567),
+                        ),
+                        SizedBox(width: 3.w),
+                        Text(
+                          app.packageOrInvestment!,
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE6C567),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (app.location != null)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 7.w,
+                      vertical: 2.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 11.sp,
+                          color: Colors.white70,
+                        ),
+                        SizedBox(width: 3.w),
+                        Text(
+                          app.location!,
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          SizedBox(height: 8.h),
+
+          // Metadata Container
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
@@ -972,8 +1295,11 @@ class _ManageMyApplicationsScreenState
                     ),
                     SizedBox(width: 4.w),
                     Text(
-                      '${_isHindi ? 'आवेदन की तिथि' : 'Applied On'}: ${app.appliedDate}',
-                      style: TextStyle(fontSize: 12.sp, color: Colors.white70),
+                      '${_isHindi ? 'आवेदन तिथि' : 'Applied On'}: ${app.appliedDate}',
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        color: Colors.white70,
+                      ),
                     ),
                   ],
                 ),
@@ -988,9 +1314,9 @@ class _ManageMyApplicationsScreenState
                     SizedBox(width: 4.w),
                     Expanded(
                       child: Text(
-                        '${_isHindi ? 'साझा की गई जानकारी' : 'Shared Info'}: ${app.sharedInfo}',
+                        '${_isHindi ? 'साझा जानकारी' : 'Shared Info'}: ${app.sharedInfo}',
                         style: TextStyle(
-                          fontSize: 12.sp,
+                          fontSize: 11.5.sp,
                           color: Colors.white70,
                         ),
                       ),
@@ -1012,7 +1338,7 @@ class _ManageMyApplicationsScreenState
                         child: Text(
                           '${_isHindi ? 'टिप्पणी' : 'Comment'}: ${app.comment}',
                           style: TextStyle(
-                            fontSize: 12.sp,
+                            fontSize: 11.5.sp,
                             color: Colors.white70,
                           ),
                         ),
@@ -1033,11 +1359,11 @@ class _ManageMyApplicationsScreenState
                       SizedBox(width: 4.w),
                       Expanded(
                         child: Text(
-                          '${_isHindi ? 'रेज़्युमे' : 'Resume'}: ${app.resumeUrl!.split('/').last}',
+                          '${_isHindi ? 'बायोडाटा' : 'Resume'}: ${app.resumeUrl!.split('/').last}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12.sp,
+                            fontSize: 11.5.sp,
                             color: const Color(0xFF5EEAD4),
                           ),
                         ),
@@ -1048,13 +1374,13 @@ class _ManageMyApplicationsScreenState
               ],
             ),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 10.h),
 
           // Action Button
           if (!app.isWithdrawn)
             SizedBox(
               width: double.infinity,
-              height: 38.h,
+              height: 36.h,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFF87171),
@@ -1064,13 +1390,13 @@ class _ManageMyApplicationsScreenState
                   ),
                 ),
                 onPressed: () => _confirmWithdrawAndErase(app),
-                icon: Icon(Icons.delete_forever_rounded, size: 16.sp),
+                icon: Icon(Icons.delete_forever_rounded, size: 15.sp),
                 label: Text(
                   _isHindi
                       ? '🛑 आवेदन वापस लें एवं डेटा मिटाएं'
                       : '🛑 WITHDRAW APPLICATION & ERASE DATA',
                   style: TextStyle(
-                    fontSize: 12.5.sp,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.2,
                   ),
@@ -1096,107 +1422,13 @@ class _ManageMyApplicationsScreenState
                     child: Text(
                       _isHindi
                           ? 'कंपनी का डेटा एक्सेस शून्य (Nullified) कर दिया गया है।'
-                          : 'Corporate access token nullified. Employer access erased.',
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: Colors.white70,
-                      ),
+                          : 'Corporate access token nullified. Access erased.',
+                      style: TextStyle(fontSize: 11.sp, color: Colors.white70),
                     ),
                   ),
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  // Closed Card UI Component
-  Widget _buildClosedCard(Map<String, dynamic> closed) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F3D38).withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.domain_disabled_rounded,
-                color: Colors.white54,
-                size: 18.sp,
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Text(
-                  closed['company'] as String,
-                  style: TextStyle(
-                    fontSize: 14.5.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4.r),
-                ),
-                child: Text(
-                  _isHindi
-                      ? '❌ कंपनी द्वारा बंद / वापस लिया गया'
-                      : '❌ Closed / Withdrawn',
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    color: const Color(0xFFFCA5A5),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            '• Position: ${closed['position']}',
-            style: TextStyle(fontSize: 13.sp, color: Colors.white60),
-          ),
-          SizedBox(height: 8.h),
-          Container(
-            padding: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: const Color(0xFF072420),
-              borderRadius: BorderRadius.circular(6.r),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.verified_user_rounded,
-                  color: const Color(0xFF34D399),
-                  size: 14.sp,
-                ),
-                SizedBox(width: 6.w),
-                Expanded(
-                  child: Text(
-                    _isHindi
-                        ? closed['complianceNoteHi'] as String
-                        : closed['complianceNote'] as String,
-                    style: TextStyle(
-                      fontSize: 11.5.sp,
-                      color: Colors.white70,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

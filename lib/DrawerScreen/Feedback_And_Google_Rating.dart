@@ -3,22 +3,26 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
+import 'package:track_loved/core/Data/BodyModel/SubmitFeedbackBodyModel.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class FeedbackRatingScreen extends StatefulWidget {
+class FeedbackRatingScreen extends ConsumerStatefulWidget {
   final bool isHindi;
   const FeedbackRatingScreen({super.key, this.isHindi = false});
 
   @override
-  State<FeedbackRatingScreen> createState() => _FeedbackRatingScreenState();
+  ConsumerState<FeedbackRatingScreen> createState() =>
+      _FeedbackRatingScreenState();
 }
 
-class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
+class _FeedbackRatingScreenState extends ConsumerState<FeedbackRatingScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _feedbackController = TextEditingController();
 
@@ -172,11 +176,17 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         ),
         title: Row(
           children: [
-            Icon(Icons.shield_rounded, color: const Color(0xFF166534), size: 24.sp),
+            Icon(
+              Icons.shield_rounded,
+              color: const Color(0xFF166534),
+              size: 24.sp,
+            ),
             SizedBox(width: 8.w),
             Expanded(
               child: Text(
-                _isHindi ? 'बाल सुरक्षा एवं गोपनीयता' : 'Child Privacy Safeguard',
+                _isHindi
+                    ? 'बाल सुरक्षा एवं गोपनीयता'
+                    : 'Child Privacy Safeguard',
                 style: GoogleFonts.outfit(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
@@ -188,8 +198,8 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         ),
         content: Text(
           _isHindi
-            ? 'DPDP अधिनियम 2023 की धारा 9 के तहत, नाबालिग (चाइल्ड) प्रोफाइल के लिए स्क्रीनशॉट या फोटो अपलोड प्रतिबंधित है ताकि बच्चों की व्यक्तिगत गोपनीयता सुरक्षित रहे।'
-            : 'Under Section 9 of the DPDP Act 2023, image and screenshot attachments are strictly restricted for minor accounts to safeguard children from privacy exposure.',
+              ? 'DPDP अधिनियम 2023 की धारा 9 के तहत, नाबालिग (चाइल्ड) प्रोफाइल के लिए स्क्रीनशॉट या फोटो अपलोड प्रतिबंधित है ताकि बच्चों की व्यक्तिगत गोपनीयता सुरक्षित रहे।'
+              : 'Under Section 9 of the DPDP Act 2023, image and screenshot attachments are strictly restricted for minor accounts to safeguard children from privacy exposure.',
           style: GoogleFonts.outfit(
             fontSize: 13.sp,
             color: Colors.black87,
@@ -266,8 +276,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
       payload['attachment_status'] = 'BLOCKED_MINOR_SAFEGUARD';
     } else {
       payload['attachment_file'] = _attachedScreenshot?.path;
-      payload['attachment_status'] =
-          _attachedScreenshot != null ? 'ATTACHED' : 'NONE';
+      payload['attachment_status'] = _attachedScreenshot != null
+          ? 'ATTACHED'
+          : 'NONE';
     }
 
     return payload;
@@ -281,7 +292,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         SnackBar(
           backgroundColor: Colors.orange.shade800,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
           content: Text(
             _isHindi
                 ? 'कृपया रेटिंग दें या अपनी समस्या / सुझाव का विवरण लिखें!'
@@ -298,17 +311,42 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
     try {
       // 1. Sanitize payload per DPDP rules
       final sanitizedPayload = _sanitizeFeedbackPayload();
+      final sanitizedText =
+          sanitizedPayload['feedback_description']?.toString().trim() ?? '';
+      final commentToSend = sanitizedText.isNotEmpty
+          ? sanitizedText
+          : (text.isNotEmpty
+                ? text
+                : (_isHindi
+                      ? 'रेटिंग: $_rating स्टार'
+                      : 'Rating: $_rating stars'));
 
-      // 2. Save locally in Hive
+      // 2. Call Submit Feedback API: POST /api/v1/auth/feedback
+      final feedbackBody = SubmitFeedbackBodyModel(
+        star: _rating > 0 ? _rating : 5,
+        staticType: _selectedIssues.isNotEmpty
+            ? _selectedIssues.first
+            : 'bug_report',
+        userComment: commentToSend,
+      );
+
+      final authService = ref.read(authServiceProvider);
+      final res = await authService.submitFeedbackData(feedbackBody);
+      log('FEEDBACK API SUCCESS: ${res.message ?? res.success}');
+
+      // 3. Save locally in Hive
       final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
       if (box != null) {
         await box.put('user_feedback_rating', _rating);
-        await box.put('user_feedback_text', sanitizedPayload['feedback_description']);
+        await box.put('user_feedback_text', sanitizedText);
         await box.put('user_feedback_diagnostics_opt_in', _includeDiagnostics);
-        await box.put('user_feedback_timestamp', sanitizedPayload['timestamp_iso8601']);
+        await box.put(
+          'user_feedback_timestamp',
+          sanitizedPayload['timestamp_iso8601'],
+        );
       }
 
-      // 3. Log compliance event
+      // 4. Log compliance event
       final complianceLedger = {
         'compliance_ledger_event': 'FEEDBACK_SUBMISSION_PROCESSED',
         'schema_version': 'TLO-DPDPA-FEEDBACK-V1.0',
@@ -318,19 +356,37 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         'retention': '90_DAYS_ANONYMIZED',
       };
       log('COMPLIANCE LEDGER EVENT: ${jsonEncode(complianceLedger)}');
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      // If 5 stars, prompt Google Play Store
+      if (_rating == 5) {
+        _launchPlayStore();
+      }
+
+      _showSuccessDialog();
     } catch (e) {
-      log('Error saving feedback: $e');
+      log('Error submitting feedback: $e');
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          content: Text(
+            _isHindi
+                ? 'फीडबैक सबमिट करने में विफल: ${e.toString()}'
+                : 'Failed to submit feedback: ${e.toString()}',
+            style: GoogleFonts.outfit(fontSize: 13.sp, color: Colors.white),
+          ),
+        ),
+      );
     }
-
-    setState(() => _isSubmitting = false);
-
-    // If 5 stars, prompt Google Play Store
-    if (_rating == 5) {
-      _launchPlayStore();
-    }
-
-    if (!mounted) return;
-    _showSuccessDialog();
   }
 
   Future<void> _launchPlayStore() async {
@@ -352,7 +408,10 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         backgroundColor: surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18.r),
-          side: BorderSide(color: brightGold.withValues(alpha: 0.6), width: 1.2),
+          side: BorderSide(
+            color: brightGold.withValues(alpha: 0.6),
+            width: 1.2,
+          ),
         ),
         insetPadding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Padding(
@@ -367,11 +426,17 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                   color: brightGold.withValues(alpha: 0.15),
                   border: Border.all(color: brightGold),
                 ),
-                child: Icon(Icons.check_circle_rounded, color: brightGold, size: 36.sp),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: brightGold,
+                  size: 36.sp,
+                ),
               ),
               SizedBox(height: 14.h),
               Text(
-                _isHindi ? 'फीडबैक सफलतापूर्वक प्राप्त हुआ!' : 'Feedback Received!',
+                _isHindi
+                    ? 'फीडबैक सफलतापूर्वक प्राप्त हुआ!'
+                    : 'Feedback Received!',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 17.sp,
@@ -433,7 +498,8 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           'label_en': 'Very Poor Experience',
           'label_hi': 'अत्यंत असंतोषजनक अनुभव',
           'color': const Color(0xFFFF5252),
-          'sub_en': 'We are extremely sorry! Please let us know how we can fix this.',
+          'sub_en':
+              'We are extremely sorry! Please let us know how we can fix this.',
           'sub_hi': 'हमें बेहद खेद है! कृपया बताएं कि हम इसे कैसे सुधारें।',
         };
       case 2:
@@ -460,7 +526,8 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           'label_en': 'Very Good & Useful',
           'label_hi': 'काफ़ी अच्छा और उपयोगी',
           'color': const Color(0xFF66BB6A),
-          'sub_en': 'Great experience! We are glad you find Track Loved helpful.',
+          'sub_en':
+              'Great experience! We are glad you find Track Loved helpful.',
           'sub_hi': 'शानदार अनुभव! हमें खुशी है कि ऐप आपके काम आ रहा है।',
         };
       case 5:
@@ -470,7 +537,8 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           'label_hi': 'शानदार! 5-स्टार उत्कृष्ट अनुभव',
           'color': brightGold,
           'sub_en': 'Thank you! You are helping protect more families.',
-          'sub_hi': 'धन्यवाद! आपकी रेटिंग से अन्य परिवारों को सुरक्षित रहने में मदद मिलेगी।',
+          'sub_hi':
+              'धन्यवाद! आपकी रेटिंग से अन्य परिवारों को सुरक्षित रहने में मदद मिलेगी।',
         };
       default:
         return {
@@ -567,10 +635,7 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           colors: [cardBg, surfaceDark],
         ),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: brandGold.withValues(alpha: 0.35),
-          width: 1,
-        ),
+        border: Border.all(color: brandGold.withValues(alpha: 0.35), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -636,14 +701,18 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
         color: surfaceDark,
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: (_rating > 0 ? brightGold : Colors.white24).withValues(alpha: 0.35),
+          color: (_rating > 0 ? brightGold : Colors.white24).withValues(
+            alpha: 0.35,
+          ),
           width: 1,
         ),
       ),
       child: Column(
         children: [
           Text(
-            _isHindi ? 'हमारे ऐप अनुभव को रेट करें' : 'How was your experience?',
+            _isHindi
+                ? 'हमारे ऐप अनुभव को रेट करें'
+                : 'How was your experience?',
             style: GoogleFonts.outfit(
               fontSize: 15.sp,
               fontWeight: FontWeight.bold,
@@ -656,10 +725,7 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                 ? (sentiment['sub_hi'] as String)
                 : (sentiment['sub_en'] as String),
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 11.5.sp,
-              color: Colors.white60,
-            ),
+            style: GoogleFonts.outfit(fontSize: 11.5.sp, color: Colors.white60),
           ),
           SizedBox(height: 12.h),
 
@@ -688,7 +754,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                       1.0,
                     ),
                     child: Icon(
-                      isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                      isFilled
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
                       size: 36.sp,
                       color: isFilled ? starActive : Colors.white30,
                     ),
@@ -758,7 +826,10 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           colors: [brightGold.withValues(alpha: 0.18), cardBg],
         ),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: brightGold.withValues(alpha: 0.7), width: 1.2),
+        border: Border.all(
+          color: brightGold.withValues(alpha: 0.7),
+          width: 1.2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,8 +964,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                         title,
                         style: GoogleFonts.outfit(
                           fontSize: 11.sp,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: isSelected ? brightGold : Colors.white,
                         ),
                       ),
@@ -918,10 +990,7 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
       decoration: BoxDecoration(
         color: surfaceDark,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: brandGold.withValues(alpha: 0.35),
-          width: 1,
-        ),
+        border: Border.all(color: brandGold.withValues(alpha: 0.35), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -947,7 +1016,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           ),
           SizedBox(height: 6.h),
           Text(
-            _isHindi ? '* अपने विचार यहां साझा करें:' : '* Share your comments here:',
+            _isHindi
+                ? '* अपने विचार यहां साझा करें:'
+                : '* Share your comments here:',
             style: GoogleFonts.outfit(
               fontSize: 12.sp,
               color: Colors.white70,
@@ -964,18 +1035,28 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
               hintText: _isHindi
                   ? 'कृपया अपनी समस्या, सुझाव या बग का विवरण लिखें...'
                   : 'Describe your thoughts, feature requests, or technical bug here...',
-              hintStyle: GoogleFonts.outfit(fontSize: 12.sp, color: Colors.white38),
+              hintStyle: GoogleFonts.outfit(
+                fontSize: 12.sp,
+                color: Colors.white38,
+              ),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
-              counterStyle: GoogleFonts.outfit(fontSize: 11.sp, color: Colors.white38),
+              counterStyle: GoogleFonts.outfit(
+                fontSize: 11.sp,
+                color: Colors.white38,
+              ),
               contentPadding: EdgeInsets.all(12.r),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.r),
@@ -1033,10 +1114,7 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
       decoration: BoxDecoration(
         color: surfaceDark,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: brandGold.withValues(alpha: 0.35),
-          width: 1,
-        ),
+        border: Border.all(color: brandGold.withValues(alpha: 0.35), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1074,7 +1152,11 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.lock_person_rounded, color: Colors.redAccent, size: 20.sp),
+                  Icon(
+                    Icons.lock_person_rounded,
+                    color: Colors.redAccent,
+                    size: 20.sp,
+                  ),
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
@@ -1096,12 +1178,19 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: brightGold),
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 14.w,
+                    vertical: 10.h,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.r),
                   ),
                 ),
-                icon: Icon(Icons.camera_alt_rounded, color: brightGold, size: 18.sp),
+                icon: Icon(
+                  Icons.camera_alt_rounded,
+                  color: brightGold,
+                  size: 18.sp,
+                ),
                 label: Text(
                   _isHindi
                       ? '📸 स्क्रीनशॉट / इमेज संलग्न करें'
@@ -1180,7 +1269,11 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
             children: [
               Padding(
                 padding: EdgeInsets.only(top: 3.h, right: 6.w),
-                child: Icon(Icons.shield_outlined, size: 14.sp, color: Colors.white60),
+                child: Icon(
+                  Icons.shield_outlined,
+                  size: 14.sp,
+                  color: Colors.white60,
+                ),
               ),
               Expanded(
                 child: Text(
@@ -1210,17 +1303,18 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
       decoration: BoxDecoration(
         color: surfaceDark,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: brandGold.withValues(alpha: 0.35),
-          width: 1,
-        ),
+        border: Border.all(color: brandGold.withValues(alpha: 0.35), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.settings_suggest_rounded, color: brightGold, size: 20.sp),
+              Icon(
+                Icons.settings_suggest_rounded,
+                color: brightGold,
+                size: 20.sp,
+              ),
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
@@ -1445,7 +1539,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
           ),
         ],
         border: Border.all(
-          color: isFiveStars ? Colors.white70 : brightGold.withValues(alpha: 0.6),
+          color: isFiveStars
+              ? Colors.white70
+              : brightGold.withValues(alpha: 0.6),
           width: 1.2,
         ),
       ),
@@ -1481,7 +1577,9 @@ class _FeedbackRatingScreenState extends State<FeedbackRatingScreen> {
                     style: GoogleFonts.outfit(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.bold,
-                      color: isFiveStars ? const Color(0xFF072420) : Colors.white,
+                      color: isFiveStars
+                          ? const Color(0xFF072420)
+                          : Colors.white,
                     ),
                   ),
                 ],

@@ -7,6 +7,8 @@ class DpdpaLanguageData {
   final String chkContacts;
   final String chkParent;
   final String policyContent;
+  final String? termsContent;
+  final String? disclaimerContent;
 
   const DpdpaLanguageData({
     required this.title,
@@ -17,6 +19,8 @@ class DpdpaLanguageData {
     required this.chkContacts,
     required this.chkParent,
     required this.policyContent,
+    this.termsContent,
+    this.disclaimerContent,
   });
 }
 
@@ -35,51 +39,248 @@ class DpdpaTranslations {
           '[Optional] I grant local address book access to invite contacts.',
       chkParent:
           '[Parental Gate] I certify I am the owner of this SIM card and authorize this setup as parent/guardian if user is a minor.',
-      policyContent: '''PRIVACY NOTICE & TERMS OF USE
+      policyContent: '''PRIVACY POLICY & TERMS OF USE
 Last Updated: October 2026
-Issued by Track Loved Ones App ("Data Fiduciary") in strict compliance with the Digital Personal Data Protection Act (DPDPA), 2023, and Indian Telecom Frameworks.
+Issued by People connect for its Mobile App Track Loved Ones ("Data Fiduciary") in strict compliance with the Digital Personal Data Protection Act (DPDPA), 2023, and Indian Telecom Frameworks.
+
+============================================================
+SECTION 1: PRIVACY POLICY
+============================================================
 
 PART 1: ELIGIBILITY & SIM-GATE REGISTRATION
 1.1 The SIM-Gate Mandate
 Under Indian Telecommunications regulations, mobile SIM cards cannot be legally issued to or owned by minors (individuals under the age of 18). Consequently, the mobile number utilized to register an account on this Application belongs legally to an adult parent or lawful guardian.
-1.2 Registration Protocols
+
+1.2 Registration Protocols & Age-Adaptive Routing
 • Adult Profiles (18+): Individuals registering as adults certify that they are the legal owners of the SIM card or have explicit authorization from the subscriber to utilize the number.
 • Child Profiles (Under 18): If the primary user carrying the tracking device is a minor, the setup must be initiated by the parent or lawful guardian. By executing the registration and entering the verification One-Time Password (OTP) sent to the device, the parent/guardian explicitly provides Verifiable Parental Consent under Section 9 of the DPDPA.
+• System Restriction Mapping: The application's backend automatically flags account age routing based on this selection to systematically restrict child profiles from commercial professional marketplaces.
 
-PART 2: DATA WE COLLECT & PURPOSE MAPPING
-We process personal data strictly for defined, lawful purposes. We do not use third-party advertising SDKs or tracking networks.
-• Name, Mobile Number & Age: To authenticate your profile, establish identity verification via SIM-bound OTP, and determine account age-routing (Adult vs. Child).
-• Real-Time GPS Location (Background & Foreground): To broadcast your live coordinates exclusively to the specific contacts you explicitly choose to authorize. Location data is hidden by default.
+PART 2: ITEMIZED DATA COLLECTION & PURPOSE MAPPING
+We process personal data strictly for defined, explicit, and lawful purposes. We do not integrate third-party advertising network SDKs or behavioral user tracking pipelines inside the platform.
+
+• Name, Mobile Number, Email id & Age: To authenticate your profile, establish identity verification via SIM-bound OTP, and determine account age-routing (Adult vs. Child).
+• Real-Time GPS Location (Background & Foreground): To broadcast your live coordinates exclusively to the specific contacts you explicitly choose to authorize. Location data is completely hidden by default.
 • Device Address Book / Contacts: Accessed strictly locally on your device to let you select and link with family, friends, or relatives. Your complete contact book is never uploaded to or stored on our servers.
 • Professional Profile & Applications: (Adult Profiles Only) Your submitted name, contact details, and resume details processed solely to transmit your application directly to a company when you click "Apply".
 • Device Tokens (Push Notifications): To transmit real-time safety alerts, location boundary updates, or SOS panic triggers to your authorized circle.
 • Global Cloud Performance Data: Non-personal metrics (crash logs, OS version) processed on our secure global cloud servers to ensure application stability.
+• App Usage Patterns & Analytics Data (Feature clicks, session duration, navigation paths): To analyze user behavior internally, optimize app performance, and improve tracking accuracy and user experience.
 
-PART 3: GRANULAR CONTROL & DIRECT APPLICATION
-3.1 Selective Location Assignment
-Your location data belongs to you. No user, company, or third party can view your live coordinates unless you manually assign them viewing permissions from your local contact book.
-3.2 Right to Withdraw
-You retain the absolute, unconditional right to withdraw consent at any moment. Toggling off a contact instantly cuts their access to your live tracking stream. System-level tracking can also be turned off via your device settings.
-3.3 The Job Marketplace & Information Sharing Role
-• Intermediary Facilitation: Our role in the Job & Business Opportunities marketplace is strictly limited to facilitating information sharing under Section 79 of the Information Technology Act. We display opportunities posted by companies and pass along your professional profile data only when you click "Apply."
-• The Corporate Firewall: COMPANIES AND RECRUITERS HAVE ZERO ACCESS TO YOUR GPS LOCATION DATA OR PRIVATE CIRCLES.
-• Independent Liability: Once your data is pushed to an external business via the "Apply" action, that company becomes an independent Data Fiduciary for that data packet. They are legally bound to use it only for that job opening and must erase it upon your request.
+"Analytics Safeguards: All data utilized for internal analysis and service improvement is heavily aggregated or Pseudonymised. In strict compliance with Section 9 of the DPDPA, analytics metrics generated by Child Profiles are never used to track, profile, or behaviorally monitor minors for commercial gain."
+
+PART 3: GRANULAR USER CONTROL & THE MEDIATOR BOARD
+3.1 Selective Location Assignment & Withdrawal
+Your location data belongs to you. No user, company, or third party can view your live coordinates unless you manually assign them viewing permissions from your local added network on map. You retain the absolute, unconditional right to withdraw consent at any moment. Toggling off a contact instantly cuts their access to your live tracking stream. System-level tracking can also be turned off via your device settings.
+
+3.2 The Job & Business Marketplace (Intermediary Safe Harbour)
+• Information Sharing Role: Our role in the Job & Business Opportunities marketplace is strictly limited to facilitating information sharing under Section 79 of the Information Technology Act, 2000. We display opportunities posted by companies and pass along your professional profile data only when you take the explicit action of clicking "Apply."
+• The Corporate Location Firewall: COMPANIES AND RECRUITERS HAVE ZERO ACCESS TO YOUR GPS LOCATION DATA, LOCATION HISTORY, OR PRIVATE CIRCLES.
+• Independent Corporate Liability: Once your data is pushed to an external business via the "Apply" action, that company becomes an independent Data Fiduciary for that data packet. They are legally bound to use it only for that job opening and must erase it upon your request.
 • Minor Protection: In compliance with Section 9 of the DPDPA and child labor regulations, the Job Marketplace is completely invisible and inaccessible to Child Profiles.
 
-PART 4: DATA RETENTION, GLOBAL STORAGE, & ERASURE
-• Cross-Border Processing: Your data is securely processed across global cloud infrastructure networks in compliance with Section 7 of the DPDPA.
-• Location Minimisation: Live coordinates are processed dynamically and are not stored indefinitely. Historical tracking logs are automatically and permanently purged from our global servers within 30 days.
-• Account Deletion: If you withdraw your primary consent or delete your account, your entire profile, historical logs, and active application pathways will be permanently erased within 30 days.
+PART 4: EDUCATION PLATFORM MONETIZATION & LINK REDIRECTION
+4.1 Monetization via External Streams
+This application is monetized externally through our official YouTube channel for law awareness education. The app contains direct web links to view these informative videos. Views generated on these videos support the platform to keep our core location safety features free of charge.
 
-PART 5: MONETIZATION VIA EXTERNAL LINKS
-This application is monetized externally through our official YouTube channel. The app contains direct web links to view these videos. Clicking these links launches an external browser or the native YouTube app. We do not transmit any location details, contact numbers, or profile information to YouTube or Google LLC.
+4.2 Data Separation & The Child-Safety Player Architecture
+• No Data Leakage: Clicking an educational link launches an external media stream. We do not transmit any location details, contact numbers, or profile information to YouTube or Google LLC.
+• Adult Routing: Adult users are directed via standard browser/app links to the monetized stream. Their interactions are governed strictly by Google’s independent Privacy Policy.
+• Child Routing (Strict Cookie Block): Law awareness is open to all age groups. However, to strictly comply with Section 9 of the DPDPA (prohibiting the behavioral tracking or targeted commercial profiling of minors), users registered under Child Profiles are automatically routed through a clean embedded application player using the youtube-nocookie.com server architecture. This blocks third-party ad networks from tracking the child's viewing habits.
+
+PART 5: DATA RETENTION, GLOBAL STORAGE, & ERASURE
+• Cross-Border Processing: Your data is securely processed across global cloud infrastructure networks in compliance with Section 7 of the DPDPA.
+• Location Minimization: Live coordinates are processed dynamically to update your chosen circle and are not stored indefinitely. Historical tracking logs are automatically and permanently purged from our global servers within 30 days.
+• Account Deletion: If you withdraw your primary consent or delete your account, your entire profile, historical logs, and active application pathways will be permanently erased within 30 days. Upon deletion, an automated cascade notice is sent to all companies you applied to, directing them to erase your submitted documents from their local systems.
 
 PART 6: YOUR RIGHTS & GRIEVANCE REDRESSAL
 As a Data Principal under the DPDPA, you hold the right to Access your data summary, Correct inaccuracies, Request Erasure, and Nominate a representative in case of incapacity.
-For any grievances or to exercise your rights, please contact our designated coordinator:
+For any grievances, data rights execution, or reporting of fraudulent corporate job listings, please contact our designated coordinator:
 • Grievance Officer: Amit Shardne
 • Email Address: privacy@tracklovedones.com
-• Response Timeline: All statutory requests will be resolved cleanly within 30 days. Unresolved privacy disputes may be formally escalated to the Data Protection Board of India (DPBI).''',
+• Response Timeline: All statutory requests will be acknowledged instantly and resolved cleanly within 30 days. Unresolved privacy disputes may be formally escalated to the Data Protection Board of India (DPBI).
+
+============================================================
+SECTION 2: TERMS OF USE
+============================================================
+Last Updated: October 2026
+Please read these Terms of Use carefully before using the people connect Track Loved Ones mobile application. By accessing or using the platform, you agree to be bound by these Terms.
+
+1. SCOPE OF SERVICE & LEGAL ROLE
+The Platform provides two distinct functionalities:
+1. Peer-to-Peer Location Safety Tracker: Allows users to share their live coordinates with an explicitly self-assigned circle of trusted family, friends, or relatives.
+2. Opportunities Facilitator (Marketplace): Acts strictly as an information mediator (Intermediary) under Section 79 of the Information Technology Act, 2000. The Platform displays job and business listings posted by external companies and transmits professional profile data strictly upon the user's manual command. The Platform does not vet corporate postings, act as an employer, or intervene in hiring disputes.
+
+2. ELIGIBILITY, SIM OWNERSHIP & THE SIM-GATE MANDATE
+2.1 Telecom Compliance Acknowledgement
+In strict accordance with Indian Telecommunications regulations, mobile SIM cards cannot be legally issued to or registered under the names of minors (individuals under the age of 18). Consequently, the mobile number used to create any account on this platform belongs legally to an adult parent, lawful guardian, or subscriber.
+2.2 Account Classifications & Age-Routing
+• Adult Profiles (18+): Individuals registering as adults certify that they are the legal owners of the SIM card or possess explicit authorization from the primary subscriber to utilize the number.
+• Child Profiles (Under 18) & Verifiable Parental Consent: If the primary user carrying the tracking device is a minor, the setup must be initiated and approved by their parent or lawful guardian. By executing the registration and entering the verification One-Time Password (OTP) sent to the device, the parent/guardian explicitly provides Verifiable Parental Consent under Section 9 of the DPDPA.
+• System Restriction: Child Profiles are systematically restricted by the platform's backend and are completely prohibited from accessing, viewing, or applying within the Job & Business Marketplace module.
+
+3. DATA PRIVACY & COMPLIANCE UNDER DPDPA, 2023
+Your privacy is governed explicitly by our Privacy Notice, which is structurally woven into these Terms. By using the app, you acknowledge the following parameters:
+• Granular, Unbundled Consent (Section 6): Your consent is collected separately for each processing activity (Core Tracking, Local Contacts Access, and Internal Analytics). You can selectively reject optional permissions without losing access to core tracking features.
+• Absolute Right to Withdraw (Section 6(4)): You hold the unconditional right to switch off location sharing for any individual contact or revoke system-level GPS permissions at any instant. All tracking data transmission will immediately cease.
+• Right to Erasure (Section 11): You hold the right to request the complete deletion of your profile. Upon account deletion, the platform will completely purge all profile details, location history logs, and analytics metrics from its secure global cloud servers within 30 days.
+
+4. JOB MARKETPLACE DISCLAIMERS & LIABILITY FIREWALL
+4.1 Explicit Trigger Sharing
+The platform will never automatically forward your professional data, name, contact details, or resume text to any external entity. Transmission occurs strictly when an adult user manually chooses to interact with a listing by tapping the "Apply" button.
+4.2 The Corporate Firewall
+EXTERNAL COMPANIES, RECRUITERS, AND POSTERS HAVE ZERO ACCESS TO YOUR LIVE GPS LOCATION DATA, HISTORICAL TRACKING RECORDS, OR PRIVATE CIRCLES. Your private safety data is completely sandboxed away from the corporate marketplace module.
+4.3 Transfer of Independent Fiduciary Liability
+The moment a user directs the platform to transmit their application to an external company, that business becomes an independent Data Fiduciary under the DPDPA, 2023 for that specific data packet.
+• User Control: The applicant holds the statutory right to demand data correction or erasure directly from that company.
+• Platform Limitation: The Platform holds no liability or control over how external businesses manage, store, or process applicant details once they clear our secure firewall transmission.
+
+5. EXTERNAL CONTENT & MONETIZATION DISCLOSURE
+5.1 Ad-Supported External Links
+This application is monetized externally through links directing users to our official YouTube channel for law awareness education. Views generated on these videos help support our core location-safety infrastructure, keeping the app tracking tools free of charge.
+5.2 Outbound Redirection Disclaimers
+• Data Isolation: Tapping an educational link launches an external web browser environment or the native YouTube app. The Platform does not pass or share user profile data, locations, or contact tokens with YouTube or Google LLC.
+• Google Privacy Frameworks: Once a user leaves the application, their viewing habits and tracking cookies are governed strictly by Google’s independent Privacy Policy.
+• Minor Protection Mechanism: To comply with Section 9 of the DPDPA (which strictly bars the behavioral tracking or commercial ad-profiling of minors), the platform forces all users logged in under a Child Profile to view videos inside a clean embedded app player routing through the youtube-nocookie.com server endpoint. This prevents external ad networks from profiling the child's viewing behavior.
+
+6. PROHIBITED USES & PLATFORM SECURITY
+Users and Corporate Posters agree not to:
+• Solicit live tracking parameters or private location data from other users through the job marketplace listings.
+• Post fraudulent, deceptive, or misleading job/business opportunities.
+• Engage in the tracking, profiling, or behavioral monitoring of minors for commercial gain.
+• Post any opportunities that target or promote child labor or exploit individuals under 18 years of age.
+The Platform reserves the absolute right to remove any reported listing, ban non-compliant corporate profiles immediately, and report violations to appropriate authorities.
+
+7. AMENDMENTS & COMMERCIAL EVOLUTION
+• Service Updates: The Platform reserves the right to modify these Terms to accommodate legislative revisions to the DPDP Act or Telecom laws.
+• Pricing Updates: The posting of job and business opportunities is currently free for Corporate Users. The Platform reserves the right to introduce premium packages or corporate subscription tiers later. Corporate users will be given a minimum of 30 days' advance notice via email before any commercial pricing changes become effective.
+
+8. STATUTORY GRIEVANCE REDRESSAL (DPDPA Section 13)
+In accordance with the mandates of the Digital Personal Data Protection Act, 2023, the Platform has established a dedicated human checkpoint to resolve user data disputes, privacy complaints, or reports of fraudulent listings.
+• Designated Grievance Officer: Amit Shardne
+• Official Communications Address: privacy@tracklovedones.com
+• Resolution Window: All statutory data principal requests or complaints will be formally acknowledged and resolved cleanly within 30 days.
+If a privacy dispute remains unresolved after 30 days, the user maintains the absolute statutory right to escalate the grievance formally to the Data Protection Board of India (DPBI).
+
+============================================================
+SECTION 3: LEGAL DISCLAIMER
+============================================================
+Last Updated: October 2026
+The application "Track Loved Ones" and its operating company people connect (hereinafter referred to as "the Platform") provide peer-to-peer location tracking for personal safety and an exploratory marketplace for job and business opportunities. By accessing or using this application, you explicitly acknowledge and agree to the following statutory disclaimers:
+
+1. Intermediary Status & "Safe Harbour" Protection (IT Act, 2000)
+In accordance with Section 79 of the Information Technology Act, 2000, the Platform operates strictly as an information mediator (Intermediary) regarding all job and business opportunities displayed on the marketplace module.
+• No Verification: The listings are uploaded directly and independently by external corporate users. The Platform does not pre-screen, vet, interview, or verify the authenticity, legality, financial stability, or background of these companies or their postings.
+• No Liability: The Platform shall not be held liable or legally responsible for any fraudulent listings, financial scams, terms of employment, salary disputes, or physical/digital harm arising from contract interactions between a user and an external business. Users are directed to perform their own due diligence before applying.
+
+2. Isolation of Private Safety Data (DPDPA, 2023 Compliance)
+The Platform maintains a strict, unbreachable digital firewall between its personal tracking services and its commercial marketplace. No external company, recruiter, advertiser, or corporate user has access to your real-time GPS coordinates, historical location logs, or private tracking circles. Exploring listings is completely private. Data transmission to a company is triggered strictly and exclusively by the explicit manual action of an adult user clicking the "Apply" button.
+
+3. Absolute Shift of Liability Upon Data Transfer
+When a user chooses to apply for an opportunity, the Platform acts solely as a secure delivery pipeline. The moment your professional data (Name, Contact, Resume) is transferred to the external business, that entity becomes an independent Data Fiduciary under the Digital Personal Data Protection (DPDP) Act, 2023. The Platform exercises zero control over, and assumes no liability for, how the recipient company processes, stores, retains, or misuses your personal information once it leaves our secure servers.
+
+4. SIM Card Ownership & Minor Restrictions (Telecom Act Compliance)
+Under Indian Telecommunications frameworks, mobile SIM cards cannot be legally registered to or owned by individuals under the age of 18. The Platform relies on this framework to enforce its SIM-Gate Registration.
+• The adult subscriber/owner of the SIM card is legally responsible for the setup of the device.
+• If a minor utilizes the app, the parent/guardian who verified the account via SIM-bound OTP holds all legal responsibility.
+• The Platform explicitly restricts minors from entering the career marketplace to prevent violations of child safety and labor regulations.
+
+5. External Monetization & Third-Party Tracking Disclaimer
+This application features links to our official YouTube channel for civic law awareness education, which utilizes ad-supported monetization to keep our core tracking features free of cost.
+• Clicking these links redirects you entirely out of our app ecosystem into an environment owned by Google LLC.
+• The Platform does not share any location, profile, or contact details with Google or YouTube.
+• While adult tracking depends on Google's independent cookie policies, the Platform enforces an embedded youtube-nocookie.com player environment for all Child Profiles to systematically block commercial behavioral profiling of minors, in full compliance with Section 9 of the DPDPA.
+
+6. Service Availability & Tracking Accuracy
+Real-time GPS tracking relies entirely on third-party mobile network providers, global positioning satellites, hardware device battery configurations, and system-level OS permissions. The Platform provides its safety features on an "as-is" and "as-available" basis. It makes no explicit guarantees regarding 100% uninterrupted connectivity, absolute location precision, or instantaneous SOS push delivery times during network outages or hardware failure.''',
+      termsContent: '''TERMS OF USE
+Last Updated: October 2026
+Please read these Terms of Use carefully before using the people connect Track Loved Ones mobile application. By accessing or using the platform, you agree to be bound by these Terms.
+
+1. SCOPE OF SERVICE & LEGAL ROLE
+The Platform provides two distinct functionalities:
+1. Peer-to-Peer Location Safety Tracker: Allows users to share their live coordinates with an explicitly self-assigned circle of trusted family, friends, or relatives.
+2. Opportunities Facilitator (Marketplace): Acts strictly as an information mediator (Intermediary) under Section 79 of the Information Technology Act, 2000. The Platform displays job and business listings posted by external companies and transmits professional profile data strictly upon the user's manual command. The Platform does not vet corporate postings, act as an employer, or intervene in hiring disputes.
+
+2. ELIGIBILITY, SIM OWNERSHIP & THE SIM-GATE MANDATE
+2.1 Telecom Compliance Acknowledgement
+In strict accordance with Indian Telecommunications regulations, mobile SIM cards cannot be legally issued to or registered under the names of minors (individuals under the age of 18). Consequently, the mobile number used to create any account on this platform belongs legally to an adult parent, lawful guardian, or subscriber.
+2.2 Account Classifications & Age-Routing
+• Adult Profiles (18+): Individuals registering as adults certify that they are the legal owners of the SIM card or possess explicit authorization from the primary subscriber to utilize the number.
+• Child Profiles (Under 18) & Verifiable Parental Consent: If the primary user carrying the tracking device is a minor, the setup must be initiated and approved by their parent or lawful guardian. By executing the registration and entering the verification One-Time Password (OTP) sent to the device, the parent/guardian explicitly provides Verifiable Parental Consent under Section 9 of the DPDPA.
+• System Restriction: Child Profiles are systematically restricted by the platform's backend and are completely prohibited from accessing, viewing, or applying within the Job & Business Marketplace module.
+
+3. DATA PRIVACY & COMPLIANCE UNDER DPDPA, 2023
+Your privacy is governed explicitly by our Privacy Notice, which is structurally woven into these Terms. By using the app, you acknowledge the following parameters:
+• Granular, Unbundled Consent (Section 6): Your consent is collected separately for each processing activity (Core Tracking, Local Contacts Access, and Internal Analytics). You can selectively reject optional permissions without losing access to core tracking features.
+• Absolute Right to Withdraw (Section 6(4)): You hold the unconditional right to switch off location sharing for any individual contact or revoke system-level GPS permissions at any instant. All tracking data transmission will immediately cease.
+• Right to Erasure (Section 11): You hold the right to request the complete deletion of your profile. Upon account deletion, the platform will completely purge all profile details, location history logs, and analytics metrics from its secure global cloud servers within 30 days.
+
+4. JOB MARKETPLACE DISCLAIMERS & LIABILITY FIREWALL
+4.1 Explicit Trigger Sharing
+The platform will never automatically forward your professional data, name, contact details, or resume text to any external entity. Transmission occurs strictly when an adult user manually chooses to interact with a listing by tapping the "Apply" button.
+4.2 The Corporate Firewall
+EXTERNAL COMPANIES, RECRUITERS, AND POSTERS HAVE ZERO ACCESS TO YOUR LIVE GPS LOCATION DATA, HISTORICAL TRACKING RECORDS, OR PRIVATE CIRCLES. Your private safety data is completely sandboxed away from the corporate marketplace module.
+4.3 Transfer of Independent Fiduciary Liability
+The moment a user directs the platform to transmit their application to an external company, that business becomes an independent Data Fiduciary under the DPDPA, 2023 for that specific data packet.
+• User Control: The applicant holds the statutory right to demand data correction or erasure directly from that company.
+• Platform Limitation: The Platform holds no liability or control over how external businesses manage, store, or process applicant details once they clear our secure firewall transmission.
+
+5. EXTERNAL CONTENT & MONETIZATION DISCLOSURE
+5.1 Ad-Supported External Links
+This application is monetized externally through links directing users to our official YouTube channel for law awareness education. Views generated on these videos help support our core location-safety infrastructure, keeping the app tracking tools free of charge.
+5.2 Outbound Redirection Disclaimers
+• Data Isolation: Tapping an educational link launches an external web browser environment or the native YouTube app. The Platform does not pass or share user profile data, locations, or contact tokens with YouTube or Google LLC.
+• Google Privacy Frameworks: Once a user leaves the application, their viewing habits and tracking cookies are governed strictly by Google’s independent Privacy Policy.
+• Minor Protection Mechanism: To comply with Section 9 of the DPDPA (which strictly bars the behavioral tracking or commercial ad-profiling of minors), the platform forces all users logged in under a Child Profile to view videos inside a clean embedded app player routing through the youtube-nocookie.com server endpoint. This prevents external ad networks from profiling the child's viewing behavior.
+
+6. PROHIBITED USES & PLATFORM SECURITY
+Users and Corporate Posters agree not to:
+• Solicit live tracking parameters or private location data from other users through the job marketplace listings.
+• Post fraudulent, deceptive, or misleading job/business opportunities.
+• Engage in the tracking, profiling, or behavioral monitoring of minors for commercial gain.
+• Post any opportunities that target or promote child labor or exploit individuals under 18 years of age.
+The Platform reserves the absolute right to remove any reported listing, ban non-compliant corporate profiles immediately, and report violations to appropriate authorities.
+
+7. AMENDMENTS & COMMERCIAL EVOLUTION
+• Service Updates: The Platform reserves the right to modify these Terms to accommodate legislative revisions to the DPDP Act or Telecom laws.
+• Pricing Updates: The posting of job and business opportunities is currently free for Corporate Users. The Platform reserves the right to introduce premium packages or corporate subscription tiers later. Corporate users will be given a minimum of 30 days' advance notice via email before any commercial pricing changes become effective.
+
+8. STATUTORY GRIEVANCE REDRESSAL (DPDPA Section 13)
+In accordance with the mandates of the Digital Personal Data Protection Act, 2023, the Platform has established a dedicated human checkpoint to resolve user data disputes, privacy complaints, or reports of fraudulent listings.
+• Designated Grievance Officer: Amit Shardne
+• Official Communications Address: privacy@tracklovedones.com
+• Resolution Window: All statutory data principal requests or complaints will be formally acknowledged and resolved cleanly within 30 days.
+If a privacy dispute remains unresolved after 30 days, the user maintains the absolute statutory right to escalate the grievance formally to the Data Protection Board of India (DPBI).''',
+      disclaimerContent: '''LEGAL DISCLAIMER
+Last Updated: October 2026
+The application "Track Loved Ones" and its operating company people connect (hereinafter referred to as "the Platform") provide peer-to-peer location tracking for personal safety and an exploratory marketplace for job and business opportunities. By accessing or using this application, you explicitly acknowledge and agree to the following statutory disclaimers:
+
+1. Intermediary Status & "Safe Harbour" Protection (IT Act, 2000)
+In accordance with Section 79 of the Information Technology Act, 2000, the Platform operates strictly as an information mediator (Intermediary) regarding all job and business opportunities displayed on the marketplace module.
+• No Verification: The listings are uploaded directly and independently by external corporate users. The Platform does not pre-screen, vet, interview, or verify the authenticity, legality, financial stability, or background of these companies or their postings.
+• No Liability: The Platform shall not be held liable or legally responsible for any fraudulent listings, financial scams, terms of employment, salary disputes, or physical/digital harm arising from contract interactions between a user and an external business. Users are directed to perform their own due diligence before applying.
+
+2. Isolation of Private Safety Data (DPDPA, 2023 Compliance)
+The Platform maintains a strict, unbreachable digital firewall between its personal tracking services and its commercial marketplace. No external company, recruiter, advertiser, or corporate user has access to your real-time GPS coordinates, historical location logs, or private tracking circles. Exploring listings is completely private. Data transmission to a company is triggered strictly and exclusively by the explicit manual action of an adult user clicking the "Apply" button.
+
+3. Absolute Shift of Liability Upon Data Transfer
+When a user chooses to apply for an opportunity, the Platform acts solely as a secure delivery pipeline. The moment your professional data (Name, Contact, Resume) is transferred to the external business, that entity becomes an independent Data Fiduciary under the Digital Personal Data Protection (DPDP) Act, 2023. The Platform exercises zero control over, and assumes no liability for, how the recipient company processes, stores, retains, or misuses your personal information once it leaves our secure servers.
+
+4. SIM Card Ownership & Minor Restrictions (Telecom Act Compliance)
+Under Indian Telecommunications frameworks, mobile SIM cards cannot be legally registered to or owned by individuals under the age of 18. The Platform relies on this framework to enforce its SIM-Gate Registration.
+• The adult subscriber/owner of the SIM card is legally responsible for the setup of the device.
+• If a minor utilizes the app, the parent/guardian who verified the account via SIM-bound OTP holds all legal responsibility.
+• The Platform explicitly restricts minors from entering the career marketplace to prevent violations of child safety and labor regulations.
+
+5. External Monetization & Third-Party Tracking Disclaimer
+This application features links to our official YouTube channel for civic law awareness education, which utilizes ad-supported monetization to keep our core tracking features free of cost.
+• Clicking these links redirects you entirely out of our app ecosystem into an environment owned by Google LLC.
+• The Platform does not share any location, profile, or contact details with Google or YouTube.
+• While adult tracking depends on Google's independent cookie policies, the Platform enforces an embedded youtube-nocookie.com player environment for all Child Profiles to systematically block commercial behavioral profiling of minors, in full compliance with Section 9 of the DPDPA.
+
+6. Service Availability & Tracking Accuracy
+Real-time GPS tracking relies entirely on third-party mobile network providers, global positioning satellites, hardware device battery configurations, and system-level OS permissions. The Platform provides its safety features on an "as-is" and "as-available" basis. It makes no explicit guarantees regarding 100% uninterrupted connectivity, absolute location precision, or instantaneous SOS push delivery times during network outages or hardware failure.''',
     ),
 
     // 2. Hindi
@@ -95,51 +296,186 @@ For any grievances or to exercise your rights, please contact our designated coo
           '[वैकल्पिक] मैं संपर्कों को आमंत्रित करने के लिए स्थानीय एड्रेस बुक एक्सेस की अनुमति देता/देती हूँ।',
       chkParent:
           '[अभिभावक घोषणा] मैं प्रमाणित करता हूँ कि मैं इस सिम कार्ड का कानूनी मालिक हूँ और उपयोगकर्ता के नाबालिग होने पर अभिभावक के रूप में इसकी अनुमति देता हूँ।',
-      policyContent: '''गोपनीयता सूचना और उपयोग की शर्तें
+      policyContent: '''गोपनीयता नीति एवं उपयोग की शर्तें
 अंतिम अपडेट: अक्टूबर 2026
-डिजिटल पर्सनल डेटा प्रोटेक्शन एक्ट (DPDPA), 2023 और भारतीय टेलीकॉम फ्रेमवर्क के पूर्ण अनुपालन में ट्रैक लव्ड वन्स ऐप ("डेटा फिडुशियरी") द्वारा जारी।
+डिजिटल पर्सनल डेटा प्रोटेक्शन एक्ट (DPDPA), 2023 और भारतीय टेलीकॉम फ्रेमवर्क के पूर्ण अनुपालन में 'People connect' द्वारा अपने मोबाइल ऐप 'Track Loved Ones' ("डेटा फिडुशियरी") के लिए जारी।
+
+============================================================
+खंड 1: गोपनीयता नीति (PRIVACY POLICY)
+============================================================
 
 भाग 1: पात्रता और सिम-गेट पंजीकरण
 1.1 सिम-गेट अधिदेश
 भारतीय दूरसंचार नियमों के तहत, मोबाइल सिम कार्ड कानूनी रूप से नाबालिगों (18 वर्ष से कम आयु के व्यक्तियों) को जारी या उनके स्वामित्व में नहीं हो सकते हैं। परिणामस्वरूप, इस एप्लिकेशन पर खाता पंजीकृत करने के लिए उपयोग किया जाने वाला मोबाइल नंबर कानूनी रूप से एक वयस्क माता-पिता या कानूनी अभिभावक का है।
-1.2 पंजीकरण प्रोटोकॉल
-• वयस्क प्रोफ़ाइल (18+): वयस्कों के रूप में पंजीकरण करने वाले व्यक्ति प्रमाणित करते हैं कि वे सिम कार्ड के कानूनी मालिक हैं या उनके पास नंबर का उपयोग करने के लिए ग्राहक से स्पष्ट प्राधिकरण है।
-• चाइल्ड प्रोफ़ाइल (18 वर्ष से कम): यदि ट्रैकिंग डिवाइस ले जाने वाला प्राथमिक उपयोगकर्ता नाबालिग है, तो सेटअप माता-पिता या कानूनी अभिभावक द्वारा शुरू किया जाना चाहिए। पंजीकरण को निष्पादित करके और डिवाइस पर भेजे गए सत्यापन वन-टाइम पासवर्ड (OTP) को दर्ज करके, माता-पिता / अभिभावक स्पष्ट रूप से DPDPA की धारा 9 के तहत सत्यापन योग्य माता-पिता की सहमति प्रदान करते हैं।
 
-भाग 2: डेटा जो हम एकत्र करते हैं और उद्देश्य मानचित्रण
-हम कड़ाई से परिभाषित, वैध उद्देश्यों के लिए व्यक्तिगत डेटा संसाधित करते हैं। हम तृतीय-पक्ष विज्ञापन SDK या ट्रैकिंग नेटवर्क का उपयोग नहीं करते हैं।
-• नाम, मोबाइल नंबर और आयु: आपकी प्रोफ़ाइल को प्रमाणित करने, सिम-बाउंड ओटीपी के माध्यम से पहचान सत्यापन स्थापित करने और खाता आयु-रूटिंग (वयस्क बनाम बच्चे) को निर्धारित करने के लिए।
-• रीयल-टाइम जीपीएस लोकेशन (बैकग्राउंड और फोरग्राउंड): केवल उन विशिष्ट संपर्कों के लिए अपने लाइव निर्देशांक प्रसारित करने के लिए जिन्हें आप स्पष्ट रूप से अधिकृत करना चुनते हैं। लोकेशन डेटा डिफ़ॉल्ट रूप से छिपा रहता है।
-• डिवाइस एड्रेस बुक / संपर्क: आपको परिवार, दोस्तों या रिश्तेदारों के साथ चयन करने और लिंक करने देने के लिए आपके डिवाइस पर कड़ाई से स्थानीय रूप से एक्सेस किया जाता है। आपकी पूरी संपर्क पुस्तिका हमारे सर्वर पर कभी भी अपलोड या संग्रहीत नहीं की जाती है।
-• व्यावसायिक प्रोफ़ाइल और आवेदन: (केवल वयस्क प्रोफ़ाइल) आपका सबमिट किया गया नाम, संपर्क विवरण और बायोडाटा विवरण केवल तब सीधे कंपनी को भेजने के लिए संसाधित किया जाता है जब आप "आवेदन करें" पर क्लिक करते हैं।
+1.2 पंजीकरण प्रोटोकॉल और आयु-अनुकूल रूटिंग
+• वयस्क प्रोफ़ाइल (18+): वयस्कों के रूप में पंजीकरण करने वाले व्यक्ति प्रमाणित करते हैं कि वे सिम कार्ड के कानूनी मालिक हैं या उनके पास नंबर का उपयोग करने के लिए प्राथमिक ग्राहक से स्पष्ट प्राधिकरण है।
+• चाइल्ड प्रोफ़ाइल (18 वर्ष से कम): यदि ट्रैकिंग डिवाइस ले जाने वाला प्राथमिक उपयोगकर्ता नाबालिग है, तो सेटअप माता-पिता या कानूनी अभिभावक द्वारा शुरू किया जाना चाहिए। पंजीकरण को निष्पादित करके और डिवाइस पर भेजे गए सत्यापन वन-टाइम पासवर्ड (OTP) को दर्ज करके, माता-पिता/अभिभावक स्पष्ट रूप से DPDPA की धारा 9 के तहत सत्यापन योग्य माता-पिता की सहमति प्रदान करते हैं।
+• सिस्टम प्रतिबंध मैपिंग: एप्लिकेशन का बैकएंड इस चयन के आधार पर चाइल्ड प्रोफाइल को व्यावसायिक पेशेवर बाज़ार से व्यवस्थित रूप से प्रतिबंधित करने के लिए स्वचालित रूप से खाता आयु रूटिंग को फ़्लैग करता है।
+
+भाग 2: मदवार डेटा संग्रह और उद्देश्य मैपिंग
+हम कड़ाई से परिभाषित, स्पष्ट और वैध उद्देश्यों के लिए व्यक्तिगत डेटा संसाधित करते हैं। हम प्लेटफ़ॉर्म के अंदर तृतीय-पक्ष विज्ञापन नेटवर्क SDK या व्यवहार संबंधी उपयोगकर्ता ट्रैकिंग पाइपलाइनों को एकीकृत नहीं करते हैं।
+
+• नाम, मोबाइल नंबर, ईमेल आईडी और आयु: आपकी प्रोफ़ाइल को प्रमाणित करने, सिम-बाउंड ओटीपी के माध्यम से पहचान सत्यापन स्थापित करने और खाता आयु-रूटिंग (वयस्क बनाम बच्चे) निर्धारित करने के लिए।
+• रीयल-टाइम जीपीएस लोकेशन (बैकग्राउंड और फोरग्राउंड): केवल उन विशिष्ट संपर्कों के लिए अपने लाइव निर्देशांक प्रसारित करने के लिए जिन्हें आप स्पष्ट रूप से अधिकृत करना चुनते हैं। लोकेशन डेटा डिफ़ॉल्ट रूप से पूरी तरह छिपा रहता है।
+• डिवाइस एड्रेस बुक / संपर्क: आपको परिवार, दोस्तों या रिश्तेदारों के साथ लिंक करने देने के लिए आपके डिवाइस पर कड़ाई से स्थानीय रूप से एक्सेस किया जाता है। आपकी पूरी संपर्क पुस्तिका हमारे सर्वर पर कभी भी अपलोड या संग्रहीत नहीं की जाती है।
+• व्यावसायिक प्रोफ़ाइल और आवेदन: (केवल वयस्क प्रोफ़ाइल) आपका सबमिट किया गया नाम, संपर्क विवरण और रिज्यूमे विवरण केवल तब सीधे कंपनी को भेजने के लिए संसाधित किया जाता है जब आप "आवेदन करें" पर क्लिक करते हैं।
 • डिवाइस टोकन (पुश नोटिफिकेशन): आपके अधिकृत सर्कल में रीयल-टाइम सुरक्षा अलर्ट, स्थान सीमा अपडेट, या एसओएस पैनिक ट्रिगर संचारित करने के लिए।
-• ग्लोबल क्लाउड परफॉर्मेंस डेटा: एप्लीकेशन स्थिरता सुनिश्चित करने के लिए हमारे सुरक्षित वैश्विक क्लाउड सर्वर पर संसाधित गैर-व्यक्तिगत मीट्रिक (क्रैश लॉग, ओष संस्करण)।
+• ग्लोबल क्लाउड परफॉर्मेंस डेटा: एप्लिकेशन स्थिरता सुनिश्चित करने के लिए हमारे सुरक्षित वैश्विक क्लाउड सर्वर पर संसाधित गैर-व्यक्तिगत मीट्रिक (क्रैश लॉग, ओएस संस्करण)।
+• ऐप उपयोग पैटर्न और एनालिटिक्स डेटा (फ़ीचर क्लिक, सत्र अवधि, नेविगेशन पथ): आंतरिक रूप से उपयोगकर्ता व्यवहार का विश्लेषण करने, ऐप के प्रदर्शन को अनुकूलित करने और ट्रैकिंग सटीकता और उपयोगकर्ता अनुभव को बेहतर बनाने के लिए।
 
-भाग 3: विस्तृत नियंत्रण और प्रत्यक्ष आवेदन
-3.1 चयनात्मक स्थान असाइनमेंट
-आपका स्थान डेटा आपका है। कोई भी उपयोगकर्ता, कंपनी या तृतीय पक्ष आपके लाइव निर्देशांक नहीं देख सकता है जब तक कि आप उन्हें अपनी स्थानीय संपर्क पुस्तिका से देखने की अनुमति नहीं देते हैं।
-3.2 वापस लेने का अधिकार
-आप किसी भी क्षण सहमति वापस लेने का पूर्ण, बिना शर्त अधिकार रखते हैं। किसी संपर्क को बंद करने से तुरंत आपके लाइव ट्रैकिंग स्ट्रीम तक उनकी पहुंच समाप्त हो जाती है। डिवाइस सेटिंग्स के माध्यम से सिस्टम-स्तरीय ट्रैकिंग को भी बंद किया जा सकता है।
-3.3 नौकरी बाज़ार और सूचना साझाकरण भूमिका
-• मध्यस्थ सुविधा: नौकरी और व्यवसाय के अवसर बाजार में हमारी भूमिका सूचना प्रौद्योगिकी अधिनियम की धारा 79 के तहत सूचना साझा करने की सुविधा तक सीमित है। हम कंपनियों द्वारा पोस्ट किए गए अवसरों को प्रदर्शित करते हैं और केवल तब आपके पेशेवर प्रोफ़ाइल डेटा को आगे बढ़ाते हैं जब आप "आवेदन करें" पर क्लिक करते हैं।
-• कॉर्पोरेट फ़ायरवॉल: कंपनियों और नियोक्ताओं के पास आपके जीपीएस स्थान डेटा या निजी सर्कल तक शून्य पहुंच है।
-• स्वतंत्र दायित्व: एक बार जब आपका डेटा "आवेदन करें" कार्रवाई के माध्यम से किसी बाहरी व्यवसाय को भेज दिया जाता, तो वह कंपनी उस डेटा पैकेट के लिए एक स्वतंत्र डेटा फिडुशियरी बन जाती है। वे कानूनी रूप से इसका उपयोग केवल उस नौकरी के लिए करने के लिए बाध्य हैं और आपकी इच्छा पर इसे मिटाना होगा।
+"एनालिटिक्स सुरक्षा उपाय: आंतरिक विश्लेषण और सेवा सुधार के लिए उपयोग किया जाने वाला सभी डेटा भारी रूप से समूहीकृत या छद्म नामीकृत (Pseudonymised) होता है। DPDPA की धारा 9 के सख्त अनुपालन में, चाइल्ड प्रोफाइल द्वारा उत्पन्न एनालिटिक्स मेट्रिक्स का उपयोग कभी भी वाणिज्यिक लाभ के लिए नाबालिगों को ट्रैक, प्रोफाइल या निगरानी करने के लिए नहीं किया जाता है।"
+
+भाग 3: विस्तृत उपयोगकर्ता नियंत्रण और मध्यस्थ बोर्ड
+3.1 चयनात्मक स्थान असाइनमेंट और वापसी
+आपका स्थान डेटा आपका है। कोई भी उपयोगकर्ता, कंपनी या तृतीय पक्ष आपके लाइव निर्देशांक नहीं देख सकता है जब तक कि आप उन्हें मानचित्र पर अपने स्थानीय जोड़े गए नेटवर्क से देखने की अनुमति नहीं देते हैं। आप किसी भी क्षण सहमति वापस लेने का पूर्ण, बिना शर्त अधिकार रखते हैं। किसी संपर्क को बंद करने से तुरंत आपके लाइव ट्रैकिंग स्ट्रीम तक उनकी पहुंच समाप्त हो जाती है। सिस्टम-स्तरीय ट्रैकिंग को भी डिवाइस सेटिंग्स के माध्यम से बंद किया जा सकता है।
+
+3.2 नौकरी और व्यवसाय बाज़ार (मध्यस्थ सेफ हार्बर)
+• सूचना साझाकरण भूमिका: सूचना प्रौद्योगिकी अधिनियम, 2000 की धारा 79 के तहत नौकरी और व्यावसायिक अवसर बाज़ार में हमारी भूमिका सूचना साझा करने की सुविधा तक कड़ाई से सीमित है। हम कंपनियों द्वारा पोस्ट किए गए अवसरों को प्रदर्शित करते हैं और केवल तब आपके पेशेवर प्रोफ़ाइल डेटा को आगे बढ़ाते हैं जब आप "आवेदन करें" पर क्लिक करने की स्पष्ट कार्रवाई करते हैं।
+• कॉर्पोरेट स्थान फ़ायरवॉल: कंपनियों और नियोक्ताओं के पास आपके जीपीएस स्थान डेटा, स्थान इतिहास या निजी सुरक्षा सर्कल तक शून्य पहुंच (Zero Access) है।
+• स्वतंत्र कॉर्पोरेट दायित्व: एक बार जब आपका डेटा "आवेदन करें" कार्रवाई के माध्यम से किसी बाहरी व्यवसाय को भेजा जाता है, तो वह कंपनी उस डेटा पैकेट के लिए एक स्वतंत्र डेटा फिडुशियरी बन जाती है। वे कानूनी रूप से इसका उपयोग केवल उस नौकरी के लिए करने के लिए बाध्य हैं और आपकी इच्छा पर इसे मिटाना होगा।
 • बाल संरक्षण: डीपीडीपीए की धारा 9 और बाल श्रम नियमों के अनुपालन में, नौकरी बाजार बाल प्रोफाइल के लिए पूरी तरह से अदृश्य और दुर्गम है।
 
-भाग 4: डेटा प्रतिधारण, वैश्विक भंडारण और विलोपन
+भाग 4: शिक्षा मंच मुद्रीकरण और लिंक पुनर्निर्देशन
+4.1 बाहरी स्ट्रीम के माध्यम से मुद्रीकरण
+इस एप्लिकेशन का मुद्रीकरण कानून जागरूकता शिक्षा के लिए हमारे आधिकारिक YouTube चैनल के माध्यम से बाहरी रूप से किया जाता है। ऐप में इन सूचनात्मक वीडियो को देखने के लिए सीधे वेब लिंक शामिल हैं। इन वीडियो पर उत्पन्न दृश्य हमारी कोर लोकेशन सुरक्षा सुविधाओं को निःशुल्क रखने के लिए मंच का समर्थन करते हैं।
+
+4.2 डेटा पृथक्करण और बाल-सुरक्षा प्लेयर आर्किटेक्चर
+• कोई डेटा रिसाव नहीं: शैक्षिक लिंक पर क्लिक करने से एक बाहरी मीडिया स्ट्रीम लॉन्च होती है। हम YouTube या Google LLC को कोई स्थान विवरण, संपर्क नंबर या प्रोफ़ाइल जानकारी प्रसारित नहीं करते हैं।
+• वयस्क रूटिंग: वयस्क उपयोगकर्ताओं को मानक ब्राउज़र/ऐप लिंक के माध्यम से मुद्रीकृत स्ट्रीम पर निर्देशित किया जाता है। उनकी बातचीत पूरी तरह से Google की स्वतंत्र गोपनीयता नीति द्वारा शासित होती है।
+• बाल रूटिंग (सख्त कुकी ब्लॉक): कानून जागरूकता सभी आयु समूहों के लिए खुली है। हालाँकि, DPDPA की धारा 9 (नाबालिगों की व्यवहारिक ट्रैकिंग या लक्षित वाणिज्यिक प्रोफाइलिंग पर रोक) का कड़ाई से पालन करने के लिए, चाइल्ड प्रोफाइल के तहत पंजीकृत उपयोगकर्ताओं को स्वचालित रूप से youtube-nocookie.com सर्वर आर्किटेक्चर का उपयोग करके एक स्वच्छ एम्बेडेड प्लेयर के माध्यम से रूट किया जाता है। यह तृतीय-पक्ष विज्ञापन नेटवर्क को बच्चे की देखने की आदतों को ट्रैक करने से रोकता है।
+
+भाग 5: डेटा प्रतिधारण, वैश्विक भंडारण और विलोपन
 • क्रॉस-बॉर्डर प्रोसेसिंग: आपका डेटा DPDPA की धारा 7 के अनुपालन में वैश्विक क्लाउड इंफ्रास्ट्रक्चर नेटवर्क पर सुरक्षित रूप से संसाधित किया जाता है।
 • स्थान न्यूनतमकरण: लाइव निर्देशांक गतिशील रूप से संसाधित होते हैं और अनिश्चित काल के लिए संग्रहीत नहीं होते हैं। ऐतिहासिक ट्रैकिंग लॉग 30 दिनों के भीतर हमारे वैश्विक सर्वर से स्वचालित रूप से और स्थायी रूप से हटा दिए जाते हैं।
-• खाता हटाना: यदि आप अपनी प्राथमिक सहमति वापस लेते हैं या अपना खाता हटाते हैं, तो आपकी पूरी प्रोफ़ाइल, ऐतिहासिक लॉग और सक्रिय एप्लिकेशन पथ 30 दिनों के भीतर स्थायी रूप से मिटा दिए जाएंगे।
-
-भाग 5: बाहरी लिंक के माध्यम से मुद्रीकरण
-इस एप्लिकेशन का मुद्रीकरण हमारे आधिकारिक YouTube चैनल के माध्यम से बाहरी रूप से किया जाता है। ऐप में इन वीडियो को देखने के लिए सीधे वेब लिंक शामिल हैं। इन लिंक पर क्लिक करने से एक बाहरी ब्राउज़र या मूल YouTube ऐप लॉन्च होता है। हम YouTube या Google LLC को कोई स्थान विवरण, संपर्क नंबर या प्रोफ़ाइल जानकारी प्रसारित नहीं करते हैं।
+• खाता हटाना: यदि आप अपनी प्राथमिक सहमति वापस लेते हैं या अपना खाता हटाते हैं, तो आपकी पूरी प्रोफ़ाइल, ऐतिहासिक लॉग और सक्रिय एप्लिकेशन पथ 30 दिनों के भीतर स्थायी रूप से मिटा दिए जाएंगे। विलोपन पर, आपके द्वारा आवेदन की गई सभी कंपनियों को एक स्वचालित कैस्केड नोटिस भेजा जाता है, जिसमें उन्हें अपने स्थानीय सिस्टम से आपके सबमिट किए गए दस्तावेज़ों को मिटाने का निर्देश दिया जाता है।
 
 भाग 6: आपके अधिकार और शिकायत निवारण
 DPDPA के तहत एक डेटा प्रिंसिपल के रूप में, आप अपने डेटा सारांश तक पहुँचने, अशुद्धियों को ठीक करने, विलोपन का अनुरोध करने और अक्षमता के मामले में एक प्रतिनिधि नामित करने का अधिकार रखते हैं।
-किसी भी शिकायत के लिए या अपने अधिकारों का प्रयोग करने के लिए, कृपया हमारे नामित समन्वयक से संपर्क करें:
+किसी भी शिकायत, डेटा अधिकारों के निष्पादन या धोखाधड़ी वाली कॉर्पोरेट नौकरी लिस्टिंग की रिपोर्टिंग के लिए, कृपया हमारे नामित समन्वयक से संपर्क करें:
 • शिकायत अधिकारी: अमित शार्दने
 • ईमेल पता: privacy@tracklovedones.com
-• प्रतिक्रिया समयसीमा: सभी वैधानिक अनुरोधों को 30 दिनों के भीतर साफ-सुथरा हल किया जाएगा। अनसुलझे गोपनीयता विवादों को औपचारिक रूप से भारतीय डेटा संरक्षण बोर्ड (DPBI) को भेजा जा सकता है।''',
+• प्रतिक्रिया समयसीमा: सभी वैधानिक अनुरोधों को 30 दिनों के भीतर साफ-सुथरा हल किया जाएगा। अनसुलझे गोपनीयता विवादों को औपचारिक रूप से भारतीय डेटा संरक्षण बोर्ड (DPBI) को भेजा जा सकता है।
+
+============================================================
+खंड 2: उपयोग की शर्तें (TERMS OF USE)
+============================================================
+अंतिम अपडेट: अक्टूबर 2026
+कृपया People connect Track Loved Ones मोबाइल एप्लिकेशन का उपयोग करने से पहले इन उपयोग की शर्तों को ध्यान से पढ़ें। प्लेटफ़ॉर्म का उपयोग करके, आप इन शर्तों से बाध्य होने के लिए सहमत होते हैं।
+
+1. सेवा का दायरा और कानूनी भूमिका
+प्लेटफ़ॉर्म दो अलग-अलग कार्यक्षमताएं प्रदान करता है:
+1. पीयर-टू-पीयर लोकेशन सेफ्टी ट्रैकर: उपयोगकर्ताओं को विश्वसनीय परिवार, दोस्तों या रिश्तेदारों के अपने स्पष्ट रूप से स्व-असाइन किए गए सर्कल के साथ अपने लाइव निर्देशांक साझा करने की अनुमति देता है।
+2. अवसर सुविधाकर्ता (बाज़ार): सूचना प्रौद्योगिकी अधिनियम, 2000 की धारा 79 के तहत कड़ाई से एक सूचना मध्यस्थ (Intermediary) के रूप में कार्य करता है। प्लेटफ़ॉर्म बाहरी कंपनियों द्वारा पोस्ट की गई नौकरियों और व्यावसायिक लिस्टिंग को प्रदर्शित करता है और उपयोगकर्ता के मैन्युअल आदेश पर पेशेवर प्रोफ़ाइल डेटा प्रसारित करता है। प्लेटफ़ॉर्म कॉर्पोरेट पोस्टिंग की जाँच नहीं करता, नियोक्ता के रूप में कार्य नहीं करता, या विवादों में हस्तक्षेप नहीं करता है।
+
+2. पात्रता, सिम स्वामित्व और सिम-गेट अधिदेश
+2.1 दूरसंचार अनुपालन पावती
+भारतीय दूरसंचार नियमों के अनुसार, मोबाइल सिम कार्ड कानूनी रूप से नाबालिगों (18 वर्ष से कम) को जारी नहीं किए जा सकते। परिणामस्वरूप, इस प्लेटफ़ॉर्म पर खाता बनाने के लिए उपयोग किया जाने वाला मोबाइल नंबर कानूनी रूप से एक वयस्क माता-पिता, कानूनी अभिभावक या ग्राहक का है।
+2.2 खाता वर्गीकरण और आयु-रूटिंग
+• वयस्क प्रोफ़ाइल (18+): वयस्कों के रूप में पंजीकरण करने वाले व्यक्ति प्रमाणित करते हैं कि वे सिम कार्ड के कानूनी मालिक हैं।
+• बाल प्रोफ़ाइल (18 से कम) और सत्यापन योग्य अभिभावक सहमति: यदि ट्रैकिंग डिवाइस ले जाने वाला प्राथमिक उपयोगकर्ता नाबालिग है, तो सेटअप माता-पिता या कानूनी अभिभावक द्वारा शुरू और स्वीकृत होना चाहिए। ओटीपी दर्ज करके, अभिभावक DPDPA की धारा 9 के तहत सहमति प्रदान करते हैं।
+• सिस्टम प्रतिबंध: बाल प्रोफ़ाइल बैकएंड द्वारा प्रतिबंधित हैं और अवसर बाज़ार तक पहुंचने से पूरी तरह वर्जित हैं।
+
+3. DPDPA, 2023 के तहत डेटा गोपनीयता और अनुपालन
+आपकी गोपनीयता हमारी गोपनीयता सूचना द्वारा शासित है:
+• असंबद्ध सहमति (धारा 6): आपकी सहमति प्रत्येक गतिविधि (कोर ट्रैकिंग, स्थानीय संपर्क और आंतरिक एनालिटिक्स) के लिए अलग से एकत्र की जाती है।
+• वापस लेने का पूर्ण अधिकार (धारा 6(4)): आप किसी भी समय लोकेशन शेयरिंग बंद कर सकते हैं।
+• मिटाने का अधिकार (धारा 11): खाता हटाने पर 30 दिनों के भीतर सभी प्रोफ़ाइल विवरण, स्थान इतिहास लॉग और एनालिटिक्स मिटा दिए जाएंगे।
+
+4. जॉब मार्केटप्लेस अस्वीकरण और दायित्व फ़ायरवॉल
+4.1 स्पष्ट ट्रिगर साझाकरण
+प्लेटफ़ॉर्म कभी भी आपका पेशेवर डेटा स्वचालित रूप से अग्रेषित नहीं करेगा। ट्रांसमिशन केवल तब होता है जब एक वयस्क उपयोगकर्ता मैन्युअल रूप से "Apply" बटन दबाता है।
+4.2 कॉर्पोरेट फ़ायरवॉल
+बाहरी कंपनियों और नियोक्ताओं के पास आपके लाइव जीपीएस स्थान या निजी सर्कल तक शून्य पहुंच है।
+4.3 स्वतंत्र फिड्यूशियरी दायित्व का हस्तांतरण
+जैसे ही डेटा बाहरी कंपनी को प्रेषित होता है, वह व्यवसाय उस डेटा पैकेट के लिए DPDPA, 2023 के तहत एक स्वतंत्र डेटा फिडुशियरी बन जाता है। प्लेटफ़ॉर्म का उस पर कोई नियंत्रण या दायित्व नहीं रहता।
+
+5. बाहरी सामग्री और मुद्रीकरण प्रकटीकरण
+5.1 विज्ञापन-समर्थित बाहरी लिंक
+यह ऐप कानून जागरूकता शिक्षा के लिए आधिकारिक YouTube चैनल के लिंक के माध्यम से मुद्रीकृत है, जिससे ट्रैकिंग उपकरण निःशुल्क रहते हैं।
+5.2 आउटबाउंड पुनर्निर्देशन अस्वीकरण
+• डेटा अलगाव: प्लेटफ़ॉर्म YouTube या Google LLC के साथ कोई उपयोगकर्ता डेटा साझा नहीं करता है।
+• Google गोपनीयता: ऐप छोड़ने के बाद Google की स्वतंत्र नीति लागू होती है।
+• बाल सुरक्षा: बाल प्रोफ़ाइल वाले उपयोगकर्ताओं को youtube-nocookie.com सर्वर एंडपॉइंट के माध्यम से स्वच्छ प्लेयर में वीडियो दिखाया जाता है ताकि विज्ञापन ट्रैकिंग न हो।
+
+6. निषिद्ध उपयोग और प्लेटफ़ॉर्म सुरक्षा
+उपयोगकर्ता और कॉर्पोरेट पोस्टर सहमत हैं कि वे:
+• नौकरी लिस्टिंग के माध्यम से लाइव स्थान डेटा नहीं मांगेंगे।
+• भ्रामक या धोखाधड़ी वाली नौकरियां पोस्ट नहीं करेंगे।
+• वाणिज्यिक लाभ के लिए नाबालिगों की प्रोफाइलिंग नहीं करेंगे।
+• बाल श्रम को बढ़ावा देने वाले अवसर पोस्ट नहीं करेंगे।
+
+7. संशोधन और वाणिज्यिक विकास
+• सेवा अपडेट: DPDPA या दूरसंचार कानूनों के अनुसार शर्तों में संशोधन का अधिकार सुरक्षित है।
+• मूल्य निर्धारण अपडेट: कॉर्पोरेट उपयोगकर्ताओं के लिए लिस्टिंग वर्तमान में निःशुल्क है। किसी भी वाणिज्यिक शुल्क से पहले कम से कम 30 दिनों की पूर्व सूचना दी जाएगी।
+
+8. वैधानिक शिकायत निवारण (DPDPA धारा 13)
+• नामित शिकायत अधिकारी: अमित शार्दने
+• आधिकारिक संचार पता: privacy@tracklovedones.com
+• समाधान समयसीमा: 30 दिनों के भीतर समाधान। अनसुलझे विवाद DPBI को भेजे जा सकते हैं।
+
+============================================================
+खंड 3: वैधानिक कानूनी अस्वीकरण (LEGAL DISCLAIMER)
+============================================================
+अंतिम अपडेट: अक्टूबर 2026
+एप्लिकेशन 'Track Loved Ones' और इसकी संचालक कंपनी 'People connect' (बाद में "प्लेटफ़ॉर्म") व्यक्तिगत सुरक्षा के लिए पीयर-टू-पीयर लोकेशन ट्रैकिंग और नौकरी व व्यवसाय के अवसरों के लिए एक खोजपूर्ण बाज़ार प्रदान करती है। इस एप्लिकेशन का उपयोग करके, आप निम्नलिखित वैधानिक अस्वीकरणों को स्वीकार करते हैं:
+
+1. मध्यस्थ स्थिति और "सेफ हार्बर" संरक्षण (IT Act, 2000)
+सूचना प्रौद्योगिकी अधिनियम, 2000 की धारा 79 के अनुसार, प्लेटफ़ॉर्म बाज़ार मॉड्यूल पर प्रदर्शित सभी अवसरों के संबंध में केवल एक सूचना मध्यस्थ के रूप में कार्य करता है।
+• कोई सत्यापन नहीं: लिस्टिंग बाहरी कंपनियों द्वारा स्वतंत्र रूप से अपलोड की जाती हैं। प्लेटफ़ॉर्म इनकी पूर्व-जाँच या सत्यापन नहीं करता है।
+• कोई दायित्व नहीं: धोखाधड़ी, वित्तीय नुकसान या रोजगार विवादों के लिए प्लेटफ़ॉर्म कानूनी रूप से उत्तरदायी नहीं होगा। उपयोगकर्ता स्वयं जांच करें।
+
+2. निजी सुरक्षा डेटा का अलगाव (DPDPA, 2023 अनुपालन)
+प्लेटफ़ॉर्म अपनी व्यक्तिगत ट्रैकिंग सेवाओं और वाणिज्यिक बाज़ार के बीच एक सख्त डिजिटल फ़ायरवॉल बनाए रखता है। किसी भी कंपनी या नियोक्ता के पास आपके लाइव GPS या इतिहास तक पहुंच नहीं है।
+
+3. डेटा ट्रांसफर पर दायित्व का पूर्ण हस्तांतरण
+जब कोई उपयोगकर्ता आवेदन करता है, तो डेटा प्राप्त करने वाली कंपनी DPDPA 2023 के तहत एक स्वतंत्र डेटा फिडुशियरी बन जाती है। उसके बाद के उपयोग के लिए प्लेटफ़ॉर्म का कोई दायित्व नहीं है।
+
+4. सिम कार्ड स्वामित्व और नाबालिग प्रतिबंध (दूरसंचार अधिनियम)
+18 वर्ष से कम आयु के व्यक्ति सिम के मालिक नहीं हो सकते। यदि नाबालिग ऐप का उपयोग करता है, तो माता-पिता कानूनी रूप से जिम्मेदार हैं। नाबालिगों के लिए अवसर बाज़ार पूरी तरह प्रतिबंधित है।
+
+5. बाहरी मुद्रीकरण और तृतीय-पक्ष ट्रैकिंग अस्वीकरण
+आधिकारिक YouTube चैनल के लिंक शैक्षिक हैं। बाल प्रोफ़ाइल के लिए youtube-nocookie.com लागू है ताकि व्यावसायिक प्रोफाइलिंग अवरुद्ध रहे।
+
+6. सेवा उपलब्धता और ट्रैकिंग सटीकता
+रीयल-टाइम जीपीएस ट्रैकिंग मोबाइल नेटवर्क, उपग्रहों और डिवाइस बैटरी पर निर्भर करती है। प्लेटफ़ॉर्म अपनी सुविधाएं "जैसी है" (as-is) के आधार पर प्रदान करता है और 100% निर्बाध कनेक्टिविटी की गारंटी नहीं देता है।''',
+      termsContent: '''उपयोग की शर्तें (TERMS OF USE)
+अंतिम अपडेट: अक्टूबर 2026
+कृपया People connect Track Loved Ones मोबाइल एप्लिकेशन का उपयोग करने से पहले इन उपयोग की शर्तों को ध्यान से पढ़ें।
+
+1. सेवा का दायरा और कानूनी भूमिका
+प्लेटफ़ॉर्म पीयर-टू-पीयर लोकेशन सेफ्टी ट्रैकर और अवसर मध्यस्थ (IT Act धारा 79 Intermediary) के रूप में कार्य करता है।
+
+2. पात्रता, सिम स्वामित्व और सिम-गेट अधिदेश
+सिम कार्ड कानूनी रूप से वयस्क माता-पिता का होता है। नाबालिग के उपयोग पर DPDPA धारा 9 के तहत अभिभावक सहमति अनिवार्य है।
+
+3. DPDPA 2023 के तहत गोपनीयता
+असंबद्ध सहमति, सहमति वापस लेने का पूर्ण अधिकार और खाता हटाने पर 30 दिनों के भीतर पूर्ण विलोपन।
+
+4. अवसर बाज़ार और कॉर्पोरेट फ़ायरवॉल
+कंपनियों को जीपीएस लोकेशन का शून्य एक्सेस। आवेदन करने पर कंपनी स्वतंत्र डेटा फिडुशियरी बन जाती है।
+
+5. बाहरी सामग्री और मुद्रीकरण
+YouTube कानूनी जागरूकता वीडियो; नाबालिगों के लिए youtube-nocookie.com एम्बेडेड प्लेयर।
+
+6. निषिद्ध उपयोग
+धोखाधड़ी, स्थान की मांग, नाबालिगों की प्रोफाइलिंग या बाल श्रम का प्रचार सख्त वर्जित है।
+
+7. संशोधन एवं मूल्य निर्धारण
+शर्तों में संशोधन का अधिकार। कॉर्पोरेट मूल्य परिवर्तन पर 30 दिन की पूर्व सूचना।
+
+8. वैधानिक शिकायत निवारण
+शिकायत अधिकारी: अमित शार्दने (privacy@tracklovedones.com) | 30 दिनों में समाधान।''',
+      disclaimerContent: '''वैधानिक कानूनी अस्वीकरण (LEGAL DISCLAIMER)
+अंतिम अपडेट: अक्टूबर 2026
+Track Loved Ones / People connect
+
+1. मध्यस्थ सेफ हार्बर (IT Act धारा 79): लिस्टिंग की कोई पूर्व-जांच नहीं, रोजगार विवादों के लिए कोई दायित्व नहीं।
+2. स्थान डेटा अलगाव: कंपनियों को लाइव जीपीएस या ट्रैकिंग सर्कल तक शून्य पहुंच।
+3. दायित्व का हस्तांतरण: आवेदन के बाद कंपनी स्वतंत्र डेटा फिडुशियरी बनती है।
+4. सिम स्वामित्व एवं नाबालिग प्रतिबंध: नाबालिगों के लिए अवसर बाज़ार पूर्णतः वर्जित।
+5. बाहरी मुद्रीकरण: YouTube लिंक; बच्चों के लिए नो-कुकी आर्किटेक्चर।
+6. सेवा उपलब्धता: GPS ट्रैकिंग नेटवर्क पर निर्भर, "as-is" आधार पर प्रदान की जाती है।''',
     ),
 
     // 3. Marathi (मराठी)

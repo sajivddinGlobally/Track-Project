@@ -11,8 +11,8 @@ String getBusinessOpportunitiesResModelToJson(
 class GetBusinessOpportunitiesResModel {
   bool? success;
   String? message;
-  List<BusinessOpportunityItem>? data;
-  Pagination? pagination;
+  OpportunitiesData? data;
+  OpportunitiesPagination? pagination;
 
   GetBusinessOpportunitiesResModel({
     this.success,
@@ -22,26 +22,91 @@ class GetBusinessOpportunitiesResModel {
   });
 
   factory GetBusinessOpportunitiesResModel.fromJson(
-          Map<String, dynamic> json) =>
-      GetBusinessOpportunitiesResModel(
-        success: json["success"],
-        message: json["message"],
-        data: json["data"] == null
-            ? []
-            : List<BusinessOpportunityItem>.from(
-                json["data"]!.map((x) => BusinessOpportunityItem.fromJson(x))),
-        pagination: json["pagination"] == null
-            ? null
-            : Pagination.fromJson(json["pagination"]),
+          Map<String, dynamic> json) {
+    OpportunitiesData? dataObj;
+    if (json["data"] != null) {
+      if (json["data"] is Map) {
+        dataObj =
+            OpportunitiesData.fromJson(Map<String, dynamic>.from(json["data"]));
+      } else if (json["data"] is List) {
+        dataObj = OpportunitiesData(
+          businessPosts: List<BusinessOpportunityItem>.from(
+            (json["data"] as List).map(
+              (x) => BusinessOpportunityItem.fromJson(
+                Map<String, dynamic>.from(x),
+              ),
+            ),
+          ),
+          jobPosts: [],
+        );
+      }
+    }
+
+    OpportunitiesPagination? paginationObj;
+    if (json["pagination"] != null && json["pagination"] is Map) {
+      paginationObj = OpportunitiesPagination.fromJson(
+        Map<String, dynamic>.from(json["pagination"]),
       );
+    }
+
+    return GetBusinessOpportunitiesResModel(
+      success: json["success"],
+      message: json["message"],
+      data: dataObj,
+      pagination: paginationObj,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "success": success,
         "message": message,
-        "data": data == null
-            ? []
-            : List<dynamic>.from(data!.map((x) => x.toJson())),
+        "data": data?.toJson(),
         "pagination": pagination?.toJson(),
+      };
+
+  List<BusinessOpportunityItem> get businessPosts => data?.businessPosts ?? [];
+  List<BusinessOpportunityItem> get jobPosts => data?.jobPosts ?? [];
+}
+
+class OpportunitiesData {
+  List<BusinessOpportunityItem>? businessPosts;
+  List<BusinessOpportunityItem>? jobPosts;
+
+  OpportunitiesData({
+    this.businessPosts,
+    this.jobPosts,
+  });
+
+  factory OpportunitiesData.fromJson(Map<String, dynamic> json) =>
+      OpportunitiesData(
+        businessPosts: json["businessPosts"] == null ||
+                json["businessPosts"] is! List
+            ? []
+            : List<BusinessOpportunityItem>.from(
+                (json["businessPosts"] as List).map(
+                  (x) => BusinessOpportunityItem.fromJson(
+                    Map<String, dynamic>.from(x),
+                  ),
+                ),
+              ),
+        jobPosts: json["jobPosts"] == null || json["jobPosts"] is! List
+            ? []
+            : List<BusinessOpportunityItem>.from(
+                (json["jobPosts"] as List).map(
+                  (x) => BusinessOpportunityItem.fromJson(
+                    Map<String, dynamic>.from(x),
+                  ),
+                ),
+              ),
+      );
+
+  Map<String, dynamic> toJson() => {
+        "businessPosts": businessPosts == null
+            ? []
+            : List<dynamic>.from(businessPosts!.map((x) => x.toJson())),
+        "jobPosts": jobPosts == null
+            ? []
+            : List<dynamic>.from(jobPosts!.map((x) => x.toJson())),
       };
 }
 
@@ -71,6 +136,18 @@ class BusinessOpportunityItem {
   DateTime? updatedAt;
   int? v;
 
+  // Job specific attributes
+  String? jobTitle;
+  String? employmentType;
+  String? hierarchyLevel;
+  dynamic annualCtcPackage;
+  List<String>? reimbursements;
+  List<String>? perksAndBenefits;
+  String? jobDescription;
+  List<String>? requirements;
+  String? applicationContactEmail;
+  String? applicationContactPhone;
+
   BusinessOpportunityItem({
     this.id,
     this.companyId,
@@ -96,39 +173,73 @@ class BusinessOpportunityItem {
     this.createdAt,
     this.updatedAt,
     this.v,
+    this.jobTitle,
+    this.employmentType,
+    this.hierarchyLevel,
+    this.annualCtcPackage,
+    this.reimbursements,
+    this.perksAndBenefits,
+    this.jobDescription,
+    this.requirements,
+    this.applicationContactEmail,
+    this.applicationContactPhone,
   });
 
-  factory BusinessOpportunityItem.fromJson(Map<String, dynamic> json) =>
-      BusinessOpportunityItem(
-        id: json["_id"] ?? json["id"],
-        companyId: json["companyId"],
-        ownerId: json["ownerId"],
-        currentOwnerId: json["currentOwnerId"],
-        previousOwnerId: json["previousOwnerId"],
-        companyType: json["companyType"],
-        opportunityType: json["opportunityType"],
-        opportunityHeadline: json["opportunityHeadline"],
-        address: json["address"],
-        pincode: json["pincode"],
-        city: json["city"],
-        state: json["state"],
-        requiredInvest: json["requiredInvest"],
-        area: json["area"],
-        expectedReturn: json["expectedReturn"],
-        opportunityDescription: json["opportunityDescription"],
-        contactPersonName: json["contactPersonName"],
-        mobileNumber: json["mobileNumber"],
-        businessEmail: json["businessEmail"],
-        status: json["status"],
-        closingComment: json["closingComment"],
-        createdAt: json["createdAt"] == null
-            ? null
-            : DateTime.parse(json["createdAt"]),
-        updatedAt: json["updatedAt"] == null
-            ? null
-            : DateTime.parse(json["updatedAt"]),
-        v: json["__v"],
-      );
+  factory BusinessOpportunityItem.fromJson(Map<String, dynamic> json) {
+    List<String> parseStringList(dynamic val) {
+      if (val == null) return [];
+      if (val is List) {
+        return val
+            .map((e) => e?.toString() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+      return [];
+    }
+
+    return BusinessOpportunityItem(
+      id: json["_id"]?.toString() ?? json["id"]?.toString(),
+      companyId: json["companyId"]?.toString(),
+      ownerId: json["ownerId"],
+      currentOwnerId: json["currentOwnerId"]?.toString(),
+      previousOwnerId: json["previousOwnerId"],
+      companyType: json["companyType"]?.toString(),
+      opportunityType: json["opportunityType"]?.toString(),
+      opportunityHeadline: json["opportunityHeadline"]?.toString(),
+      address: json["address"]?.toString(),
+      pincode: json["pincode"]?.toString(),
+      city: json["city"]?.toString(),
+      state: json["state"]?.toString(),
+      requiredInvest: json["requiredInvest"],
+      area: json["area"]?.toString(),
+      expectedReturn: json["expectedReturn"],
+      opportunityDescription: json["opportunityDescription"]?.toString(),
+      contactPersonName: json["contactPersonName"]?.toString(),
+      mobileNumber: json["mobileNumber"]?.toString(),
+      businessEmail: json["businessEmail"]?.toString(),
+      status: json["status"]?.toString(),
+      closingComment: json["closingComment"]?.toString(),
+      createdAt: json["createdAt"] == null
+          ? null
+          : DateTime.tryParse(json["createdAt"].toString()),
+      updatedAt: json["updatedAt"] == null
+          ? null
+          : DateTime.tryParse(json["updatedAt"].toString()),
+      v: json["__v"] is int
+          ? json["__v"]
+          : int.tryParse(json["__v"]?.toString() ?? ''),
+      jobTitle: json["jobTitle"]?.toString(),
+      employmentType: json["employmentType"]?.toString(),
+      hierarchyLevel: json["hierarchyLevel"]?.toString(),
+      annualCtcPackage: json["annualCtcPackage"],
+      reimbursements: parseStringList(json["reimbursements"]),
+      perksAndBenefits: parseStringList(json["perksAndBenefits"]),
+      jobDescription: json["jobDescription"]?.toString(),
+      requirements: parseStringList(json["requirements"]),
+      applicationContactEmail: json["applicationContactEmail"]?.toString(),
+      applicationContactPhone: json["applicationContactPhone"]?.toString(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "_id": id,
@@ -155,14 +266,67 @@ class BusinessOpportunityItem {
         "createdAt": createdAt?.toIso8601String(),
         "updatedAt": updatedAt?.toIso8601String(),
         "__v": v,
+        "jobTitle": jobTitle,
+        "employmentType": employmentType,
+        "hierarchyLevel": hierarchyLevel,
+        "annualCtcPackage": annualCtcPackage,
+        "reimbursements": reimbursements,
+        "perksAndBenefits": perksAndBenefits,
+        "jobDescription": jobDescription,
+        "requirements": requirements,
+        "applicationContactEmail": applicationContactEmail,
+        "applicationContactPhone": applicationContactPhone,
       };
+
+  bool get isJob => (jobTitle != null && jobTitle!.trim().isNotEmpty);
 
   String get ownerName {
     if (ownerId is Map && (ownerId as Map)["name"] != null) {
       return (ownerId as Map)["name"].toString();
     }
+    if (ownerId is String && (ownerId as String).isNotEmpty) {
+      return ownerId as String;
+    }
     return '';
   }
+}
+
+class OpportunitiesPagination {
+  Pagination? businessPosts;
+  Pagination? jobPosts;
+
+  OpportunitiesPagination({
+    this.businessPosts,
+    this.jobPosts,
+  });
+
+  factory OpportunitiesPagination.fromJson(Map<String, dynamic> json) {
+    Pagination? bPosts;
+    Pagination? jPosts;
+
+    if (json["businessPosts"] != null && json["businessPosts"] is Map) {
+      bPosts =
+          Pagination.fromJson(Map<String, dynamic>.from(json["businessPosts"]));
+    }
+    if (json["jobPosts"] != null && json["jobPosts"] is Map) {
+      jPosts =
+          Pagination.fromJson(Map<String, dynamic>.from(json["jobPosts"]));
+    }
+
+    if (bPosts == null && json.containsKey("page")) {
+      bPosts = Pagination.fromJson(json);
+    }
+
+    return OpportunitiesPagination(
+      businessPosts: bPosts,
+      jobPosts: jPosts,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        "businessPosts": businessPosts?.toJson(),
+        "jobPosts": jobPosts?.toJson(),
+      };
 }
 
 class Pagination {
@@ -179,10 +343,18 @@ class Pagination {
   });
 
   factory Pagination.fromJson(Map<String, dynamic> json) => Pagination(
-        page: json["page"],
-        limit: json["limit"],
-        total: json["total"],
-        totalPages: json["totalPages"],
+        page: json["page"] is int
+            ? json["page"]
+            : int.tryParse(json["page"]?.toString() ?? ''),
+        limit: json["limit"] is int
+            ? json["limit"]
+            : int.tryParse(json["limit"]?.toString() ?? ''),
+        total: json["total"] is int
+            ? json["total"]
+            : int.tryParse(json["total"]?.toString() ?? ''),
+        totalPages: json["totalPages"] is int
+            ? json["totalPages"]
+            : int.tryParse(json["totalPages"]?.toString() ?? ''),
       );
 
   Map<String, dynamic> toJson() => {

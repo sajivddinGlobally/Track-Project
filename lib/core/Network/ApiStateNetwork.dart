@@ -18,6 +18,7 @@ import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
+import '../Data/BodyModel/ManualContactBodyModel.dart';
 import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/BodyModel/deleteContactBodyModel.dart';
 import '../Data/BodyModel/locationSharingBodyModel.dart';
@@ -58,12 +59,19 @@ import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
 import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
 import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
 import '../Data/ResponseModel/DeleteUserAccountResModel.dart';
+import '../Data/ResponseModel/ApplyJobProfileResModel.dart';
+import '../Data/BodyModel/SubmitFeedbackBodyModel.dart';
+import '../Data/ResponseModel/SubmitFeedbackResModel.dart';
+import '../Data/BodyModel/CompanyTransferSendOtpBodyModel.dart';
+import '../Data/ResponseModel/CompanyTransferSendOtpResModel.dart';
+import '../Data/ResponseModel/CompanyTransferLookupResModel.dart';
+import '../Data/BodyModel/CompanyTransferExecuteBodyModel.dart';
+import '../Data/ResponseModel/CompanyTransferExecuteResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
-// @RestApi(baseUrl: "https://grhdxh1f-3002.inc1.devtunnels.ms")
-@RestApi(baseUrl: "https://loveable-backend-5qi0.onrender.com")
-// @RestApi(baseUrl: "https://grhdxh1f-3002.inc1.devtunnels.ms")
+// @RestApi(baseUrl: "https://loveable-backend-5qi0.onrender.com")
+@RestApi(baseUrl: "https://api.tracklovedones.com")
 abstract class ApiStateNetwork {
   factory ApiStateNetwork(Dio dio, {String baseUrl}) = _ApiStateNetwork;
 
@@ -116,6 +124,11 @@ abstract class ApiStateNetwork {
     @Body() MatchContactsBodyModel body,
   );
 
+  @POST("/api/v1/network/contacts/manual")
+  Future<MatchContactsResModel> addManualContact(
+    @Body() ManualContactBodyModel body,
+  );
+
   @POST("/api/v1/network//request/{id}")
   Future<SendRequest> sendRequest(@Path("id") String id);
 
@@ -145,7 +158,9 @@ abstract class ApiStateNetwork {
   Future<LocationSharingReceivedResModel> getLocationSharingReceived();
 
   @GET("/api/v1/network/contacts/match")
-  Future<MatchContactsResModel> getMatchContacts();
+  Future<MatchContactsResModel> getMatchContacts([
+    @Query("search") String? search,
+  ]);
 
   @POST("/api/v1/sos/update-location")
   Future<dynamic> updateLocation(@Body() UpdateLocationBodyModel body);
@@ -204,20 +219,28 @@ abstract class ApiStateNetwork {
   );
 
   @DELETE("/api/v1/business/job-posts/{id}")
-  Future<DeleteJobPostResModel> deleteJobPost(
-    @Path("id") String id,
-  );
+  Future<DeleteJobPostResModel> deleteJobPost(@Path("id") String id);
 
   @POST("/api/v1/business/opportunities")
   Future<CreateBusinessOpportunityResModel> createBusinessOpportunity(
     @Body() CreateBusinessOpportunityBodyModel body,
   );
 
+  @PATCH("/api/v1/business/opportunities")
+  Future<CreateBusinessOpportunityResModel> updateBusinessOpportunity(
+    @Body() CreateBusinessOpportunityBodyModel body,
+  );
+
+  @DELETE("/api/v1/business/opportunities/{id}")
+  Future<CreateBusinessOpportunityResModel> deleteBusinessOpportunity(
+    @Path("id") String id,
+  );
+
   @GET("/api/v1/business/opportunities")
   Future<GetBusinessOpportunitiesResModel> getBusinessOpportunities(
+    @Query("search") String? search,
     @Query("page") int? page,
     @Query("limit") int? limit,
-    @Query("search") String? search,
     @Query("pincode") String? pincode,
   );
 
@@ -258,5 +281,36 @@ abstract class ApiStateNetwork {
   @DELETE("/api/v1/auth/user_delete")
   Future<DeleteUserAccountResModel> deleteUserAccount(
     @Body() DeleteUserAccountBodyModel body,
+  );
+
+  @POST("/api/v1/business/job-profile")
+  @MultiPart()
+  Future<ApplyJobProfileResModel> applyJobProfile(
+    @Part(name: "postId") String postId,
+    @Part(name: "name") String name,
+    @Part(name: "email") String email,
+    @Part(name: "phone") String phone,
+    @Part(name: "comment") String? comment,
+    @Part(name: "resume") File? resume,
+  );
+
+  @POST("/api/v1/auth/feedback")
+  Future<SubmitFeedbackResModel> submitFeedback(
+    @Body() SubmitFeedbackBodyModel body,
+  );
+
+  @POST("/api/v1/business/transfer/send-otp")
+  Future<CompanyTransferSendOtpResModel> sendCompanyTransferOtp(
+    @Body() CompanyTransferSendOtpBodyModel body,
+  );
+
+  @GET("/api/v1/business/transfer/lookup-receiver")
+  Future<CompanyTransferLookupResModel> lookupTransferReceiver(
+    @Query("phone") String phone,
+  );
+
+  @POST("/api/v1/business/transfer/execute")
+  Future<CompanyTransferExecuteResModel> executeCompanyTransfer(
+    @Body() CompanyTransferExecuteBodyModel body,
   );
 }

@@ -941,64 +941,41 @@ class _GrievanceDpoScreenState extends ConsumerState<GrievanceDpoScreen> {
                     ),
                   ),
                   SizedBox(height: 24.h),
-
                   // Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.white30),
-                            padding: EdgeInsets.symmetric(vertical: 13.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(
-                            widget.isHindi ? '🔙 वापस जाएं' : '🔙 RETURN',
-                            style: GoogleFonts.outfit(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.sp,
-                            ),
-                          ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brightGold,
+                        padding: EdgeInsets.symmetric(
+                          vertical: 13.h,
+                          horizontal: 10.w,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
                       ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: brightGold,
-                            padding: EdgeInsets.symmetric(vertical: 13.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
+                      onPressed: _isSubmitting ? null : _submitGrievance,
+                      child: _isSubmitting
+                          ? SizedBox(
+                              height: 20.h,
+                              width: 20.h,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              widget.isHindi
+                                  ? '🚀 शिकायत सबमिट करें'
+                                  : '🚀 SUBMIT GRIEVANCE',
+                              style: GoogleFonts.outfit(
+                                color: const Color(0xFF0F3D38),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5.sp,
+                              ),
                             ),
-                          ),
-                          onPressed: _isSubmitting ? null : _submitGrievance,
-                          child: _isSubmitting
-                              ? SizedBox(
-                                  height: 20.h,
-                                  width: 20.h,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFF0F3D38),
-                                  ),
-                                )
-                              : Text(
-                                  widget.isHindi
-                                      ? '🚀 शिकायत सबमिट करें'
-                                      : '🚀 SUBMIT GRIEVANCE',
-                                  style: GoogleFonts.outfit(
-                                    color: const Color(0xFF0F3D38),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13.5.sp,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   SizedBox(height: 20.h),
                 ],

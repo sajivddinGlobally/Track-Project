@@ -94,26 +94,88 @@ Dio createDio() {
               log("ERROR RESPONSE: $responseData");
 
               if (responseData is Map) {
+                final errorsField = responseData['errors'];
+                final List<String> extractedErrors = [];
+
                 // --------------------------------
-                // Case 1: Validation errors (Prioritized)
+                // Case 1A: errors is a List
+                // e.g. [{"field": "companyPanNumber", "message": "..."}] or ["error 1", "error 2"]
                 // --------------------------------
-                if (responseData['errors'] is Map) {
-                  final errors = responseData['errors'] as Map;
-                  if (errors.isNotEmpty) {
-                    final firstError = errors.values.first;
-                    if (firstError is List && firstError.isNotEmpty) {
-                      message = firstError.first.toString();
-                    } else if (firstError != null) {
-                      message = firstError.toString();
+                if (errorsField is List && errorsField.isNotEmpty) {
+                  for (final item in errorsField) {
+                    if (item is Map) {
+                      final msg = item['message'] ?? item['msg'] ?? item['error'];
+                      if (msg != null && msg.toString().trim().isNotEmpty) {
+                        extractedErrors.add(msg.toString().trim());
+                      } else {
+                        extractedErrors.add(item.toString());
+                      }
+                    } else if (item != null && item.toString().trim().isNotEmpty) {
+                      extractedErrors.add(item.toString().trim());
                     }
                   }
                 }
                 // --------------------------------
-                // Case 2: Normal message fallback
+                // Case 1B: errors is a Map
+                // e.g. {"field": ["msg1"], "field2": "msg2"}
                 // --------------------------------
-                else if (responseData['message'] != null) {
-                  message = responseData['message'].toString();
+                else if (errorsField is Map && errorsField.isNotEmpty) {
+                  for (final entry in errorsField.entries) {
+                    final val = entry.value;
+                    if (val is List) {
+                      for (final subItem in val) {
+                        if (subItem != null && subItem.toString().trim().isNotEmpty) {
+                          extractedErrors.add(subItem.toString().trim());
+                        }
+                      }
+                    } else if (val is Map) {
+                      final msg = val['message'] ?? val['msg'] ?? val['error'];
+                      if (msg != null && msg.toString().trim().isNotEmpty) {
+                        extractedErrors.add(msg.toString().trim());
+                      } else {
+                        extractedErrors.add(val.toString());
+                      }
+                    } else if (val != null && val.toString().trim().isNotEmpty) {
+                      extractedErrors.add(val.toString().trim());
+                    }
+                  }
                 }
+                // --------------------------------
+                // Case 1C: message is a List
+                // --------------------------------
+                else if (responseData['message'] is List &&
+                    (responseData['message'] as List).isNotEmpty) {
+                  for (final item in (responseData['message'] as List)) {
+                    if (item != null && item.toString().trim().isNotEmpty) {
+                      extractedErrors.add(item.toString().trim());
+                    }
+                  }
+                }
+
+                // If validation errors were found, prioritize and format them
+                if (extractedErrors.isNotEmpty) {
+                  if (extractedErrors.length == 1) {
+                    message = extractedErrors.first;
+                  } else {
+                    message = extractedErrors.map((e) => '• $e').join('\n');
+                  }
+                }
+                // --------------------------------
+                // Case 2: Normal message fallback (e.g. 409 Conflict "gstNumber already exists")
+                // --------------------------------
+                else if (responseData['message'] != null &&
+                    responseData['message'].toString().trim().isNotEmpty) {
+                  message = responseData['message'].toString().trim();
+                }
+                // --------------------------------
+                // Case 3: error field fallback
+                // --------------------------------
+                else if (responseData['error'] != null &&
+                    responseData['error'].toString().trim().isNotEmpty) {
+                  message = responseData['error'].toString().trim();
+                }
+              } else if (responseData is String && responseData.trim().isNotEmpty) {
+                message = responseData.trim();
               }
             } catch (e) {
               log("Error while parsing DioException message: $e");

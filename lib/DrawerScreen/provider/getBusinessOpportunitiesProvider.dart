@@ -50,7 +50,9 @@ final getBusinessOpportunitiesProvider = FutureProvider.autoDispose
           ? filter.pincode!.trim()
           : null,
     );
-    log('GET /api/v1/business/opportunities response: count=${result.data?.length}');
+    log(
+      'GET /api/v1/business/opportunities response: business=${result.businessPosts.length}, jobs=${result.jobPosts.length}',
+    );
     return result;
   },
 );

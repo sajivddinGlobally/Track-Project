@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:track_loved/core/Data/BodyModel/UpdateLocationBodyModel.dart';
 import 'dart:io';
 
@@ -21,6 +22,7 @@ import 'package:track_loved/core/Data/ResponseModel/updateJobPostResModel.dart';
 import 'package:track_loved/core/Network/ApiStateNetwork.dart';
 
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
+import '../Data/BodyModel/ManualContactBodyModel.dart';
 import '../Data/BodyModel/deleteContactBodyModel.dart';
 import '../Data/BodyModel/updateJobPostBodyModel.dart';
 import '../Data/ResponseModel/deleteContactResModel.dart';
@@ -57,13 +59,22 @@ import '../Data/ResponseModel/SubmitGrievanceResModel.dart';
 import '../Data/BodyModel/RequestDataSummaryBodyModel.dart';
 import '../Data/ResponseModel/RequestDataSummaryResModel.dart';
 import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import '../Data/ResponseModel/ApplyJobProfileResModel.dart';
 import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
 import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
 import '../Data/ResponseModel/DeleteUserAccountResModel.dart';
+import '../Data/BodyModel/SubmitFeedbackBodyModel.dart';
+import '../Data/ResponseModel/SubmitFeedbackResModel.dart';
+import '../Data/BodyModel/CompanyTransferSendOtpBodyModel.dart';
+import '../Data/ResponseModel/CompanyTransferSendOtpResModel.dart';
+import '../Data/ResponseModel/CompanyTransferLookupResModel.dart';
+import '../Data/BodyModel/CompanyTransferExecuteBodyModel.dart';
+import '../Data/ResponseModel/CompanyTransferExecuteResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
-  Authservice(this.api);
+  final Dio? dio;
+  Authservice(this.api, {this.dio});
 
   Future<LoginResModel> loginData({required email, required password}) async {
     try {
@@ -209,9 +220,20 @@ class Authservice {
     }
   }
 
-  Future<MatchContactsResModel> getMatchContactsData() async {
+  Future<MatchContactsResModel> addManualContactData(
+    ManualContactBodyModel body,
+  ) async {
     try {
-      final response = await api.getMatchContacts();
+      final response = await api.addManualContact(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<MatchContactsResModel> getMatchContactsData({String? search}) async {
+    try {
+      final response = await api.getMatchContacts(search);
       return response;
     } catch (e) {
       rethrow;
@@ -421,6 +443,28 @@ class Authservice {
     }
   }
 
+  Future<CreateBusinessOpportunityResModel> updateBusinessOpportunityData(
+    CreateBusinessOpportunityBodyModel body,
+  ) async {
+    try {
+      final response = await api.updateBusinessOpportunity(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CreateBusinessOpportunityResModel> deleteBusinessOpportunityData(
+    String id,
+  ) async {
+    try {
+      final response = await api.deleteBusinessOpportunity(id);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<GetBusinessOpportunitiesResModel> getBusinessOpportunitiesData({
     int? page,
     int? limit,
@@ -429,9 +473,9 @@ class Authservice {
   }) async {
     try {
       final response = await api.getBusinessOpportunities(
+        search,
         page,
         limit,
-        search,
         pincode,
       );
       return response;
@@ -565,6 +609,73 @@ class Authservice {
   ) async {
     try {
       final response = await api.deleteUserAccount(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<ApplyJobProfileResModel> applyJobProfileData({
+    required String postId,
+    required String name,
+    required String email,
+    required String phone,
+    String? comment,
+    File? resume,
+  }) async {
+    try {
+      final response = await api.applyJobProfile(
+        postId,
+        name,
+        email,
+        phone,
+        comment,
+        resume,
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<SubmitFeedbackResModel> submitFeedbackData(
+    SubmitFeedbackBodyModel body,
+  ) async {
+    try {
+      final response = await api.submitFeedback(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CompanyTransferSendOtpResModel> sendCompanyTransferOtpData(
+    CompanyTransferSendOtpBodyModel body,
+  ) async {
+    try {
+      final response = await api.sendCompanyTransferOtp(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CompanyTransferLookupResModel> lookupTransferReceiverData(
+    String phone,
+  ) async {
+    try {
+      final response = await api.lookupTransferReceiver(phone);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CompanyTransferExecuteResModel> executeCompanyTransferData(
+    CompanyTransferExecuteBodyModel body,
+  ) async {
+    try {
+      final response = await api.executeCompanyTransfer(body);
       return response;
     } catch (e) {
       rethrow;

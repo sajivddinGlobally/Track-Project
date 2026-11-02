@@ -57,6 +57,8 @@ dependencies:
   socket_io_client: ^3.1.6
   geocoding: ^5.0.0
   flutter_secure_storage: ^10.3.4
+  file_picker: ^11.0.3
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:

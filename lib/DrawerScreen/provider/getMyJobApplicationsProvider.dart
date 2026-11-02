@@ -9,6 +9,8 @@ final getMyJobApplicationsProvider =
   final authService = ref.watch(authServiceProvider);
   log('Calling GET /api/v1/business/job-applications/me...');
   final result = await authService.getMyJobApplicationsData();
-  log('GET /api/v1/business/job-applications/me response: success=${result.success}, count=${result.data.length}');
+  log(
+    'GET /api/v1/business/job-applications/me response: success=${result.success}, jobs=${result.jobApplications.length}, business=${result.businessApplications.length}',
+  );
   return result;
 });

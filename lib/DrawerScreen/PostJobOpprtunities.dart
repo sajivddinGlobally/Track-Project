@@ -56,7 +56,6 @@ class _PostJobOpportunitiesScreenState
 
   final List<String> _jobLevels = ['Frontline', 'Mid-Level', 'Senior'];
   final List<String> _selectedPincodes = [];
-  bool _hasShownDialog = false;
   bool _isLoading = false;
   String? _companyId;
 
@@ -69,113 +68,15 @@ class _PostJobOpportunitiesScreenState
   void initState() {
     super.initState();
     final box = Hive.box('userdata');
-    final savedCompanyName = box.get('companyName', defaultValue: '');
-    if (savedCompanyName.toString().trim().isNotEmpty) {
-      _employerController.text = savedCompanyName.toString().trim();
-    }
-  }
-
-  Future<void> _showCompanyProfileRequiredDialog() async {
-    if (_hasShownDialog || !mounted) return;
-    _hasShownDialog = true;
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF072420),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.business_rounded,
-              color: const Color(0xFFD4AF37),
-              size: 24.sp,
-            ),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? 'कंपनी प्रोफ़ाइल अधूरी है'
-                    : 'Company Profile Required',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          _isHindi
-              ? 'नौकरी पोस्ट करने के लिए कृपया पहले अपनी कंपनी प्रोफ़ाइल और KYC विवरण पूरा करें।'
-              : 'Please complete your Company Profile and corporate KYC details before posting job opportunities.',
-          style: TextStyle(
-            fontSize: 13.5.sp,
-            color: Colors.white70,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop(false);
-            },
-            child: Text(
-              _isHindi ? 'रद्द करें' : 'Cancel',
-              style: TextStyle(
-                color: Colors.white60,
-                fontWeight: FontWeight.w600,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
-              ),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(dialogCtx).pop(true);
-              },
-              child: Text(
-                _isHindi
-                    ? 'कंपनी प्रोफ़ाइल पूरी करें'
-                    : 'Complete Company Profile',
-                style: TextStyle(
-                  color: const Color(0xFF072420),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (result == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const CompanyProfileScreen()),
-      );
-    } else {
-      Navigator.of(context).pop();
+    final userName = box.get('name', defaultValue: '')?.toString().trim() ?? '';
+    final savedCompanyName = box
+        .get('companyName', defaultValue: '')
+        ?.toString()
+        .trim();
+    if (savedCompanyName != null &&
+        savedCompanyName.isNotEmpty &&
+        savedCompanyName != userName) {
+      _employerController.text = savedCompanyName;
     }
   }
 
@@ -470,40 +371,38 @@ class _PostJobOpportunitiesScreenState
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
         ),
       ),
-      error: (err, stack) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showCompanyProfileRequiredDialog();
-        });
-        return Scaffold(
-          backgroundColor: const Color(0xFF0F3D38),
-          appBar: AppBarScreen(
-            titleEn: 'Post Job Opportunities',
-            titleHi: 'नौकरी के अवसर पोस्ट करें',
-            isHindi: _isHindi,
-            notificationCount: 2,
-            onLanguageChanged: (val) => setState(() => _isHindi = val),
-            onNotificationPressed: () {},
-          ),
-          body: const SizedBox.shrink(),
-        );
-      },
+      error: (err, stack) => CompanyProfileRequiredPlaceholder(
+        isHindi: _isHindi,
+        screenTitleEn: 'Post Job Opportunities',
+        screenTitleHi: 'नौकरी के अवसर पोस्ट करें',
+        scaffoldKey: _scaffoldKey,
+        onLanguageChanged: (val) => setState(() => _isHindi = val),
+        onCompleteProfile: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
+          ).then((_) {
+            ref.invalidate(getBussinessProfileProvider);
+          });
+        },
+      ),
       data: (profileData) {
         final dataList = profileData.data ?? [];
         if (dataList.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showCompanyProfileRequiredDialog();
-          });
-          return Scaffold(
-            backgroundColor: const Color(0xFF0F3D38),
-            appBar: AppBarScreen(
-              titleEn: 'Post Job Opportunities',
-              titleHi: 'नौकरी के अवसर पोस्ट करें',
-              isHindi: _isHindi,
-              notificationCount: 2,
-              onLanguageChanged: (val) => setState(() => _isHindi = val),
-              onNotificationPressed: () {},
-            ),
-            body: const SizedBox.shrink(),
+          return CompanyProfileRequiredPlaceholder(
+            isHindi: _isHindi,
+            screenTitleEn: 'Post Job Opportunities',
+            screenTitleHi: 'नौकरी के अवसर पोस्ट करें',
+            scaffoldKey: _scaffoldKey,
+            onLanguageChanged: (val) => setState(() => _isHindi = val),
+            onCompleteProfile: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
+              ).then((_) {
+                ref.invalidate(getBussinessProfileProvider);
+              });
+            },
           );
         }
 
@@ -541,9 +440,18 @@ class _PostJobOpportunitiesScreenState
         if (_companyId != null && _companyId!.isNotEmpty) {
           Hive.box('userdata').put('companyId', _companyId);
         }
-        if (_employerController.text.isEmpty &&
-            datum.registeredCompanyName != null) {
-          _employerController.text = datum.registeredCompanyName!;
+        final regName = datum.registeredCompanyName?.trim();
+        final userName =
+            Hive.box(
+              'userdata',
+            ).get('name', defaultValue: '')?.toString().trim() ??
+            '';
+        if (regName != null && regName.isNotEmpty) {
+          if (_employerController.text.trim().isEmpty ||
+              _employerController.text.trim() == userName) {
+            _employerController.text = regName;
+          }
+          Hive.box('userdata').put('companyName', regName);
         }
         return _buildJobForm(context);
       },
@@ -577,61 +485,6 @@ class _PostJobOpportunitiesScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 10.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ManageMyPostingsScreen(
-                                initialHindi: _isHindi,
-                              ),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(16.r),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 10.w,
-                            vertical: 5.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F3D38),
-                            borderRadius: BorderRadius.circular(16.r),
-                            border: Border.all(
-                              color: const Color(
-                                0xFFE6C567,
-                              ).withValues(alpha: 0.6),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.admin_panel_settings_outlined,
-                                color: const Color(0xFFE6C567),
-                                size: 14.sp,
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                _isHindi
-                                    ? 'मेरी पोस्ट प्रबंधित करें'
-                                    : 'Manage My Postings',
-                                style: TextStyle(
-                                  fontSize: 11.5.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFFE6C567),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8.h),
                   Container(
                     padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(

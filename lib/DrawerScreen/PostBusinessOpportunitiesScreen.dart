@@ -8,9 +8,18 @@ import 'package:track_loved/complanyProfile/CompanyPendingVerificationView.dart'
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
 
 class PostBusinessOpportunitiesScreen extends ConsumerStatefulWidget {
-  const PostBusinessOpportunitiesScreen({super.key});
+  final MyBusinessOpportunityItem? editOpportunity;
+  final bool initialHindi;
+
+  const PostBusinessOpportunitiesScreen({
+    super.key,
+    this.editOpportunity,
+    this.initialHindi = false,
+  });
 
   @override
   ConsumerState<PostBusinessOpportunitiesScreen> createState() =>
@@ -38,7 +47,6 @@ class PostBusinessOpportunitiesScreenState
 
   String? _selectedOpportunityType = 'Start Courier Business / Franchise';
   bool _isHindi = false;
-  bool _hasShownDialog = false;
   bool _isLoading = false;
   String? _companyId;
 
@@ -54,11 +62,32 @@ class PostBusinessOpportunitiesScreenState
   @override
   void initState() {
     super.initState();
+    _isHindi = widget.initialHindi;
+
     final box = Hive.box('userdata');
-    final savedCompanyName = box.get('companyName', defaultValue: '');
-    if (savedCompanyName.toString().trim().isNotEmpty) {
-      _companyNameController.text = savedCompanyName.toString().trim();
+    final userName = box.get('name', defaultValue: '')?.toString().trim() ?? '';
+
+    // 1. Try to get registered company name from cached business profile
+    final cachedProfile = ref.read(getBussinessProfileProvider).value?.data;
+    String? initialCompanyName;
+    if (cachedProfile != null && cachedProfile.isNotEmpty) {
+      initialCompanyName = cachedProfile.first.registeredCompanyName?.trim();
     }
+    // 2. Fallback to Hive's companyName (ensuring it is not mistakenly the personal username)
+    if (initialCompanyName == null || initialCompanyName.isEmpty) {
+      final savedInHive =
+          box.get('companyName', defaultValue: '')?.toString().trim();
+      if (savedInHive != null &&
+          savedInHive.isNotEmpty &&
+          savedInHive != userName) {
+        initialCompanyName = savedInHive;
+      }
+    }
+
+    if (initialCompanyName != null && initialCompanyName.isNotEmpty) {
+      _companyNameController.text = initialCompanyName;
+    }
+
     final savedPhone = box.get('companyPhone', defaultValue: '');
     if (savedPhone.toString().trim().isNotEmpty) {
       _contactPhoneController.text = savedPhone.toString().trim();
@@ -67,6 +96,84 @@ class PostBusinessOpportunitiesScreenState
     if (savedEmail.toString().trim().isNotEmpty) {
       _emailController.text = savedEmail.toString().trim();
     }
+
+    if (widget.editOpportunity != null) {
+      final exp = widget.editOpportunity!;
+      if (exp.opportunityHeadline != null &&
+          exp.opportunityHeadline!.trim().isNotEmpty) {
+        _opportunityTitleController.text = exp.opportunityHeadline!.trim();
+      }
+      if (exp.opportunityType != null &&
+          exp.opportunityType!.trim().isNotEmpty) {
+        _selectedOpportunityType = exp.opportunityType!.trim();
+        if (!_opportunityTypes.contains(_selectedOpportunityType)) {
+          _opportunityTypes.add(_selectedOpportunityType!);
+        }
+      }
+      if (exp.city != null && exp.city!.trim().isNotEmpty) {
+        _locationController.text = exp.city!.trim();
+      }
+      if (exp.pincode != null && exp.pincode!.trim().isNotEmpty) {
+        _pincodeController.text = exp.pincode!.trim();
+      }
+      if (exp.requiredInvest != null) {
+        _investmentController.text = exp.requiredInvest.toString().trim();
+      }
+      if (exp.area != null && exp.area!.trim().isNotEmpty) {
+        _areaRequiredController.text = exp.area!.trim();
+      }
+      if (exp.expectedReturn != null) {
+        _returnsController.text = exp.expectedReturn.toString().trim();
+      }
+      if (exp.opportunityDescription != null &&
+          exp.opportunityDescription!.trim().isNotEmpty) {
+        _descriptionController.text = exp.opportunityDescription!.trim();
+      }
+      if (exp.contactPersonName != null &&
+          exp.contactPersonName!.trim().isNotEmpty) {
+        _contactPersonController.text = exp.contactPersonName!.trim();
+      }
+      if (exp.mobileNumber != null && exp.mobileNumber!.trim().isNotEmpty) {
+        _contactPhoneController.text = exp.mobileNumber!.trim();
+      }
+      if (exp.businessEmail != null && exp.businessEmail!.trim().isNotEmpty) {
+        _emailController.text = exp.businessEmail!.trim();
+      }
+      if (exp.companyId != null && exp.companyId!.trim().isNotEmpty) {
+        _companyId = exp.companyId!.trim();
+      }
+    }
+
+    // Default contact person name to logged in person's name (e.g. Sajiv)
+    if (_contactPersonController.text.trim().isEmpty && userName.isNotEmpty) {
+      _contactPersonController.text = userName;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profileData = ref.read(getBussinessProfileProvider).value?.data;
+      if (profileData != null && profileData.isNotEmpty) {
+        final datum = profileData.first;
+        final comp = datum.registeredCompanyName?.trim();
+        if (comp != null &&
+            comp.isNotEmpty &&
+            (_companyNameController.text.trim().isEmpty ||
+                _companyNameController.text.trim() == userName) &&
+            mounted) {
+          setState(() {
+            _companyNameController.text = comp;
+          });
+          box.put('companyName', comp);
+        }
+        if (_contactPersonController.text.trim().isEmpty && mounted) {
+          final contactName = datum.ownerContact?.name?.trim();
+          if (contactName != null && contactName.isNotEmpty) {
+            setState(() {
+              _contactPersonController.text = contactName;
+            });
+          }
+        }
+      }
+    });
 
     // Add listeners to update the live card preview in real time
     _companyNameController.addListener(_refreshPreview);
@@ -84,110 +191,6 @@ class PostBusinessOpportunitiesScreenState
 
   void _refreshPreview() {
     if (mounted) setState(() {});
-  }
-
-  Future<void> _showCompanyProfileRequiredDialog() async {
-    if (_hasShownDialog || !mounted) return;
-    _hasShownDialog = true;
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF072420),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.business_rounded,
-              color: const Color(0xFFD4AF37),
-              size: 24.sp,
-            ),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? 'कंपनी प्रोफ़ाइल अधूरी है'
-                    : 'Company Profile Required',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          _isHindi
-              ? 'अवसर पोस्ट करने के लिए कृपया पहले अपनी कंपनी प्रोफ़ाइल और KYC विवरण पूरा करें।'
-              : 'Please complete your Company Profile and corporate KYC details before posting opportunities.',
-          style: TextStyle(
-            fontSize: 13.5.sp,
-            color: Colors.white70,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop(false);
-            },
-            child: Text(
-              _isHindi ? 'रद्द करें' : 'Cancel',
-              style: TextStyle(
-                color: Colors.white60,
-                fontWeight: FontWeight.w600,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
-              ),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(dialogCtx).pop(true);
-              },
-              child: Text(
-                _isHindi
-                    ? 'कंपनी प्रोफ़ाइल पूरी करें'
-                    : 'Complete Company Profile',
-                style: TextStyle(
-                  color: const Color(0xFF072420),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (result == true) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const CompanyProfileScreen()),
-      );
-    } else {
-      Navigator.of(context).pop();
-    }
   }
 
   @override
@@ -242,26 +245,35 @@ class PostBusinessOpportunitiesScreenState
         return;
       }
 
+      final isEdit = widget.editOpportunity != null;
+
       final companyType =
-          datum?.companyType ??
-          box.get('companyType', defaultValue: 'Partnership');
+          (widget.editOpportunity?.companyType?.isNotEmpty == true)
+              ? widget.editOpportunity!.companyType!
+              : (datum?.companyType ??
+                  box.get('companyType', defaultValue: 'Hospitality'));
 
-      final address = (datum?.registeredCorporateAddress?.isNotEmpty == true)
-          ? datum!.registeredCorporateAddress!
-          : (box.get('companyAddress', defaultValue: '') as String).isNotEmpty
-          ? box.get('companyAddress') as String
-          : _locationController.text.trim();
+      final address = (widget.editOpportunity?.address?.isNotEmpty == true)
+          ? widget.editOpportunity!.address!
+          : ((datum?.registeredCorporateAddress?.isNotEmpty == true)
+              ? datum!.registeredCorporateAddress!
+              : (box.get('companyAddress', defaultValue: '') as String).isNotEmpty
+              ? box.get('companyAddress') as String
+              : _locationController.text.trim());
 
-      final state = (datum?.state?.isNotEmpty == true)
-          ? datum!.state!
-          : (box.get('companyState', defaultValue: '') as String).isNotEmpty
-          ? box.get('companyState') as String
-          : 'Rajasthan';
+      final state = (widget.editOpportunity?.state?.isNotEmpty == true)
+          ? widget.editOpportunity!.state!
+          : ((datum?.state?.isNotEmpty == true)
+              ? datum!.state!
+              : (box.get('companyState', defaultValue: '') as String).isNotEmpty
+              ? box.get('companyState') as String
+              : 'Maharashtra');
 
       setState(() => _isLoading = true);
 
       try {
         final body = CreateBusinessOpportunityBodyModel(
+          id: isEdit ? widget.editOpportunity!.id : null,
           companyId: compId.toString(),
           companyType: companyType.toString(),
           opportunityType: _selectedOpportunityType,
@@ -280,7 +292,12 @@ class PostBusinessOpportunitiesScreenState
         );
 
         final authService = ref.read(authServiceProvider);
-        final res = await authService.createBusinessOpportunityData(body);
+        final CreateBusinessOpportunityResModel res;
+        if (isEdit) {
+          res = await authService.updateBusinessOpportunityData(body);
+        } else {
+          res = await authService.createBusinessOpportunityData(body);
+        }
 
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -304,9 +321,13 @@ class PostBusinessOpportunitiesScreenState
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(
-                    _isHindi
-                        ? 'अवसर सफलतापूर्वक पोस्ट हुआ!'
-                        : 'Opportunity Posted Successfully!',
+                    isEdit
+                        ? (_isHindi
+                            ? 'अवसर सफलतापूर्वक अपडेट हुआ!'
+                            : 'Opportunity Updated Successfully!')
+                        : (_isHindi
+                            ? 'अवसर सफलतापूर्वक पोस्ट हुआ!'
+                            : 'Opportunity Posted Successfully!'),
                     style: TextStyle(
                       fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
@@ -318,9 +339,13 @@ class PostBusinessOpportunitiesScreenState
             ),
             content: Text(
               res.message ??
-                  (_isHindi
-                      ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक पोस्ट कर दिया गया है।'
-                      : 'Your business expansion opportunity listing has been posted successfully and is now active.'),
+                  (isEdit
+                      ? (_isHindi
+                          ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक अपडेट कर दिया गया है।'
+                          : 'Your business expansion opportunity listing has been updated successfully.')
+                      : (_isHindi
+                          ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक पोस्ट कर दिया गया है।'
+                          : 'Your business expansion opportunity listing has been posted successfully and is now active.')),
               style: TextStyle(
                 fontSize: 13.5.sp,
                 color: Colors.white70,
@@ -331,7 +356,7 @@ class PostBusinessOpportunitiesScreenState
               TextButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  Navigator.pop(context);
+                  Navigator.pop(context, true);
                 },
                 child: Text(
                   _isHindi ? 'पूर्ण' : 'Done',
@@ -351,9 +376,13 @@ class PostBusinessOpportunitiesScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isHindi
-                  ? 'अवसर पोस्ट करने में विफल: ${e.toString()}'
-                  : 'Failed to post opportunity: ${e.toString()}',
+              isEdit
+                  ? (_isHindi
+                      ? 'अवसर अपडेट करने में विफल: ${e.toString()}'
+                      : 'Failed to update opportunity: ${e.toString()}')
+                  : (_isHindi
+                      ? 'अवसर पोस्ट करने में विफल: ${e.toString()}'
+                      : 'Failed to post opportunity: ${e.toString()}'),
             ),
             backgroundColor: Colors.redAccent,
           ),
@@ -364,7 +393,37 @@ class PostBusinessOpportunitiesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final box = Hive.box('userdata');
+    final userName = box.get('name', defaultValue: '')?.toString().trim() ?? '';
     final profileAsync = ref.watch(getBussinessProfileProvider);
+
+    // If company details are loaded from profile, populate them
+    final profileData = profileAsync.value?.data;
+    if (profileData != null && profileData.isNotEmpty) {
+      final datum = profileData.first;
+      if (_companyId == null || _companyId!.isEmpty) {
+        _companyId = datum.companyId ?? datum.id;
+      }
+      final regName = datum.registeredCompanyName?.trim();
+      if (regName != null && regName.isNotEmpty) {
+        if (_companyNameController.text.trim().isEmpty ||
+            _companyNameController.text.trim() == userName) {
+          _companyNameController.text = regName;
+        }
+        box.put('companyName', regName);
+      }
+      if (_contactPersonController.text.trim().isEmpty) {
+        final contactName = datum.ownerContact?.name?.trim();
+        if (contactName != null && contactName.isNotEmpty) {
+          _contactPersonController.text = contactName;
+        }
+      }
+    }
+
+    if (widget.editOpportunity != null) {
+      _companyId = widget.editOpportunity!.companyId ?? _companyId;
+      return _buildOpportunityForm(context);
+    }
 
     return profileAsync.when(
       loading: () => Scaffold(
@@ -381,24 +440,21 @@ class PostBusinessOpportunitiesScreenState
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
         ),
       ),
-      error: (err, stack) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showCompanyProfileRequiredDialog();
-        });
-        return CompanyProfileRequiredPlaceholder(
-          isHindi: _isHindi,
-          screenTitleEn: 'Post Business Opportunities',
-          screenTitleHi: 'व्यापार अवसर पोस्ट करें',
-          scaffoldKey: _scaffoldKey,
-          onLanguageChanged: (val) => setState(() => _isHindi = val),
-          onCompleteProfile: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
-            );
-          },
-        );
-      },
+      error: (err, stack) => CompanyProfileRequiredPlaceholder(
+        isHindi: _isHindi,
+        screenTitleEn: 'Post Business Opportunities',
+        screenTitleHi: 'व्यापार अवसर पोस्ट करें',
+        scaffoldKey: _scaffoldKey,
+        onLanguageChanged: (val) => setState(() => _isHindi = val),
+        onCompleteProfile: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
+          ).then((_) {
+            ref.invalidate(getBussinessProfileProvider);
+          });
+        },
+      ),
       data: (profileModel) {
         final dataList = profileModel.data ?? [];
         final datum = dataList.isNotEmpty ? dataList.first : null;
@@ -408,9 +464,6 @@ class PostBusinessOpportunitiesScreenState
 
         // 1. Data nahi hai
         if (datum == null || dataList.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showCompanyProfileRequiredDialog();
-          });
           return CompanyProfileRequiredPlaceholder(
             isHindi: _isHindi,
             screenTitleEn: 'Post Business Opportunities',
@@ -418,10 +471,12 @@ class PostBusinessOpportunitiesScreenState
             scaffoldKey: _scaffoldKey,
             onLanguageChanged: (val) => setState(() => _isHindi = val),
             onCompleteProfile: () {
-              Navigator.pushReplacement(
+              Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
-              );
+              ).then((_) {
+                ref.invalidate(getBussinessProfileProvider);
+              });
             },
           );
         }
@@ -441,9 +496,19 @@ class PostBusinessOpportunitiesScreenState
 
         // 3. Status approved hai -> Form show karo
         _companyId = datum.id;
-        if (_companyNameController.text.isEmpty &&
-            datum.registeredCompanyName != null) {
-          _companyNameController.text = datum.registeredCompanyName!;
+        final regName = datum.registeredCompanyName?.trim();
+        if (regName != null && regName.isNotEmpty) {
+          if (_companyNameController.text.trim().isEmpty ||
+              _companyNameController.text.trim() == userName) {
+            _companyNameController.text = regName;
+          }
+          box.put('companyName', regName);
+        }
+        if (_contactPersonController.text.trim().isEmpty) {
+          final contactName = datum.ownerContact?.name?.trim();
+          if (contactName != null && contactName.isNotEmpty) {
+            _contactPersonController.text = contactName;
+          }
         }
         return _buildOpportunityForm(context);
       },
@@ -451,15 +516,21 @@ class PostBusinessOpportunitiesScreenState
   }
 
   Widget _buildOpportunityForm(BuildContext context) {
+    final isEdit = widget.editOpportunity != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF002E29),
       key: _scaffoldKey,
       drawer: AppDrawer(isHindi: _isHindi),
       appBar: AppBarScreen(
-        titleEn: 'Post Business Opportunities',
-        titleHi: 'व्यापार अवसर पोस्ट करें',
+        titleEn: isEdit
+            ? 'Edit Business Opportunity'
+            : 'Post Business Opportunities',
+        titleHi: isEdit
+            ? 'व्यापार अवसर संपादित करें'
+            : 'व्यापार अवसर पोस्ट करें',
         isHindi: _isHindi,
-        notificationCount: 2,
+        notificationCount: 0,
         onLanguageChanged: (value) {
           setState(() {
             _isHindi = value;
@@ -514,9 +585,13 @@ class PostBusinessOpportunitiesScreenState
                   SizedBox(height: 16.h),
 
                   Text(
-                    _isHindi
-                        ? 'व्यवसाय विस्तार अवसर प्रकाशित करें'
-                        : 'Publish an Expansion Opportunity',
+                    isEdit
+                        ? (_isHindi
+                            ? 'व्यापार अवसर के विवरण संपादित करें'
+                            : 'Edit Business Opportunity')
+                        : (_isHindi
+                            ? 'व्यवसाय विस्तार अवसर प्रकाशित करें'
+                            : 'Publish an Expansion Opportunity'),
                     style: TextStyle(
                       fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
@@ -525,9 +600,13 @@ class PostBusinessOpportunitiesScreenState
                   ),
                   SizedBox(height: 6.h),
                   Text(
-                    _isHindi
-                        ? 'अपने व्यवसाय के विकास के लिए सत्यापित वितरकों, साझेदारों या फ्रेंचाइजी को आमंत्रित करें।'
-                        : 'Invite verified distributors, partners, or franchisees for your business growth.',
+                    isEdit
+                        ? (_isHindi
+                            ? 'अपने प्रकाशित अवसर के वित्तीय मापदंड, विवरण और संपर्क जानकारी अपडेट करें।'
+                            : 'Update financial parameters, description, and contact information for your listing.')
+                        : (_isHindi
+                            ? 'अपने व्यवसाय के विकास के लिए सत्यापित वितरकों, साझेदारों या फ्रेंचाइजी को आमंत्रित करें।'
+                            : 'Invite verified distributors, partners, or franchisees for your business growth.'),
                     style: TextStyle(fontSize: 13.sp, color: Colors.white70),
                   ),
                   SizedBox(height: 20.h),
@@ -545,6 +624,9 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'कंपनी / ब्रांड का नाम *'
                         : 'Company / Brand Name *',
+                    hintText: _isHindi
+                        ? 'उदा. एबीसी एंटरप्राइजेज'
+                        : 'e.g. ABC Enterprises',
                     validatorMsg: _isHindi
                         ? 'कंपनी का नाम दर्ज करें'
                         : 'Please enter company name',
@@ -586,6 +668,9 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'अवसर का शीर्षक / हेडलाइन *'
                         : 'Opportunity Headline / Title *',
+                    hintText: _isHindi
+                        ? 'उदा. रेस्तरां निवेश अवसर'
+                        : 'e.g. Restaurant Investment Opportunity',
                     validatorMsg: _isHindi
                         ? 'शीर्षक दर्ज करें'
                         : 'Please enter opportunity headline',
@@ -609,6 +694,7 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'शहर / क्षेत्र *'
                               : 'City / Region *',
+                          hintText: _isHindi ? 'उदा. मुंबई' : 'e.g. Mumbai',
                           validatorMsg: _isHindi
                               ? 'शहर दर्ज करें'
                               : 'Enter city / region',
@@ -621,6 +707,7 @@ class PostBusinessOpportunitiesScreenState
                           icon: Icons.pin_drop,
                           controller: _pincodeController,
                           label: _isHindi ? 'पिन कोड *' : 'Pin Code *',
+                          hintText: _isHindi ? 'उदा. 400001' : 'e.g. 400001',
                           validatorMsg: _isHindi
                               ? 'पिन कोड दर्ज करें'
                               : 'Enter pin code',
@@ -647,6 +734,7 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'आवश्यक निवेश *'
                               : 'Required Investment *',
+                          hintText: _isHindi ? 'उदा. 500000' : 'e.g. 500000',
                           validatorMsg: _isHindi
                               ? 'निवेश सीमा दर्ज करें'
                               : 'Enter investment range',
@@ -660,6 +748,7 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'आवश्यक स्थान (क्षेत्रफल) *'
                               : 'Space / Area Required *',
+                          hintText: _isHindi ? 'उदा. 1200 sq ft' : 'e.g. 1200 sq ft',
                           validatorMsg: _isHindi
                               ? 'क्षेत्रफल दर्ज करें'
                               : 'Enter area details',
@@ -674,6 +763,7 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'अनुमानित रिटर्न / लाभ मार्जिन *'
                         : 'Expected Returns / Profit Margin *',
+                    hintText: _isHindi ? 'उदा. 15% वार्षिक' : 'e.g. 15% annually',
                     validatorMsg: _isHindi
                         ? 'रिटर्न विवरण दर्ज करें'
                         : 'Please specify returns details',
@@ -693,13 +783,12 @@ class PostBusinessOpportunitiesScreenState
                     keyboardType: TextInputType.text,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16.sp,
+                      fontSize: 15.5.sp,
                       fontWeight: FontWeight.w500,
                     ),
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     decoration: InputDecoration(
                       alignLabelWithHint: true,
-                      isDense: true,
                       labelText: _isHindi
                           ? 'अवसर का विवरण एवं सहायता विवरण *'
                           : 'Opportunity Description & Support Provided *',
@@ -707,11 +796,18 @@ class PostBusinessOpportunitiesScreenState
                         color: Colors.white60,
                         fontSize: 14.5.sp,
                       ),
+                      hintText: _isHindi
+                          ? 'उदा. नए रेस्तरां या रिटेल विस्तार के लिए निवेश और साझेदारी का अवसर...'
+                          : 'e.g. Investment and partnership opportunity for expanding our retail network...',
+                      hintStyle: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12.5.sp,
+                      ),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.05),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 16.w,
-                        vertical: 14.h,
+                        vertical: 16.h,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14.r),
@@ -731,7 +827,10 @@ class PostBusinessOpportunitiesScreenState
                       ),
                       focusedErrorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14.r),
-                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderSide: BorderSide(
+                          color: Colors.redAccent,
+                          width: 1.5.w,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -758,6 +857,7 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'संपर्क व्यक्ति का नाम *'
                         : 'Contact Person Name *',
+                    hintText: _isHindi ? 'उदा. राहुल शर्मा' : 'e.g. Rahul Sharma',
                     validatorMsg: _isHindi
                         ? 'संपर्क व्यक्ति का नाम दर्ज करें'
                         : 'Enter contact person name',
@@ -772,6 +872,7 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'मोबाइल / व्हाट्सएप नंबर *'
                               : 'Mobile / WhatsApp Number *',
+                          hintText: _isHindi ? 'उदा. 9876543210' : 'e.g. 9876543210',
                           validatorMsg: _isHindi
                               ? 'फ़ोन नंबर दर्ज करें'
                               : 'Enter phone number',
@@ -786,6 +887,7 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'व्यापारिक ईमेल *'
                               : 'Business Email *',
+                          hintText: _isHindi ? 'उदा. rahul@example.com' : 'e.g. rahul@example.com',
                           validatorMsg: _isHindi
                               ? 'ईमेल दर्ज करें'
                               : 'Enter email address',
@@ -818,9 +920,13 @@ class PostBusinessOpportunitiesScreenState
                               ),
                             )
                           : Text(
-                              _isHindi
-                                  ? 'अवसर सूची प्रकाशित करें'
-                                  : 'Publish Opportunity Listing',
+                              isEdit
+                                  ? (_isHindi
+                                      ? 'अवसर अपडेट करें'
+                                      : 'Update Opportunity Listing')
+                                  : (_isHindi
+                                      ? 'अवसर सूची प्रकाशित करें'
+                                      : 'Publish Opportunity Listing'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -1100,6 +1206,7 @@ class PostBusinessOpportunitiesScreenState
     required IconData icon,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    String? hintText,
   }) {
     return TextFormField(
       controller: controller,
@@ -1107,18 +1214,39 @@ class PostBusinessOpportunitiesScreenState
       keyboardType: keyboardType,
       style: TextStyle(
         color: Colors.white,
-        fontSize: 16.sp,
+        fontSize: 15.5.sp,
         fontWeight: FontWeight.w500,
       ),
       autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: InputDecoration(
-        isDense: true,
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white60, fontSize: 14.5.sp),
-        prefixIcon: Icon(icon, color: Colors.white60, size: 22.sp),
+        hintText: hintText,
+        labelStyle: TextStyle(
+          color: Colors.white60,
+          fontSize: 14.5.sp,
+        ),
+        hintStyle: TextStyle(
+          color: Colors.white38,
+          fontSize: 12.5.sp,
+        ),
+        prefixIcon: Padding(
+          padding: EdgeInsets.only(left: 14.w, right: 8.w),
+          child: Icon(
+            icon,
+            color: Colors.white60,
+            size: 22.sp,
+          ),
+        ),
+        prefixIconConstraints: BoxConstraints(
+          minWidth: 44.w,
+          minHeight: 46.h,
+        ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 16.w,
+          vertical: 16.h,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
           borderSide: const BorderSide(color: Colors.white24),
@@ -1137,7 +1265,10 @@ class PostBusinessOpportunitiesScreenState
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: BorderSide(
+            color: Colors.redAccent,
+            width: 1.5.w,
+          ),
         ),
       ),
       validator: (value) {
@@ -1157,25 +1288,58 @@ class PostBusinessOpportunitiesScreenState
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: TextStyle(color: Colors.white60, fontSize: 14.sp),
-      hintStyle: TextStyle(color: Colors.white60, fontSize: 13.sp),
+      labelStyle: TextStyle(
+        color: Colors.white60,
+        fontSize: 14.5.sp,
+      ),
+      hintStyle: TextStyle(
+        color: Colors.white38,
+        fontSize: 12.5.sp,
+      ),
       prefixIcon: icon != null
-          ? Icon(icon, color: Colors.white60, size: 22.sp)
+          ? Padding(
+              padding: EdgeInsets.only(left: 14.w, right: 8.w),
+              child: Icon(
+                icon,
+                color: Colors.white60,
+                size: 22.sp,
+              ),
+            )
+          : null,
+      prefixIconConstraints: icon != null
+          ? BoxConstraints(
+              minWidth: 44.w,
+              minHeight: 46.h,
+            )
           : null,
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 16.w,
+        vertical: 16.h,
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         borderSide: const BorderSide(color: Colors.white24),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         borderSide: const BorderSide(color: Colors.white24),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         borderSide: const BorderSide(color: Color(0xFFC5A038)),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: BorderSide(
+          color: Colors.redAccent,
+          width: 1.5.w,
+        ),
       ),
     );
   }

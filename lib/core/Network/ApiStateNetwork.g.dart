@@ -12,7 +12,7 @@ part of 'ApiStateNetwork.dart';
 
 class _ApiStateNetwork implements ApiStateNetwork {
   _ApiStateNetwork(this._dio, {this.baseUrl, this.errorLogger}) {
-    baseUrl ??= 'https://loveable-backend-5qi0.onrender.com';
+    baseUrl ??= 'https://api.tracklovedones.com';
   }
 
   final Dio _dio;
@@ -381,6 +381,36 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
+  Future<MatchContactsResModel> addManualContact(
+    ManualContactBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<MatchContactsResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/network/contacts/manual',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late MatchContactsResModel _value;
+    try {
+      _value = MatchContactsResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<SendRequest> sendRequest(String id) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -571,9 +601,12 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
-  Future<MatchContactsResModel> getMatchContacts() async {
+  Future<MatchContactsResModel> getMatchContacts([String? search]) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
+    if (search != null && search.isNotEmpty) {
+      queryParameters[r'search'] = search;
+    }
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<MatchContactsResModel>(
@@ -997,17 +1030,76 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
+  Future<CreateBusinessOpportunityResModel> updateBusinessOpportunity(
+    CreateBusinessOpportunityBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<CreateBusinessOpportunityResModel>(
+      Options(method: 'PATCH', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/opportunities',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CreateBusinessOpportunityResModel _value;
+    try {
+      _value = CreateBusinessOpportunityResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<CreateBusinessOpportunityResModel> deleteBusinessOpportunity(
+    String id,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<CreateBusinessOpportunityResModel>(
+      Options(method: 'DELETE', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/opportunities/${id}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CreateBusinessOpportunityResModel _value;
+    try {
+      _value = CreateBusinessOpportunityResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<GetBusinessOpportunitiesResModel> getBusinessOpportunities(
+    String? search,
     int? page,
     int? limit,
-    String? search,
     String? pincode,
   ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
+      r'search': search,
       r'page': page,
       r'limit': limit,
-      r'search': search,
       r'pincode': pincode,
     };
     queryParameters.removeWhere((k, v) => v == null);
@@ -1104,7 +1196,8 @@ class _ApiStateNetwork implements ApiStateNetwork {
 
   @override
   Future<UpdateConsentsResModel> updateConsents(
-      UpdateConsentsBodyModel body) async {
+    UpdateConsentsBodyModel body,
+  ) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
@@ -1268,6 +1361,183 @@ class _ApiStateNetwork implements ApiStateNetwork {
     late DeleteUserAccountResModel _value;
     try {
       _value = DeleteUserAccountResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<ApplyJobProfileResModel> applyJobProfile(
+    String postId,
+    String name,
+    String email,
+    String phone,
+    String? comment,
+    File? resume,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    final _data = FormData();
+    _data.fields.add(MapEntry('postId', postId));
+    _data.fields.add(MapEntry('name', name));
+    _data.fields.add(MapEntry('email', email));
+    _data.fields.add(MapEntry('phone', phone));
+    if (comment != null) {
+      _data.fields.add(MapEntry('comment', comment));
+    }
+    if (resume != null) {
+      _data.files.add(
+        MapEntry(
+          'resume',
+          MultipartFile.fromFileSync(
+            resume.path,
+            filename: resume.path.split(Platform.pathSeparator).last,
+          ),
+        ),
+      );
+    }
+    final _options = _setStreamType<ApplyJobProfileResModel>(
+      Options(
+            method: 'POST',
+            headers: _headers,
+            extra: _extra,
+            contentType: 'multipart/form-data',
+          )
+          .compose(
+            _dio.options,
+            '/api/v1/business/job-profile',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late ApplyJobProfileResModel _value;
+    try {
+      _value = ApplyJobProfileResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<SubmitFeedbackResModel> submitFeedback(
+    SubmitFeedbackBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<SubmitFeedbackResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/auth/feedback',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late SubmitFeedbackResModel _value;
+    try {
+      _value = SubmitFeedbackResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<CompanyTransferSendOtpResModel> sendCompanyTransferOtp(
+    CompanyTransferSendOtpBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<CompanyTransferSendOtpResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/transfer/send-otp',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CompanyTransferSendOtpResModel _value;
+    try {
+      _value = CompanyTransferSendOtpResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<CompanyTransferLookupResModel> lookupTransferReceiver(
+    String phone,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'phone': phone};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<CompanyTransferLookupResModel>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/transfer/lookup-receiver',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CompanyTransferLookupResModel _value;
+    try {
+      _value = CompanyTransferLookupResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<CompanyTransferExecuteResModel> executeCompanyTransfer(
+    CompanyTransferExecuteBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<CompanyTransferExecuteResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/business/transfer/execute',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late CompanyTransferExecuteResModel _value;
+    try {
+      _value = CompanyTransferExecuteResModel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

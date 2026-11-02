@@ -1,229 +1,395 @@
+import 'dart:convert';
+
+GetMyJobApplicationsResModel getMyJobApplicationsResModelFromJson(String str) =>
+    GetMyJobApplicationsResModel.fromJson(json.decode(str));
+
+String getMyJobApplicationsResModelToJson(GetMyJobApplicationsResModel data) =>
+    json.encode(data.toJson());
+
 class GetMyJobApplicationsResModel {
   final bool? success;
   final String? message;
-  final List<JobApplicationItemData> data;
+  final MyJobApplicationsData? data;
 
   GetMyJobApplicationsResModel({
     this.success,
     this.message,
-    this.data = const [],
+    this.data,
   });
 
   factory GetMyJobApplicationsResModel.fromJson(Map<String, dynamic> json) {
-    List<JobApplicationItemData> items = [];
+    MyJobApplicationsData? dataObj;
     final rawData = json['data'];
 
-    if (rawData is List) {
-      items = rawData
-          .whereType<Map<String, dynamic>>()
-          .map((e) => JobApplicationItemData.fromJson(e))
-          .toList();
-    } else if (rawData is Map<String, dynamic>) {
-      if (rawData.containsKey('applications') && rawData['applications'] is List) {
-        items = (rawData['applications'] as List)
-            .whereType<Map<String, dynamic>>()
-            .map((e) => JobApplicationItemData.fromJson(e))
-            .toList();
-      } else if (rawData.containsKey('application') || rawData.containsKey('post')) {
-        items = [JobApplicationItemData.fromJson(rawData)];
+    if (rawData is Map<String, dynamic>) {
+      dataObj = MyJobApplicationsData.fromJson(rawData);
+    } else if (rawData is Map) {
+      dataObj = MyJobApplicationsData.fromJson(
+        Map<String, dynamic>.from(rawData),
+      );
+    } else if (rawData is List) {
+      final list = <MyApplicationEntry>[];
+      for (final item in rawData) {
+        if (item is Map) {
+          list.add(MyApplicationEntry.fromJson(
+            Map<String, dynamic>.from(item),
+            isJob: true,
+          ));
+        }
       }
+      dataObj = MyJobApplicationsData(
+        jobProfile: JobProfileDetails(
+          counts: JobProfileCounts(
+            totalApplications: list.length,
+            jobApplicationCount: list.length,
+            businessApplicationCount: 0,
+          ),
+          jobApplications: list,
+          businessApplications: [],
+        ),
+      );
     }
 
     return GetMyJobApplicationsResModel(
       success: json['success'] as bool?,
       message: json['message'] as String?,
-      data: items,
+      data: dataObj,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'message': message,
-      'data': data.map((e) => e.toJson()).toList(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'success': success,
+        'message': message,
+        'data': data?.toJson(),
+      };
+
+  List<MyApplicationEntry> get jobApplications =>
+      data?.jobProfile?.jobApplications ?? [];
+
+  List<MyApplicationEntry> get businessApplications =>
+      data?.jobProfile?.businessApplications ?? [];
+
+  List<MyApplicationEntry> get allApplications =>
+      [...jobApplications, ...businessApplications];
+
+  JobProfileCounts? get counts =>
+      data?.jobProfile?.counts ??
+      JobProfileCounts(
+        totalApplications: allApplications.length,
+        jobApplicationCount: jobApplications.length,
+        businessApplicationCount: businessApplications.length,
+      );
+
+  JobProfileDetails? get profile => data?.jobProfile;
 }
 
-class JobApplicationItemData {
-  final ApplicationDetail? application;
-  final String? postType;
-  final JobPostDetail? post;
-  final bool? resumeUploaded;
+class MyJobApplicationsData {
+  final String? userId;
+  final JobProfileDetails? jobProfile;
 
-  JobApplicationItemData({
-    this.application,
-    this.postType,
-    this.post,
-    this.resumeUploaded,
+  MyJobApplicationsData({
+    this.userId,
+    this.jobProfile,
   });
 
-  factory JobApplicationItemData.fromJson(Map<String, dynamic> json) {
-    return JobApplicationItemData(
-      application: json['application'] != null &&
-              json['application'] is Map<String, dynamic>
-          ? ApplicationDetail.fromJson(
-              json['application'] as Map<String, dynamic>)
+  factory MyJobApplicationsData.fromJson(Map<String, dynamic> json) {
+    return MyJobApplicationsData(
+      userId: json['userId']?.toString(),
+      jobProfile: json['jobProfile'] != null && json['jobProfile'] is Map
+          ? JobProfileDetails.fromJson(
+              Map<String, dynamic>.from(json['jobProfile'] as Map),
+            )
           : null,
-      postType: json['postType'] as String?,
-      post: json['post'] != null && json['post'] is Map<String, dynamic>
-          ? JobPostDetail.fromJson(json['post'] as Map<String, dynamic>)
-          : null,
-      resumeUploaded: json['resumeUploaded'] as bool?,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'application': application?.toJson(),
-      'postType': postType,
-      'post': post?.toJson(),
-      'resumeUploaded': resumeUploaded,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'userId': userId,
+        'jobProfile': jobProfile?.toJson(),
+      };
 }
 
-class ApplicationDetail {
-  final String? id;
-  final String? userId;
-  final String? jobPostId;
+class JobProfileDetails {
   final String? name;
   final String? email;
   final String? phone;
   final String? resumeUrl;
-  final String? comment;
-  final String? createdAt;
-  final String? updatedAt;
+  final JobProfileCounts? counts;
+  final List<MyApplicationEntry> jobApplications;
+  final List<MyApplicationEntry> businessApplications;
 
-  ApplicationDetail({
-    this.id,
-    this.userId,
-    this.jobPostId,
+  JobProfileDetails({
     this.name,
     this.email,
     this.phone,
     this.resumeUrl,
-    this.comment,
-    this.createdAt,
-    this.updatedAt,
+    this.counts,
+    this.jobApplications = const [],
+    this.businessApplications = const [],
   });
 
-  factory ApplicationDetail.fromJson(Map<String, dynamic> json) {
-    return ApplicationDetail(
-      id: json['_id'] as String?,
-      userId: json['userId'] is String
-          ? json['userId'] as String
-          : (json['userId'] is Map ? json['userId']['_id'] as String? : null),
-      jobPostId: json['jobPostId'] is String
-          ? json['jobPostId'] as String
-          : (json['jobPostId'] is Map
-              ? json['jobPostId']['_id'] as String?
-              : null),
-      name: json['name'] as String?,
-      email: json['email'] as String?,
-      phone: json['phone'] as String?,
-      resumeUrl: json['resumeUrl'] as String?,
-      comment: json['comment'] as String?,
-      createdAt: json['createdAt'] as String?,
-      updatedAt: json['updatedAt'] as String?,
+  factory JobProfileDetails.fromJson(Map<String, dynamic> json) {
+    final rawJobApps = json['jobApplications'];
+    final List<MyApplicationEntry> jApps = [];
+    if (rawJobApps is List) {
+      for (final item in rawJobApps) {
+        if (item is Map) {
+          jApps.add(MyApplicationEntry.fromJson(
+            Map<String, dynamic>.from(item),
+            isJob: true,
+          ));
+        }
+      }
+    }
+
+    final rawBizApps = json['businessApplications'];
+    final List<MyApplicationEntry> bApps = [];
+    if (rawBizApps is List) {
+      for (final item in rawBizApps) {
+        if (item is Map) {
+          bApps.add(MyApplicationEntry.fromJson(
+            Map<String, dynamic>.from(item),
+            isJob: false,
+          ));
+        }
+      }
+    }
+
+    JobProfileCounts? countsObj;
+    if (json['counts'] != null && json['counts'] is Map) {
+      countsObj = JobProfileCounts.fromJson(
+        Map<String, dynamic>.from(json['counts'] as Map),
+      );
+    } else {
+      countsObj = JobProfileCounts(
+        totalApplications: jApps.length + bApps.length,
+        jobApplicationCount: jApps.length,
+        businessApplicationCount: bApps.length,
+      );
+    }
+
+    return JobProfileDetails(
+      name: json['name']?.toString(),
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      resumeUrl: json['resumeUrl']?.toString(),
+      counts: countsObj,
+      jobApplications: jApps,
+      businessApplications: bApps,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'userId': userId,
-      'jobPostId': jobPostId,
-      'name': name,
-      'email': email,
-      'phone': phone,
-      'resumeUrl': resumeUrl,
-      'comment': comment,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'resumeUrl': resumeUrl,
+        'counts': counts?.toJson(),
+        'jobApplications': jobApplications.map((e) => e.toJson()).toList(),
+        'businessApplications':
+            businessApplications.map((e) => e.toJson()).toList(),
+      };
 }
 
-class JobPostDetail {
+class JobProfileCounts {
+  final int totalApplications;
+  final int jobApplicationCount;
+  final int businessApplicationCount;
+
+  JobProfileCounts({
+    this.totalApplications = 0,
+    this.jobApplicationCount = 0,
+    this.businessApplicationCount = 0,
+  });
+
+  factory JobProfileCounts.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic val) {
+      if (val is int) return val;
+      if (val != null) return int.tryParse(val.toString()) ?? 0;
+      return 0;
+    }
+
+    return JobProfileCounts(
+      totalApplications: parseInt(json['totalApplications']),
+      jobApplicationCount: parseInt(json['jobApplicationCount']),
+      businessApplicationCount: parseInt(json['businessApplicationCount']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'totalApplications': totalApplications,
+        'jobApplicationCount': jobApplicationCount,
+        'businessApplicationCount': businessApplicationCount,
+      };
+}
+
+class MyApplicationEntry {
+  final String? applicationId;
+  final ApplicantProfile? applicantProfile;
+  final String? comment;
+  final String? appliedAt;
+  final String? updatedAt;
+  final ApplicationPostDetail? post;
+  final bool isJob;
+
+  MyApplicationEntry({
+    this.applicationId,
+    this.applicantProfile,
+    this.comment,
+    this.appliedAt,
+    this.updatedAt,
+    this.post,
+    this.isJob = true,
+  });
+
+  factory MyApplicationEntry.fromJson(
+    Map<String, dynamic> json, {
+    bool isJob = true,
+  }) {
+    ApplicationPostDetail? postObj;
+    if (json['post'] != null && json['post'] is Map) {
+      postObj = ApplicationPostDetail.fromJson(
+        Map<String, dynamic>.from(json['post'] as Map),
+      );
+    }
+
+    return MyApplicationEntry(
+      applicationId: json['applicationId']?.toString() ??
+          json['_id']?.toString() ??
+          json['id']?.toString(),
+      applicantProfile: json['applicantProfile'] != null &&
+              json['applicantProfile'] is Map
+          ? ApplicantProfile.fromJson(
+              Map<String, dynamic>.from(json['applicantProfile'] as Map),
+            )
+          : null,
+      comment: json['comment']?.toString(),
+      appliedAt: json['appliedAt']?.toString() ?? json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
+      post: postObj,
+      isJob: isJob,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'applicationId': applicationId,
+        'applicantProfile': applicantProfile?.toJson(),
+        'comment': comment,
+        'appliedAt': appliedAt,
+        'updatedAt': updatedAt,
+        'post': post?.toJson(),
+        'isJob': isJob,
+      };
+}
+
+class ApplicantProfile {
+  final String? name;
+  final String? email;
+  final String? phone;
+  final String? resumeUrl;
+
+  ApplicantProfile({
+    this.name,
+    this.email,
+    this.phone,
+    this.resumeUrl,
+  });
+
+  factory ApplicantProfile.fromJson(Map<String, dynamic> json) {
+    return ApplicantProfile(
+      name: json['name']?.toString(),
+      email: json['email']?.toString(),
+      phone: json['phone']?.toString(),
+      resumeUrl: json['resumeUrl']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'resumeUrl': resumeUrl,
+      };
+}
+
+class ApplicationPostDetail {
   final String? id;
   final String? jobTitle;
   final String? employmentType;
   final String? hierarchyLevel;
+  final String? opportunityHeadline;
+  final String? opportunityType;
   final String? city;
   final String? state;
   final String? pincode;
-  final num? annualCtcPackage;
+  final dynamic annualCtcPackage;
+  final dynamic requiredInvest;
   final String? status;
-  final JobPostOwner? ownerId;
+  final dynamic ownerId;
 
-  JobPostDetail({
+  ApplicationPostDetail({
     this.id,
     this.jobTitle,
     this.employmentType,
     this.hierarchyLevel,
+    this.opportunityHeadline,
+    this.opportunityType,
     this.city,
     this.state,
     this.pincode,
     this.annualCtcPackage,
+    this.requiredInvest,
     this.status,
     this.ownerId,
   });
 
-  factory JobPostDetail.fromJson(Map<String, dynamic> json) {
-    return JobPostDetail(
-      id: json['_id'] as String?,
-      jobTitle: json['jobTitle'] as String?,
-      employmentType: json['employmentType'] as String?,
-      hierarchyLevel: json['hierarchyLevel'] as String?,
-      city: json['city'] as String?,
-      state: json['state'] as String?,
-      pincode: json['pincode'] as String?,
-      annualCtcPackage: json['annualCtcPackage'] as num?,
-      status: json['status'] as String?,
-      ownerId:
-          json['ownerId'] != null && json['ownerId'] is Map<String, dynamic>
-              ? JobPostOwner.fromJson(json['ownerId'] as Map<String, dynamic>)
-              : null,
+  factory ApplicationPostDetail.fromJson(Map<String, dynamic> json) {
+    return ApplicationPostDetail(
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      jobTitle: json['jobTitle']?.toString(),
+      employmentType: json['employmentType']?.toString(),
+      hierarchyLevel: json['hierarchyLevel']?.toString(),
+      opportunityHeadline: json['opportunityHeadline']?.toString(),
+      opportunityType: json['opportunityType']?.toString(),
+      city: json['city']?.toString(),
+      state: json['state']?.toString(),
+      pincode: json['pincode']?.toString(),
+      annualCtcPackage: json['annualCtcPackage'],
+      requiredInvest: json['requiredInvest'],
+      status: json['status']?.toString(),
+      ownerId: json['ownerId'],
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'jobTitle': jobTitle,
-      'employmentType': employmentType,
-      'hierarchyLevel': hierarchyLevel,
-      'city': city,
-      'state': state,
-      'pincode': pincode,
-      'annualCtcPackage': annualCtcPackage,
-      'status': status,
-      'ownerId': ownerId?.toJson(),
-    };
+  Map<String, dynamic> toJson() => {
+        '_id': id,
+        'jobTitle': jobTitle,
+        'employmentType': employmentType,
+        'hierarchyLevel': hierarchyLevel,
+        'opportunityHeadline': opportunityHeadline,
+        'opportunityType': opportunityType,
+        'city': city,
+        'state': state,
+        'pincode': pincode,
+        'annualCtcPackage': annualCtcPackage,
+        'requiredInvest': requiredInvest,
+        'status': status,
+        'ownerId': ownerId,
+      };
+
+  String get ownerName {
+    if (ownerId is Map && (ownerId as Map)['name'] != null) {
+      return (ownerId as Map)['name'].toString();
+    }
+    if (ownerId is String && (ownerId as String).isNotEmpty) {
+      return ownerId as String;
+    }
+    return '';
   }
+
+  bool get isJob => (jobTitle != null && jobTitle!.trim().isNotEmpty);
 }
 
-class JobPostOwner {
-  final String? id;
-  final String? name;
-
-  JobPostOwner({
-    this.id,
-    this.name,
-  });
-
-  factory JobPostOwner.fromJson(Map<String, dynamic> json) {
-    return JobPostOwner(
-      id: json['_id'] as String?,
-      name: json['name'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'name': name,
-    };
-  }
-}
+// Backward compatibility type aliases
+typedef JobApplicationItemData = MyApplicationEntry;
+typedef JobPostDetail = ApplicationPostDetail;

@@ -15,5 +15,6 @@ final apiProvider  = Provider((ref){
 
 final authServiceProvider = Provider((ref){
   final api = ref.read(apiProvider);
-  return Authservice(api);
+  final dio = ref.read(dioProvider);
+  return Authservice(api, dio: dio);
 });

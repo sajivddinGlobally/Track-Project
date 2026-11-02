@@ -39,6 +39,7 @@ void showErrorSnackBar(String message) {
   snackBarKey.currentState?.showSnackBar(
     SnackBar(
       content: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.error_outline, color: Colors.white, size: 18.sp),
           SizedBox(width: 12.w),
@@ -47,8 +48,9 @@ void showErrorSnackBar(String message) {
               message,
               style: GoogleFonts.outfit(
                 color: Colors.white,
-                fontSize: 16.sp,
+                fontSize: 15.sp,
                 fontWeight: FontWeight.w500,
+                height: 1.35,
               ),
             ),
           ),
@@ -59,7 +61,9 @@ void showErrorSnackBar(String message) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       margin: EdgeInsets.all(16.w),
       elevation: 6,
-      duration: const Duration(seconds: 3),
+      duration: message.contains('\n')
+          ? const Duration(seconds: 5)
+          : const Duration(seconds: 3),
     ),
   );
 }

@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
+import 'package:track_loved/SettingScreen/PrivacyPolicyViewerScreen.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 class RegistrationConsentScreen extends StatefulWidget {
@@ -56,43 +57,19 @@ class _RegistrationConsentScreenState extends State<RegistrationConsentScreen>
   }
 
   void _showPolicyDialog(String title) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0F3D38),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Colors.white24),
+    int initialTab = 0;
+    if (title.toLowerCase().contains('term')) {
+      initialTab = 1;
+    } else if (title.toLowerCase().contains('disclaimer')) {
+      initialTab = 2;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrivacyPolicyViewerScreen(
+          isHindi: false,
+          initialTabIndex: initialTab,
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          'Here are the details regarding our $title. We ensure complete security, end-to-end encryption, and full compliance for protecting your loved ones and your private data.',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 14.5.sp,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(
-                color: const Color(0xFFD4AF37),
-                fontSize: 15.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

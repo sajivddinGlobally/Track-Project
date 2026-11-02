@@ -241,14 +241,14 @@ class AppDrawer extends StatelessWidget {
                 );
               },
             ),
-
-          _buildDrawerItem(
-            icon: Icons.gavel,
-            title: isHindi ? 'कानून जानें' : 'Know Your Law',
-            onTap: () {
-              _navigateToScreen(context, LegalAwarenessApp());
-            },
-          ),
+          if (role != "company")
+            _buildDrawerItem(
+              icon: Icons.gavel,
+              title: isHindi ? 'कानून जानें' : 'Know Your Law',
+              onTap: () {
+                _navigateToScreen(context, LegalAwarenessApp());
+              },
+            ),
 
           if (role == "company")
             _buildDrawerItem(

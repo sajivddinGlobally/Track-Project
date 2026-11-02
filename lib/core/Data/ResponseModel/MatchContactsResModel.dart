@@ -36,23 +36,27 @@ class Data {
     List<Contact>? contacts;
     List<InviteItem>? inviteList;
     int? count;
+    int? inviteCount;
 
     Data({
         this.contacts,
         this.inviteList,
         this.count,
+        this.inviteCount,
     });
 
     factory Data.fromJson(Map<String, dynamic> json) => Data(
         contacts: json["contacts"] == null ? [] : List<Contact>.from(json["contacts"]!.map((x) => Contact.fromJson(x))),
         inviteList: json["inviteList"] == null ? [] : List<InviteItem>.from(json["inviteList"]!.map((x) => InviteItem.fromJson(x))),
         count: json["count"],
+        inviteCount: json["inviteCount"],
     );
 
     Map<String, dynamic> toJson() => {
         "contacts": contacts == null ? [] : List<dynamic>.from(contacts!.map((x) => x.toJson())),
         "inviteList": inviteList == null ? [] : List<dynamic>.from(inviteList!.map((x) => x.toJson())),
         "count": count,
+        if (inviteCount != null) "inviteCount": inviteCount,
     };
 }
 
@@ -82,6 +86,7 @@ class InviteItem {
 
 class Contact {
     String? contactName;
+    String? contactPhone;
     String? matchedPhone;
     User? user;
     String? connectionStatus;
@@ -89,6 +94,7 @@ class Contact {
 
     Contact({
         this.contactName,
+        this.contactPhone,
         this.matchedPhone,
         this.user,
         this.connectionStatus,
@@ -97,7 +103,8 @@ class Contact {
 
     factory Contact.fromJson(Map<String, dynamic> json) => Contact(
         contactName: json["contactName"],
-        matchedPhone: json["matchedPhone"],
+        contactPhone: json["contactPhone"] ?? json["matchedPhone"],
+        matchedPhone: json["matchedPhone"] ?? json["contactPhone"],
         user: json["user"] == null ? null : User.fromJson(json["user"]),
         connectionStatus: json["connectionStatus"],
         action: json["action"],
@@ -105,6 +112,7 @@ class Contact {
 
     Map<String, dynamic> toJson() => {
         "contactName": contactName,
+        if (contactPhone != null) "contactPhone": contactPhone,
         "matchedPhone": matchedPhone,
         "user": user?.toJson(),
         "connectionStatus": connectionStatus,

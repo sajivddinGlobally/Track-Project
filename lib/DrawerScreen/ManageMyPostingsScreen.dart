@@ -4,13 +4,18 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
 import 'package:track_loved/DrawerScreen/provider/myCompanyJobPostsProvider.dart';
 import 'package:track_loved/DrawerScreen/provider/myBusinessOpportunitiesProvider.dart';
+import 'package:track_loved/complanyProfile/CompanyPendingVerificationView.dart';
+import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyCompanyJobPostsResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
+import 'package:track_loved/DrawerScreen/PostBusinessOpportunitiesScreen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/Data/BodyModel/updateJobPostBodyModel.dart';
@@ -972,7 +977,7 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                 ),
                 onPressed: !isReadyToDelete
                     ? null
-                    : () {
+                    : () async {
                         Navigator.pop(dialogCtx);
                         setState(() {
                           if (exp.id != null) {
@@ -985,21 +990,37 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                           activeApplicants: expProposals,
                         );
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: const Color(0xFF0F3D38),
-                            behavior: SnackBarBehavior.floating,
-                            content: Text(
-                              _isHindi
-                                  ? '🗑️ बिज़नेस एक्सपैंशन पोस्ट सफलतापूर्वक हटा दी गई।'
-                                  : '🗑️ Business expansion purged and access tokens revoked.',
-                              style: TextStyle(
-                                fontSize: 12.5.sp,
-                                color: Colors.white,
+                        if (exp.id != null && exp.id!.isNotEmpty) {
+                          try {
+                            final authService = ref.read(authServiceProvider);
+                            await authService.deleteBusinessOpportunityData(
+                              exp.id!,
+                            );
+                            ref
+                                .read(myBusinessOpportunitiesProvider.notifier)
+                                .refresh();
+                          } catch (e) {
+                            log('Error deleting opportunity: $e');
+                          }
+                        }
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color(0xFF0F3D38),
+                              behavior: SnackBarBehavior.floating,
+                              content: Text(
+                                _isHindi
+                                    ? '🗑️ बिज़नेस एक्सपैंशन पोस्ट सफलतापूर्वक हटा दी गई।'
+                                    : '🗑️ Business expansion purged and access tokens revoked.',
+                                style: TextStyle(
+                                  fontSize: 12.5.sp,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                 child: Text(
                   _isHindi ? 'स्थायी रूप से हटाएं' : 'Confirm Takedown',
@@ -1019,6 +1040,72 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(getBussinessProfileProvider);
+
+    return profileAsync.when(
+      loading: () => Scaffold(
+        drawer: AppDrawer(isHindi: _isHindi),
+        backgroundColor: const Color(0xFF002E29),
+        key: _scaffoldKey,
+        appBar: AppBarScreen(
+          titleEn: 'Manage Published Postings',
+          titleHi: 'प्रकाशित अवसर प्रबंधित करें',
+          isHindi: _isHindi,
+          notificationCount: 0,
+          onLanguageChanged: (val) {
+            setState(() {
+              _isHindi = val;
+            });
+          },
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: Color(0xFF5EEAD4)),
+        ),
+      ),
+      error: (e, st) => _buildScaffoldContent(context),
+      data: (profileModel) {
+        final dataList = profileModel.data ?? [];
+        if (dataList.isEmpty) {
+          return CompanyProfileRequiredPlaceholder(
+            isHindi: _isHindi,
+            screenTitleEn: 'Manage Published Postings',
+            screenTitleHi: 'प्रकाशित अवसर प्रबंधित करें',
+            scaffoldKey: _scaffoldKey,
+            onLanguageChanged: (val) => setState(() => _isHindi = val),
+            onCompleteProfile: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CompanyProfileScreen()),
+              ).then((_) {
+                ref.invalidate(getBussinessProfileProvider);
+              });
+            },
+          );
+        }
+
+        final datum = dataList.first;
+        final status = (datum.status ?? profileModel.status ?? 'pending')
+            .toLowerCase()
+            .trim();
+
+        if (status != 'approved') {
+          return CompanyPendingVerificationView(
+            datum: datum,
+            status: status,
+            isHindi: _isHindi,
+            screenTitleEn: 'Manage Published Postings',
+            screenTitleHi: 'प्रकाशित अवसर प्रबंधित करें',
+            scaffoldKey: _scaffoldKey,
+            onLanguageChanged: (val) => setState(() => _isHindi = val),
+          );
+        }
+
+        return _buildScaffoldContent(context);
+      },
+    );
+  }
+
+  Widget _buildScaffoldContent(BuildContext context) {
     return Scaffold(
       drawer: AppDrawer(isHindi: _isHindi),
       backgroundColor: const Color(0xFF002E29),
@@ -1136,6 +1223,184 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
     );
   }
 
+  bool _isCompanyNotApprovedError(dynamic error) {
+    if (error == null) return false;
+    final errStr = error.toString().toLowerCase();
+    if (errStr.contains('only active owners of an approved company') ||
+        errStr.contains('approved company') ||
+        errStr.contains('403') ||
+        errStr.contains('forbidden')) {
+      return true;
+    }
+    try {
+      final dynamic dynErr = error;
+      final responseData = dynErr.response?.data;
+      if (responseData != null) {
+        final respStr = responseData.toString().toLowerCase();
+        if (respStr.contains('only active owners of an approved company') ||
+            respStr.contains('approved company')) {
+          return true;
+        }
+      }
+      if (dynErr.response?.statusCode == 403) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Widget _buildCompanyNotApprovedCard({required VoidCallback onRetry}) {
+    const brandGold = Color(0xFFC5A038);
+    const brightGold = Color(0xFFD4AF37);
+
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.all(20.w),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 500.w),
+          padding: EdgeInsets.all(24.w),
+          decoration: BoxDecoration(
+            color: const Color(0xFF072420),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: brandGold.withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16.r),
+                decoration: BoxDecoration(
+                  color: brightGold.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: brightGold, width: 1.5),
+                ),
+                child: Icon(
+                  Icons.hourglass_top_rounded,
+                  color: brightGold,
+                  size: 42.sp,
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                'Company Verification Pending',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 19.sp,
+                ),
+              ),
+              SizedBox(height: 10.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: brandGold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(
+                    color: brandGold.withValues(alpha: 0.4),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  'Only active owners of an approved company can view posts and applicants.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    color: brightGold,
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                'Your company profile and KYC details have been submitted and are currently under review. Once approved by our compliance admin, your job postings, opportunities, and applicant management will be fully unlocked.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  color: Colors.white70,
+                  fontSize: 13.sp,
+                  height: 1.45,
+                ),
+              ),
+              SizedBox(height: 22.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: brandGold, width: 1.2),
+                        foregroundColor: brightGold,
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CompanyProfileScreen(),
+                          ),
+                        ).then((_) {
+                          ref.invalidate(getBussinessProfileProvider);
+                          onRetry();
+                        });
+                      },
+                      icon: Icon(Icons.business_center_outlined, size: 16.sp),
+                      label: Text(
+                        'View Profile',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brightGold,
+                        foregroundColor: const Color(0xFF031210),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        elevation: 2,
+                      ),
+                      onPressed: () {
+                        ref.invalidate(getBussinessProfileProvider);
+                        onRetry();
+                      },
+                      icon: Icon(Icons.refresh_rounded, size: 16.sp),
+                      label: Text(
+                        'Check Status',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ========================================================================
   // Tab 1: Manage Published Job Postings
   // ========================================================================
@@ -1169,49 +1434,60 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                   ],
                 ),
               ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline_rounded,
-                        color: const Color(0xFFF87171),
-                        size: 40.sp,
-                      ),
-                      SizedBox(height: 10.h),
-                      Text(
-                        _isHindi
-                            ? 'डेटा लोड करने में विफल: ${error.toString()}'
-                            : 'Failed to load posts: ${error.toString()}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 13.sp),
-                      ),
-                      SizedBox(height: 14.h),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B4F4A),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+              error: (error, stack) {
+                if (_isCompanyNotApprovedError(error)) {
+                  return _buildCompanyNotApprovedCard(
+                    onRetry: () => ref
+                        .read(myCompanyJobPostsProvider.notifier)
+                        .fetchFirstPage(),
+                  );
+                }
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: const Color(0xFFF87171),
+                          size: 40.sp,
+                        ),
+                        SizedBox(height: 10.h),
+                        Text(
+                          _isHindi
+                              ? 'डेटा लोड करने में विफल: ${error.toString()}'
+                              : 'Failed to load posts: ${error.toString()}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
                           ),
                         ),
-                        onPressed: () => ref
-                            .read(myCompanyJobPostsProvider.notifier)
-                            .fetchFirstPage(),
-                        icon: const Icon(Icons.refresh),
-                        label: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
-                      ),
-                    ],
+                        SizedBox(height: 14.h),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0B4F4A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          onPressed: () => ref
+                              .read(myCompanyJobPostsProvider.notifier)
+                              .fetchFirstPage(),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
               data: (jobs) {
                 if (jobs.isEmpty) {
                   return Center(
                     child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1252,6 +1528,7 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                 }
 
                 return ListView.builder(
+                  physics: AlwaysScrollableScrollPhysics(),
                   controller: _jobsScrollController,
                   itemCount:
                       jobs.length + (jobPostsState.isLoadingMore ? 1 : 0),
@@ -1943,44 +2220,56 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                   ],
                 ),
               ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline_rounded,
-                        color: const Color(0xFFF87171),
-                        size: 40.sp,
-                      ),
-                      SizedBox(height: 10.h),
-                      Text(
-                        _isHindi
-                            ? 'डेटा लोड करने में विफल: ${error.toString()}'
-                            : 'Failed to load opportunities: ${error.toString()}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 13.sp),
-                      ),
-                      SizedBox(height: 14.h),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B4F4A),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+              error: (error, stack) {
+                if (_isCompanyNotApprovedError(error)) {
+                  return _buildCompanyNotApprovedCard(
+                    onRetry: () => ref
+                        .read(myBusinessOpportunitiesProvider.notifier)
+                        .fetchFirstPage(),
+                  );
+                }
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: const Color(0xFFF87171),
+                          size: 40.sp,
+                        ),
+                        SizedBox(height: 10.h),
+                        Text(
+                          _isHindi
+                              ? 'डेटा लोड करने में विफल: ${error.toString()}'
+                              : 'Failed to load opportunities: ${error.toString()}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
                           ),
                         ),
-                        onPressed: () => ref
-                            .read(myBusinessOpportunitiesProvider.notifier)
-                            .fetchFirstPage(),
-                        icon: const Icon(Icons.refresh),
-                        label: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
-                      ),
-                    ],
+                        SizedBox(height: 14.h),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0B4F4A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                          ),
+                          onPressed: () => ref
+                              .read(myBusinessOpportunitiesProvider.notifier)
+                              .fetchFirstPage(),
+                          icon: const Icon(Icons.refresh),
+                          label: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
               data: (expansions) {
                 if (expansions.isEmpty) {
                   return Center(
@@ -2027,9 +2316,7 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
 
                 return ListView.builder(
                   controller: _expansionsScrollController,
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   itemCount:
                       expansions.length +
                       (expansionsState.isLoadingMore ? 1 : 0),
@@ -2251,25 +2538,25 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                       ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: const Color(0xFF0F3D38),
-                            content: Text(
-                              _isHindi
-                                  ? 'वित्तीय मापदंड संपादित किए जा सकते हैं (GPS ट्रैकिंग प्रतिबंधित)।'
-                                  : 'Proposal parameters editable (Continuous GPS tracking prohibited).',
-                              style: TextStyle(
-                                fontSize: 12.5.sp,
-                                color: Colors.white,
-                              ),
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostBusinessOpportunitiesScreen(
+                              editOpportunity: exp,
+                              initialHindi: _isHindi,
                             ),
                           ),
                         );
+                        if (result == true) {
+                          ref
+                              .read(myBusinessOpportunitiesProvider.notifier)
+                              .refresh();
+                        }
                       },
-                      icon: Icon(Icons.tune_rounded, size: 15.sp),
+                      icon: Icon(Icons.edit_note_rounded, size: 16.sp),
                       label: Text(
-                        _isHindi ? 'मापदंड संपादित करें' : 'Edit Parameters',
+                        _isHindi ? 'अवसर संपादित करें' : 'Edit Opportunity',
                         style: TextStyle(
                           fontSize: 12.sp,
                           fontWeight: FontWeight.bold,

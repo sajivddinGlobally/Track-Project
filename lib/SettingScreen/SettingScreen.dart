@@ -33,6 +33,7 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
   String _userName = '';
   String _userPhone = '';
   String _userEmail = '';
+  String _userRole = 'user'; // 'child', 'user', or 'company'
   bool _isAdultVerified = false;
 
   // Font Size Settings
@@ -62,8 +63,10 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
       final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
       final currentScale = ref.read(fontScaleProvider);
       if (box != null) {
-        final accountType =
-            box.get('account_type', defaultValue: 'minor') as String;
+        final rawRole = (box.get('role', defaultValue: 'user') ?? 'user')
+            .toString()
+            .trim()
+            .toLowerCase();
         final adultSubmitted =
             box.get('adult_upgrade_submitted', defaultValue: false) as bool;
 
@@ -78,7 +81,17 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
               .toString()
               .trim();
 
-          _isAdultVerified = accountType == 'adult' || adultSubmitted;
+          _userRole = (rawRole == 'child' || rawRole == 'company')
+              ? rawRole
+              : 'user';
+
+          // A child account is protected unless adult upgrade has been submitted/approved.
+          // Adult ('user') and Corporate ('company') accounts are adult verified.
+          if (_userRole == 'child') {
+            _isAdultVerified = adultSubmitted;
+          } else {
+            _isAdultVerified = true;
+          }
 
           _fontScale = currentScale;
           _fontPreset =
@@ -494,46 +507,7 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                               ),
                             ),
                             SizedBox(height: 6.h),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w,
-                                    vertical: 3.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _isAdultVerified
-                                        ? const Color(
-                                            0xFF00E676,
-                                          ).withValues(alpha: 0.15)
-                                        : Colors.orange.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(6.r),
-                                    border: Border.all(
-                                      color: _isAdultVerified
-                                          ? const Color(0xFF00E676)
-                                          : Colors.orangeAccent,
-                                      width: 0.8,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _isAdultVerified
-                                        ? (_isHindi
-                                              ? '18+ बालिग खाता'
-                                              : 'Adult 18+')
-                                        : (_isHindi
-                                              ? 'चाइल्ड प्रोटेक्टेड'
-                                              : 'Child Protected'),
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10.5.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: _isAdultVerified
-                                          ? const Color(0xFF00E676)
-                                          : Colors.orangeAccent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            Row(children: [_buildRoleBadge()]),
                           ],
                         ),
                       ),
@@ -557,6 +531,58 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                     ],
                   ),
                 ),
+                if (_userRole == 'child') ...[
+                  SizedBox(height: 12.h),
+                  Container(
+                    padding: EdgeInsets.all(12.r),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(
+                        color: Colors.orangeAccent.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.shield_rounded,
+                          color: Colors.orangeAccent,
+                          size: 20.sp,
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isHindi
+                                    ? 'बाल सुरक्षा संरक्षण सक्रिय (DPDP अधिनियम धारा 9)'
+                                    : 'Child Protection Active (DPDP Act Sec 9)',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12.5.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orangeAccent,
+                                ),
+                              ),
+                              SizedBox(height: 3.h),
+                              Text(
+                                _isHindi
+                                    ? 'यह खाता बाल संरक्षण नियमों के तहत सुरक्षित है। ट्रैकिंग और व्यक्तिगत डेटा माता-पिता / अभिभावक की निगरानी में है।'
+                                    : 'This account is safeguarded under child data protection rules. Real-time location and personal data are strictly governed under parental consent.',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11.sp,
+                                  color: Colors.white70,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 SizedBox(height: 22.h),
 
                 // SECTION 2: Accessibility & Personalisation
@@ -597,7 +623,7 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                   subtitle: _isHindi
                       ? 'ट्रैकिंग लूप्स, बैटरी चेतावनी, एसओएस पैनिक अलर्ट और रिंगटोन टॉगल'
                       : 'Toggle alerts for real-time tracking loops, battery warnings, emergency SOS triggers, and tone',
-                  tag: _notificationSoundEnabled ? 'Alerts On' : 'Muted',
+                  tag: _notificationSoundEnabled ? _selectedTone : 'Muted',
                   tagColor: _notificationSoundEnabled
                       ? const Color(0xFF00E676)
                       : Colors.white38,
@@ -732,121 +758,155 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
 
                 // SECTION: Corporate & Account Lifecycle
                 _buildCategoryHeader(
-                  title: _isHindi
-                      ? 'पहचान एवं कॉर्पोरेट प्रशासन'
-                      : 'Lifecycle & Corporate Admin',
-                  icon: Icons.business_center_outlined,
+                  title: _userRole == 'company'
+                      ? (_isHindi
+                            ? 'कॉर्पोरेट प्रशासन एवं स्वामित्व'
+                            : 'Corporate Admin & Ownership')
+                      : (_userRole == 'child'
+                            ? (_isHindi
+                                  ? 'पहचान एवं खाता अपग्रेड'
+                                  : 'Identity & Account Upgrade')
+                            : (_isHindi
+                                  ? 'पहचान एवं खाता स्थिति'
+                                  : 'Identity & Account Status')),
+                  icon: _userRole == 'company'
+                      ? Icons.business_center_outlined
+                      : (_userRole == 'child'
+                            ? Icons.how_to_reg_rounded
+                            : Icons.verified_user_outlined),
                   brightGold: brightGold,
                 ),
                 SizedBox(height: 10.h),
 
-                // Upgrade Minor to Adult
-                _buildSettingTile(
-                  icon: Icons.how_to_reg_rounded,
-                  title: _isHindi
-                      ? 'चाइल्ड से बालिग खाता अपग्रेड (18+)'
-                      : 'Upgrade: Child to Adult Account (18+)',
-                  subtitle: _isAdultVerified
-                      ? (_isHindi
-                            ? 'सत्यापन सक्रिय है'
-                            : 'Adult verified account active')
-                      : (_isHindi
-                            ? '18 वर्ष पूर्ण होने पर स्वतंत्र वयस्क खाते में बदलें (Age-out transition)'
-                            : 'Transition minor account to adult self-governed account with ID proof'),
-                  tag: _isAdultVerified
-                      ? (_isHindi ? 'सत्यापित' : 'Active 18+')
-                      : (_isHindi ? 'अपग्रेड करें' : 'Upgrade'),
-                  tagColor: _isAdultVerified
-                      ? const Color(0xFF00E676)
-                      : Colors.orangeAccent,
-                  accentColor: brightGold,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            ChildToAdultUpgradeScreen(isHindi: _isHindi),
-                      ),
-                    ).then((_) => _loadSettings());
-                  },
-                ),
-                SizedBox(height: 10.h),
-
-                // Company Ownership Transfer
-                _buildSettingTile(
-                  icon: Icons.swap_horiz_rounded,
-                  title: _isHindi
-                      ? 'कंपनी स्वामित्व हस्तांतरण (Permanent Handover)'
-                      : 'Company Ownership Transfer & Admin Change',
-                  subtitle: _isHindi
-                      ? 'कंपनी छोड़ने पर नए व्यवस्थापक को स्वामित्व और आधिकारिक नंबर सौंपें'
-                      : 'Permanently delegate company ownership & transfer billing controls to successor',
-                  tag: _isHindi ? 'हस्तांतरण' : 'Handover',
-                  tagColor: Colors.orangeAccent,
-                  accentColor: Colors.orangeAccent,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            CompanyOwnershipTransferScreen(isHindi: _isHindi),
-                      ),
-                    ).then((_) => _loadCompanyData());
-                  },
-                ),
-                if (_isCompanyAccountAssigned) ...[
-                  SizedBox(height: 10.h),
-                  Container(
-                    padding: EdgeInsets.all(12.r),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(
-                        color: brandGold.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: const Color(0xFF00E676),
-                          size: 20.sp,
+                // Upgrade Minor to Adult (Relevant for Child accounts)
+                if (_userRole == 'child') ...[
+                  _buildSettingTile(
+                    icon: Icons.how_to_reg_rounded,
+                    title: _isHindi
+                        ? 'चाइल्ड से बालिग खाता अपग्रेड (18+)'
+                        : 'Upgrade: Child to Adult Account (18+)',
+                    subtitle: _isAdultVerified
+                        ? (_isHindi
+                              ? 'सत्यापन सक्रिय है / दस्तावेज़ सबमिट हो चुके हैं'
+                              : 'Adult verification active / Documents submitted')
+                        : (_isHindi
+                              ? '18 वर्ष पूर्ण होने पर स्वतंत्र वयस्क खाते में बदलें (Age-out transition)'
+                              : 'Transition minor account to adult self-governed account with ID proof'),
+                    tag: _isAdultVerified
+                        ? (_isHindi ? 'सत्यापित' : 'Active 18+')
+                        : (_isHindi ? 'अपग्रेड करें' : 'Upgrade'),
+                    tagColor: _isAdultVerified
+                        ? const Color(0xFF00E676)
+                        : Colors.orangeAccent,
+                    accentColor: brightGold,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ChildToAdultUpgradeScreen(isHindi: _isHindi),
                         ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${_isHindi ? 'सौंपा गया एडमिन:' : 'Assigned Administrator:'} $_assignedPersonName',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                '$_assignedPersonContact • $_assignedPersonRole',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11.5.sp,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: _isHindi ? 'असाइनमेंट रद्द करें' : 'Revoke',
-                          icon: const Icon(
-                            Icons.cancel_outlined,
-                            color: Colors.redAccent,
-                            size: 20,
-                          ),
-                          onPressed: _revokeAssignment,
-                        ),
-                      ],
-                    ),
+                      ).then((_) => _loadSettings());
+                    },
                   ),
+                ],
+
+                // Adult User Status (Relevant for Adult User accounts)
+                // if (_userRole == 'user') ...[
+                //   _buildSettingTile(
+                //     icon: Icons.verified_user_rounded,
+                //     title: _isHindi
+                //         ? 'सत्यापित बालिग खाता (18+ Adult)'
+                //         : 'Verified Adult Account (18+)',
+                //     subtitle: _isHindi
+                //         ? 'आपका खाता एक स्वतंत्र वयस्क खाते के रूप में सक्रिय है (पूर्ण स्वायत्तता)'
+                //         : 'Your account is active as an independent adult account with self-governed privacy controls',
+                //     tag: _isHindi ? 'सक्रिय' : 'Active',
+                //     tagColor: const Color(0xFF00E676),
+                //     accentColor: const Color(0xFF00E676),
+                //     onTap: () {},
+                //   ),
+                // ],
+
+                // Company Ownership Transfer (Relevant for Company accounts)
+                if (_userRole == 'company') ...[
+                  _buildSettingTile(
+                    icon: Icons.swap_horiz_rounded,
+                    title: _isHindi
+                        ? 'कंपनी स्वामित्व हस्तांतरण (Permanent Handover)'
+                        : 'Company Ownership Transfer & Admin Change',
+                    subtitle: _isHindi
+                        ? 'कंपनी छोड़ने पर नए व्यवस्थापक को स्वामित्व और आधिकारिक नंबर सौंपें'
+                        : 'Permanently delegate company ownership & transfer billing controls to successor',
+                    tag: _isHindi ? 'हस्तांतरण' : 'Handover',
+                    tagColor: Colors.orangeAccent,
+                    accentColor: Colors.orangeAccent,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CompanyOwnershipTransferScreen(isHindi: _isHindi),
+                        ),
+                      ).then((_) => _loadCompanyData());
+                    },
+                  ),
+                  if (_isCompanyAccountAssigned) ...[
+                    SizedBox(height: 10.h),
+                    Container(
+                      padding: EdgeInsets.all(12.r),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: brandGold.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: const Color(0xFF00E676),
+                            size: 20.sp,
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${_isHindi ? 'सौंपा गया एडमिन:' : 'Assigned Administrator:'} $_assignedPersonName',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '$_assignedPersonContact • $_assignedPersonRole',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11.5.sp,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: _isHindi
+                                ? 'असाइनमेंट रद्द करें'
+                                : 'Revoke',
+                            icon: const Icon(
+                              Icons.cancel_outlined,
+                              color: Colors.redAccent,
+                              size: 20,
+                            ),
+                            onPressed: _revokeAssignment,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
                 SizedBox(height: 22.h),
 
@@ -1007,6 +1067,67 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRoleBadge() {
+    Color badgeColor;
+    Color badgeBorder;
+    Color badgeBg;
+    IconData badgeIcon;
+    String badgeText;
+
+    if (_userRole == 'company') {
+      badgeColor = const Color(0xFFD4AF37); // Brand Gold
+      badgeBorder = const Color(0xFFD4AF37);
+      badgeBg = const Color(0xFFD4AF37).withValues(alpha: 0.15);
+      badgeIcon = Icons.business_rounded;
+      badgeText = _isHindi ? 'कंपनी खाता' : 'Company Account';
+    } else if (_userRole == 'child') {
+      if (_isAdultVerified) {
+        badgeColor = const Color(0xFF00E676);
+        badgeBorder = const Color(0xFF00E676);
+        badgeBg = const Color(0xFF00E676).withValues(alpha: 0.15);
+        badgeIcon = Icons.verified_user_rounded;
+        badgeText = _isHindi ? '18+ अपग्रेड सक्रिय' : '18+ Upgrade Active';
+      } else {
+        badgeColor = Colors.orangeAccent;
+        badgeBorder = Colors.orangeAccent;
+        badgeBg = Colors.orange.withValues(alpha: 0.2);
+        badgeIcon = Icons.child_care_rounded;
+        badgeText = _isHindi ? 'चाइल्ड प्रोटेक्टेड' : 'Child Protected';
+      }
+    } else {
+      // 'user'
+      badgeColor = const Color(0xFF00E676);
+      badgeBorder = const Color(0xFF00E676);
+      badgeBg = const Color(0xFF00E676).withValues(alpha: 0.15);
+      badgeIcon = Icons.verified_user_rounded;
+      badgeText = _isHindi ? '18+ बालिग खाता' : 'Adult 18+';
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: badgeBg,
+        borderRadius: BorderRadius.circular(6.r),
+        border: Border.all(color: badgeBorder, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(badgeIcon, size: 13.sp, color: badgeColor),
+          SizedBox(width: 4.w),
+          Text(
+            badgeText,
+            style: GoogleFonts.outfit(
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.bold,
+              color: badgeColor,
+            ),
+          ),
+        ],
       ),
     );
   }
