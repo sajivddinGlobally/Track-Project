@@ -74,6 +74,11 @@ import '../Data/BodyModel/UpdateUserLocationBodyModel.dart';
 import '../Data/BodyModel/UpdateFcmTokenBodyModel.dart';
 import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
 import '../Data/ResponseModel/FriendLocationResModel.dart';
+import 'package:hive/hive.dart';
+import '../Data/BodyModel/CreateOrderBodyModel.dart';
+import '../Data/ResponseModel/CreateOrderResModel.dart';
+import '../Data/BodyModel/VerifyPaymentBodyModel.dart';
+import '../Data/ResponseModel/VerifyPaymentResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -97,6 +102,7 @@ class Authservice {
     required phone,
     String role = "user",
     String? parentPhone,
+    String? dob,
   }) async {
     try {
       final body = RegisterBodyModel(
@@ -106,6 +112,7 @@ class Authservice {
         phone: phone,
         role: role,
         parentPhone: parentPhone,
+        dob: dob,
       );
       final response = await api.register(body);
       return response;
@@ -720,6 +727,89 @@ class Authservice {
     try {
       final response = await api.executeCompanyTransfer(body);
       return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<CreateOrderResModel> createPaymentOrder({
+    num amount = 1,
+    String planName = "Company Subscription",
+    String? token,
+  }) async {
+    try {
+      final body = CreateOrderBodyModel(amount: amount, planName: planName);
+      final client = dio ?? Dio();
+      final effectiveToken = token ??
+          (Hive.isBoxOpen("userdata")
+              ? Hive.box("userdata").get("token")
+              : null);
+
+      final baseUrl = client.options.baseUrl.isNotEmpty
+          ? client.options.baseUrl
+          : "https://api.tracklovedones.com";
+
+      final response = await client.post(
+        "$baseUrl/api/v1/payment/create-order",
+        data: body.toJson(),
+        options: Options(
+          headers: {
+            "Content-Type": "application/json",
+            if (effectiveToken != null && effectiveToken.toString().isNotEmpty)
+              "Authorization": "Bearer $effectiveToken",
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return CreateOrderResModel.fromJson(data);
+      }
+      return CreateOrderResModel.fromJson({});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<VerifyPaymentResModel> verifyPayment({
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+    String? token,
+  }) async {
+    try {
+      final body = VerifyPaymentBodyModel(
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
+      );
+      final client = dio ?? Dio();
+      final effectiveToken = token ??
+          (Hive.isBoxOpen("userdata")
+              ? Hive.box("userdata").get("token")
+              : null);
+
+      final baseUrl = client.options.baseUrl.isNotEmpty
+          ? client.options.baseUrl
+          : "https://api.tracklovedones.com";
+
+      final response = await client.post(
+        "$baseUrl/api/v1/payment/verify",
+        data: body.toJson(),
+        options: Options(
+          headers: {
+            "Content-Type": "application/json",
+            if (effectiveToken != null && effectiveToken.toString().isNotEmpty)
+              "Authorization": "Bearer $effectiveToken",
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return VerifyPaymentResModel.fromJson(data);
+      }
+      return VerifyPaymentResModel.fromJson({});
     } catch (e) {
       rethrow;
     }

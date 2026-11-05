@@ -9,6 +9,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
+import 'package:track_loved/LoginScreen/AdultOnboardingScreen.dart';
+import 'package:track_loved/LoginScreen/CompanyPaymentScreen.dart';
 import 'package:track_loved/LoginScreen/ForgotPasswordScreen.dart';
 import 'package:track_loved/LoginScreen/RegisterScreen.dart';
 import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
@@ -16,6 +18,7 @@ import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Utils/FcmNotificationService.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -441,6 +444,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "isParentConsentApproved",
                                         true,
                                       );
+                                      final requiresAdultReconsent =
+                                          response.requiresAdultReconsent ==
+                                              true ||
+                                          response
+                                              .data
+                                              ?.user
+                                              ?.requiresAdultReconsent ==
+                                              true ||
+                                          response.data?.user?.role ==
+                                              'adult_pending_consent';
+                                      await box.put(
+                                        "requiresAdultReconsent",
+                                        requiresAdultReconsent,
+                                      );
                                       final cachedFcm =
                                           box.get("fcm_token")?.toString();
                                       if (cachedFcm != null &&
@@ -451,6 +468,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         );
                                       }
                                       if (context.mounted) {
+                                        if (requiresAdultReconsent) {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const AdultOnboardingScreen(),
+                                            ),
+                                            (route) => false,
+                                          );
+                                          return;
+                                        }
                                         final isLocationGranted =
                                             await Permission.location.isGranted;
                                         final isContactsGranted =
@@ -534,7 +562,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     log(e.toString());
                                     if (e is DioException) {
                                       final responseData = e.response?.data;
+                                      final statusCode = e.response?.statusCode;
                                       if (responseData is Map) {
+                                        // 4. Company Subscription Payment Pending (HTTP 402 / isPaymentPending: true)
+                                        final isPaymentPending = statusCode == 402 ||
+                                            responseData['isPaymentPending'] == true ||
+                                            responseData['isPaymentPending'] == 'true' ||
+                                            (responseData['data'] is Map &&
+                                                responseData['data']['isPaymentPending'] == true);
+
+                                        if (isPaymentPending && context.mounted) {
+                                          final newToken = responseData['token']?.toString() ??
+                                              responseData['accessToken']?.toString() ??
+                                              (responseData['data'] is Map
+                                                  ? (responseData['data']['token']?.toString() ??
+                                                      responseData['data']['accessToken']?.toString())
+                                                  : null);
+
+                                          final pBox = Hive.isBoxOpen("userdata")
+                                              ? Hive.box("userdata")
+                                              : await Hive.openBox("userdata");
+
+                                          if (newToken != null && newToken.isNotEmpty) {
+                                            await pBox.put("token", newToken);
+                                          }
+                                          await pBox.put("isPaymentPending", true);
+                                          await pBox.put("role", "company");
+
+                                          final compEmail = _emailController.text.trim();
+                                          final compPhone = responseData['phone']?.toString() ??
+                                              (responseData['data'] is Map
+                                                  ? responseData['data']['phone']?.toString()
+                                                  : null);
+                                          final compName = responseData['name']?.toString() ??
+                                              (responseData['data'] is Map
+                                                  ? responseData['data']['name']?.toString()
+                                                  : null);
+
+                                          showErrorSnackBar(
+                                            responseData['message']?.toString() ??
+                                                'Payment Required: Please complete your company subscription.',
+                                          );
+
+                                          if (!context.mounted) return;
+                                          Navigator.push(
+                                            context,
+                                            CupertinoPageRoute(
+                                              builder: (context) => CompanyPaymentScreen(
+                                                token: newToken,
+                                                email: compEmail,
+                                                phone: compPhone,
+                                                companyName: compName,
+                                              ),
+                                            ),
+                                          );
+                                          return;
+                                        }
+
                                         final isPending =
                                             responseData['isParentConsentPending'] ==
                                                 true ||

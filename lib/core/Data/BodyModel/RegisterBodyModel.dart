@@ -15,6 +15,7 @@ class RegisterBodyModel {
     String? phone;
     String? role;
     String? parentPhone;
+    String? dob;
 
     RegisterBodyModel({
         this.email,
@@ -23,6 +24,7 @@ class RegisterBodyModel {
         this.phone,
         this.role,
         this.parentPhone,
+        this.dob,
     });
 
     factory RegisterBodyModel.fromJson(Map<String, dynamic> json) => RegisterBodyModel(
@@ -32,6 +34,7 @@ class RegisterBodyModel {
         phone: json["phone"],
         role: json["role"],
         parentPhone: json["parentPhone"],
+        dob: json["dob"],
     );
 
     Map<String, dynamic> toJson() => {
@@ -41,5 +44,6 @@ class RegisterBodyModel {
         "phone": phone,
         if (role != null) "role": role,
         if (parentPhone != null && parentPhone!.isNotEmpty) "parentPhone": parentPhone,
+        if (dob != null && dob!.isNotEmpty) "dob": dob,
     };
 }

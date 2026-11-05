@@ -12,12 +12,14 @@ String loginResModelToJson(LoginResModel data) => json.encode(data.toJson());
 class LoginResModel {
   bool? success;
   bool? isParentConsentPending;
+  bool? requiresAdultReconsent;
   String? message;
   Data? data;
 
   LoginResModel({
     this.success,
     this.isParentConsentPending,
+    this.requiresAdultReconsent,
     this.message,
     this.data,
   });
@@ -25,6 +27,9 @@ class LoginResModel {
   factory LoginResModel.fromJson(Map<String, dynamic> json) => LoginResModel(
     success: json["success"],
     isParentConsentPending: json["isParentConsentPending"],
+    requiresAdultReconsent: json["requiresAdultReconsent"] ??
+        json["data"]?["user"]?["requiresAdultReconsent"] ??
+        json["user"]?["requiresAdultReconsent"],
     message: json["message"],
     data: json["data"] == null ? null : Data.fromJson(json["data"]),
   );
@@ -33,6 +38,8 @@ class LoginResModel {
     "success": success,
     if (isParentConsentPending != null)
       "isParentConsentPending": isParentConsentPending,
+    if (requiresAdultReconsent != null)
+      "requiresAdultReconsent": requiresAdultReconsent,
     "message": message,
     "data": data?.toJson(),
   };
@@ -62,6 +69,7 @@ class User {
   String? profileImage;
   bool? isVerified;
   bool? isProfileComplete;
+  bool? requiresAdultReconsent;
 
   User({
     this.id,
@@ -73,6 +81,7 @@ class User {
     this.profileImage,
     this.isVerified,
     this.isProfileComplete,
+    this.requiresAdultReconsent,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -85,6 +94,7 @@ class User {
     profileImage: json["profileImage"],
     isVerified: json["isVerified"],
     isProfileComplete: json["isProfileComplete"],
+    requiresAdultReconsent: json["requiresAdultReconsent"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -97,5 +107,7 @@ class User {
     "profileImage": profileImage,
     "isVerified": isVerified,
     "isProfileComplete": isProfileComplete,
+    if (requiresAdultReconsent != null)
+      "requiresAdultReconsent": requiresAdultReconsent,
   };
 }

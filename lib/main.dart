@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
+import 'package:track_loved/LoginScreen/AdultOnboardingScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
@@ -72,8 +73,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     var childPhone = box?.get("phone")?.toString() ?? '';
     var parentPhone = box?.get("parentPhone")?.toString();
     var isProfileComplete = box?.get("isProfileComplete");
+    var isPaymentPending =
+        box?.get("isPaymentPending") == true ||
+        (role == 'company' && box?.get("isCompanyPaymentCompleted") != true);
+    var requiresAdultReconsent =
+        box?.get("requiresAdultReconsent") == true ||
+        role == 'adult_pending_consent';
     log("isProfileComplete :- $isProfileComplete");
-    log("role :- $role, isParentConsentApproved :- $isParentConsentApproved");
+    log(
+      "role :- $role, isParentConsentApproved :- $isParentConsentApproved, requiresAdultReconsent :- $requiresAdultReconsent, isPaymentPending :- $isPaymentPending",
+    );
     log("Device permissions granted: $_arePermissionsGranted");
 
     Widget homeScreen;
@@ -84,13 +93,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
         ),
       );
+    } else if (token == null || isPaymentPending) {
+      homeScreen = const LoginScreen();
     } else if (role == 'child' && isParentConsentApproved != true) {
       homeScreen = WaitingParentApprovalScreen(
         childPhone: childPhone,
         parentPhone: parentPhone,
       );
-    } else if (token == null) {
-      homeScreen = const LoginScreen();
+    } else if (requiresAdultReconsent) {
+      homeScreen = const AdultOnboardingScreen();
     } else if (!_arePermissionsGranted) {
       homeScreen = const RegistrationConsentScreen();
     } else if (isProfileComplete == false) {

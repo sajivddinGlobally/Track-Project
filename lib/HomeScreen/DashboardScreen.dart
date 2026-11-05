@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:track_loved/LoginScreen/AdultOnboardingScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
@@ -31,6 +34,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   bool _isStarting = false;
   Position? _lastSent;
   DateTime? _lastSentAt;
+  io.Socket? _ageOutSocket;
 
   @override
   void initState() {
@@ -38,8 +42,81 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     WidgetsBinding.instance.addObserver(this);
     _ensureHiveOpen();
     _checkPermissions();
+    _checkAgeOutGate();
+    _initAgeOutSocket();
     _startLocationUpdates();
     _syncFcmTokenIfAvailable();
+  }
+
+  void _checkAgeOutGate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
+      final role = box?.get('role')?.toString().toLowerCase();
+      final requiresAdult =
+          box?.get('requiresAdultReconsent') == true ||
+          role == 'adult_pending_consent';
+      if (requiresAdult) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdultOnboardingScreen(),
+          ),
+          (route) => false,
+        );
+      }
+    });
+  }
+
+  void _initAgeOutSocket() {
+    try {
+      final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
+      final role = box?.get('role')?.toString().toLowerCase();
+      if (role == 'user' || role == 'adult') return;
+
+      final userId =
+          box?.get('id')?.toString() ?? box?.get('userId')?.toString();
+      final phone = box?.get('phone')?.toString();
+
+      final socket = io.io(
+        // 'https://loveable-backend-5qi0.onrender.com',
+        'https://api.tracklovedones.com',
+        io.OptionBuilder()
+            .setTransports(['websocket'])
+            .enableAutoConnect()
+            .build(),
+      );
+      _ageOutSocket = socket;
+
+      void handleAgeOut(dynamic data) async {
+        log('[AgeOutSocket] Age-out event triggered received: $data');
+        final uBox = Hive.isBoxOpen('userdata')
+            ? Hive.box('userdata')
+            : await Hive.openBox('userdata');
+        await uBox.put('requiresAdultReconsent', true);
+        await uBox.put('role', 'adult_pending_consent');
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AdultOnboardingScreen(),
+            ),
+            (route) => false,
+          );
+        }
+      }
+
+      socket.on('age_out_triggered', handleAgeOut);
+      if (userId != null && userId.isNotEmpty) {
+        socket.on('age_out_triggered_$userId', handleAgeOut);
+      }
+      if (phone != null && phone.isNotEmpty) {
+        socket.on('age_out_triggered_$phone', handleAgeOut);
+      }
+    } catch (e) {
+      log('[AgeOutSocket] Init error: $e');
+    }
   }
 
   Future<void> _syncFcmTokenIfAvailable() async {
@@ -177,6 +254,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   void dispose() {
+    _ageOutSocket?.disconnect();
+    _ageOutSocket?.dispose();
+    _ageOutSocket = null;
     _locationSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -206,10 +286,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: Colors.white,
       key: _scaffoldKey,
@@ -277,7 +355,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                          color: const Color(
+                            0xFFD4AF37,
+                          ).withValues(alpha: 0.35),
                           blurRadius: 6,
                           spreadRadius: 0.5,
                         ),
@@ -285,15 +365,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                     ),
                     child: Hive.isBoxOpen('userdata')
                         ? ValueListenableBuilder<Box>(
-                            valueListenable: Hive.box('userdata').listenable(
-                              keys: ['profileImage', 'name'],
-                            ),
+                            valueListenable: Hive.box(
+                              'userdata',
+                            ).listenable(keys: ['profileImage', 'name']),
                             builder: (context, box, _) {
                               final img = box.get('profileImage')?.toString();
                               final name =
                                   box.get('name')?.toString().trim() ?? '';
-                              final initial =
-                                  name.isEmpty ? '?' : name[0].toUpperCase();
+                              final initial = name.isEmpty
+                                  ? '?'
+                                  : name[0].toUpperCase();
 
                               if (img != null && img.trim().isNotEmpty) {
                                 return CircleAvatar(

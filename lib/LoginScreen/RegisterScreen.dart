@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:track_loved/LoginScreen/DpdpaPolicyDialog.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/LoginScreen/OtpVerifyScreen.dart';
@@ -25,12 +26,55 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _phoneConatroller = TextEditingController();
 
   final _parentPhoneController = TextEditingController();
+  final _dobController = TextEditingController();
 
   bool isLoading = false;
   bool isPasswordVisible = false;
   String? _selectedAccountType; // "adult" (18+) or "child" (<18)
   bool _agreedToTerms = false;
   DpdpaConsentResult? _dpdpaConsent;
+
+  Future<void> _selectDob(BuildContext context) async {
+    final DateTime now = DateTime.now();
+    // Child under 18:
+    final DateTime initialDate = DateTime(now.year - 14, now.month, now.day);
+    final DateTime earliestDate = DateTime(
+      now.year - 18,
+      now.month,
+      now.day + 1,
+    );
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: earliestDate,
+      lastDate: now,
+      helpText: "SELECT CHILD'S DATE OF BIRTH",
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF00E676),
+              onPrimary: Colors.black,
+              surface: Color(0xFF002E29),
+              onSurface: Colors.white,
+            ),
+            dialogTheme: const DialogThemeData(
+              backgroundColor: Color(0xFF002E29),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final formatted = DateFormat('yyyy-MM-dd').format(picked);
+      setState(() {
+        _dobController.text = formatted;
+      });
+    }
+  }
 
   Future<void> _showDpdpaPolicyDialog() async {
     final result = await showDialog<DpdpaConsentResult>(
@@ -62,6 +106,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _emailController.dispose();
     _phoneConatroller.dispose();
     _parentPhoneController.dispose();
+    _dobController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -341,8 +386,25 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         },
                       ),
 
-                      // If Child: show Parent/Guardian Phone input and parental consent note
+                      // If Child: show DOB, Parent/Guardian Phone input and parental consent note
                       if (_selectedAccountType == 'child') ...[
+                        SizedBox(height: 18.h),
+                        customTextField(
+                          controller: _dobController,
+                          labelText: "Child's Date of Birth (YYYY-MM-DD)",
+                          hintText: "Select Date of Birth",
+                          prefixIcon: Icons.cake_outlined,
+                          readOnly: true,
+                          onTap: () => _selectDob(context),
+                          validator: (value) {
+                            if (_selectedAccountType == 'child') {
+                              if (value == null || value.trim().isEmpty) {
+                                return "Please select child's date of birth";
+                              }
+                            }
+                            return null;
+                          },
+                        ),
                         SizedBox(height: 18.h),
                         customTextField(
                           controller: _parentPhoneController,
@@ -365,45 +427,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             }
                             return null;
                           },
-                        ),
-                        SizedBox(height: 8.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 8.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF00E676,
-                            ).withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(
-                              color: const Color(
-                                0xFF00E676,
-                              ).withValues(alpha: 0.25),
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.shield_outlined,
-                                color: const Color(0xFF00E676),
-                                size: 18.sp,
-                              ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  "Parental Permission Required: A verification OTP will be sent to the parent's phone to verify and authorize setup under DPDPA Section 9.",
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontSize: 11.5.sp,
-                                    height: 1.35,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                       SizedBox(height: 18.h),
@@ -577,13 +600,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                           _selectedAccountType == 'child'
                                           ? _parentPhoneController.text.trim()
                                           : null,
+                                      dob: _selectedAccountType == 'child'
+                                          ? _dobController.text.trim()
+                                          : null,
                                     );
                                     if (response.success == true) {
                                       showSuccessSnackBar(
                                         response.message ??
-                                            (_selectedAccountType == 'child'
-                                                ? "Parental verification OTP sent successfully"
-                                                : "OTP sent successfully"),
+                                            ("OTP sent successfully"),
                                       );
                                       if (context.mounted) {
                                         Navigator.push(
@@ -701,9 +725,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     VoidCallback? onVisibilityTap,
     bool showVisibilityIcon = false,
     String? Function(String?)? validator,
+    bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,

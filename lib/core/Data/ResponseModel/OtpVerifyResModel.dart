@@ -11,23 +11,27 @@ String otpVerifyResModelToJson(OtpVerifyResModel data) => json.encode(data.toJso
 class OtpVerifyResModel {
     bool? success;
     String? message;
+    bool? requiresPayment;
     Data? data;
 
     OtpVerifyResModel({
         this.success,
         this.message,
+        this.requiresPayment,
         this.data,
     });
 
     factory OtpVerifyResModel.fromJson(Map<String, dynamic> json) => OtpVerifyResModel(
         success: json["success"],
         message: json["message"],
+        requiresPayment: json["requiresPayment"] ?? json["data"]?["requiresPayment"],
         data: json["data"] == null ? null : Data.fromJson(json["data"]),
     );
 
     Map<String, dynamic> toJson() => {
         "success": success,
         "message": message,
+        if (requiresPayment != null) "requiresPayment": requiresPayment,
         "data": data?.toJson(),
     };
 }
@@ -35,20 +39,24 @@ class OtpVerifyResModel {
 class Data {
     String? token;
     User? user;
+    bool? requiresPayment;
 
     Data({
         this.token,
         this.user,
+        this.requiresPayment,
     });
 
     factory Data.fromJson(Map<String, dynamic> json) => Data(
         token: json["token"],
         user: json["user"] == null ? null : User.fromJson(json["user"]),
+        requiresPayment: json["requiresPayment"],
     );
 
     Map<String, dynamic> toJson() => {
         "token": token,
         "user": user?.toJson(),
+        if (requiresPayment != null) "requiresPayment": requiresPayment,
     };
 }
 

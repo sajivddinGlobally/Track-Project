@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pinput/pinput.dart';
+import 'package:track_loved/LoginScreen/CompanyPaymentScreen.dart';
 import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -121,7 +121,8 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         elevation: 0,
         centerTitle: true,
         title: Text(
-          widget.isChild ? 'Parental Verification' : 'OTP Verification',
+          // widget.isChild ? 'Parental Verification' : 'OTP Verification',
+          'OTP Verification',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -151,9 +152,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                     ),
                   ),
                   child: Icon(
-                    widget.isChild
-                        ? Icons.family_restroom_rounded
-                        : Icons.phonelink_lock_rounded,
+                    // widget.isChild
+                    //     ? Icons.family_restroom_rounded
+                    //     : Icons.phonelink_lock_rounded,
+                    Icons.phonelink_lock_rounded,
                     color: accentGold,
                     size: 56,
                   ),
@@ -161,9 +163,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                 const SizedBox(height: 24),
 
                 Text(
-                  widget.isChild
-                      ? 'Parental Consent Code'
-                      : 'Verification Code',
+                  // widget.isChild
+                  //     ? 'Parental Consent Code'
+                  //     : 'Verification Code',
+                  'Verification Code',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
@@ -175,9 +178,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
 
                 Text.rich(
                   TextSpan(
-                    text: widget.isChild
-                        ? "We have sent a 6-digit parental consent verification code to\n"
-                        : 'We have sent a 6-digit verification code to\n',
+                    // text: widget.isChild
+                    //     ? "We have sent a 6-digit parental consent verification code to\n"
+                    //     : 'We have sent a 6-digit verification code to\n',
+                    text: 'We have sent a 6-digit verification code to\n',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 14,
@@ -186,13 +190,16 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                     children: [
                       TextSpan(
                         text:
-                            widget.isChild &&
-                                widget.parentPhone != null &&
-                                widget.parentPhone!.isNotEmpty
-                            ? "Parent's Phone: ${widget.parentPhone}"
-                            : (widget.email.isNotEmpty
-                                  ? widget.email
-                                  : 'your registered contact'),
+                            // widget.isChild &&
+                            //     widget.parentPhone != null &&
+                            //     widget.parentPhone!.isNotEmpty
+                            // ? "Parent's Phone: ${widget.parentPhone}"
+                            // : (widget.email.isNotEmpty
+                            //       ? widget.email
+                            //       : 'your registered contact'),
+                            widget.email.isNotEmpty
+                            ? widget.email
+                            : 'your registered contact',
                         style: const TextStyle(
                           color: accentGold,
                           fontWeight: FontWeight.bold,
@@ -216,7 +223,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 // Pinput Field
                 Pinput(
                   length: 6,
@@ -360,13 +366,13 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             response.data?.user?.isProfileComplete,
                           );
                           await box.put("email", response.data?.user?.email);
-                          final effectiveRole = response.data?.user?.role ??
+                          final effectiveRole =
+                              response.data?.user?.role ??
                               (widget.isChild ? 'child' : 'user');
                           await box.put("role", effectiveRole);
 
-                          final effectivePhone = widget.phone ??
-                              response.data?.user?.phone ??
-                              '';
+                          final effectivePhone =
+                              widget.phone ?? response.data?.user?.phone ?? '';
                           if (effectivePhone.isNotEmpty) {
                             await box.put("phone", effectivePhone);
                           }
@@ -375,8 +381,8 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             await box.put("parentPhone", widget.parentPhone);
                           }
 
-                          final isChildRole = widget.isChild ||
-                              (effectiveRole == 'child');
+                          final isChildRole =
+                              widget.isChild || (effectiveRole == 'child');
 
                           if (isChildRole) {
                             await box.put("isParentConsentApproved", false);
@@ -384,8 +390,32 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             await box.put("isParentConsentApproved", true);
                           }
 
+                          final requiresPayment =
+                              response.data?.requiresPayment == true ||
+                              response.requiresPayment == true;
+                          await box.put("isPaymentPending", requiresPayment);
+
                           if (context.mounted) {
                             isNavigating = true;
+
+                            // 1. If Company Subscription Payment Required: navigate directly to Payment Screen
+                            if (requiresPayment) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CompanyPaymentScreen(
+                                    token: response.data?.token,
+                                    email: response.data?.user?.email ??
+                                        widget.email,
+                                    phone: effectivePhone,
+                                    companyName: response.data?.user?.name,
+                                  ),
+                                ),
+                                (route) => false,
+                              );
+                              return;
+                            }
+
                             if (isChildRole) {
                               Navigator.pushAndRemoveUntil(
                                 context,

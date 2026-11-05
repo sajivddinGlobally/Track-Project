@@ -407,14 +407,13 @@ class LegalMediaRedirectHelper {
                                     fontSize: 11.5.sp,
                                     color: Colors.black87,
                                     fontWeight: FontWeight.w500,
-                                  ),
+                                  ), 
                                 ),
                               ),
                             ],
                           ),
                         ),
                       SizedBox(height: 14.h),
-
                       // Action Buttons
                       Row(
                         children: [
@@ -2387,14 +2386,93 @@ class _ChildSandboxVideoPlayerScreenState
           ],
         ),
       ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: Color(0xFFC5A038)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Standard 16:9 Aspect Ratio Video Player Container
+            Container(
+              color: Colors.black,
+              width: double.infinity,
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Stack(
+                  children: [
+                    WebViewWidget(controller: _controller),
+                    if (_isLoading)
+                      const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFC5A038),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-        ],
+            // Information Section below the 16:9 player
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF002E29),
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: const Color(0xFF166534)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.verified_user,
+                            color: const Color(0xFF4ADE80),
+                            size: 20.sp,
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DPDP Act Section 9 Minor Sandbox',
+                                  style: TextStyle(
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  'This educational media is isolated from external YouTube recommendations, commercial ads, and tracking cookies.',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    color: Colors.white70,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
