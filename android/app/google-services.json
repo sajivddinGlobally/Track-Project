@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "466509770539",
+    "project_id": "tracklovedones-4cd0d",
+    "storage_bucket": "tracklovedones-4cd0d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466509770539:android:8253dbd5a8b1a6aae35f6e",
+        "android_client_info": {
+          "package_name": "com.example.track_loved"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkQeRdBUR-VJYM28ETn0AJhJLkpUcY6Yk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

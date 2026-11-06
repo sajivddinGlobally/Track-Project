@@ -1,5 +1,7 @@
 import 'dart:developer';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,13 +15,83 @@ import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/font_scale_provider.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 import 'package:track_loved/core/Utils/key.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  log('[FCM] Handling background message: ${message.messageId}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox("userdata");
+
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    _initFcmNotifications();
+  } catch (e) {
+    log('[Firebase] Initialization error: $e');
+  }
+
   runApp(const ProviderScope(child: MyApp()));
+}
+
+Future<void> _initFcmNotifications() async {
+  try {
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // Register with FCM for push notifications
+    await messaging.register();
+
+    messaging.onRegistered.listen((token) async {
+      log('[FCM] Token acquired via onRegistered: $token');
+      final box = Hive.isBoxOpen("userdata")
+          ? Hive.box("userdata")
+          : await Hive.openBox("userdata");
+      await box.put('fcm_token', token);
+    });
+
+    // Fallback token fetch for initial launch
+    // ignore: deprecated_member_use
+    final token = await messaging.getToken();
+    if (token != null && token.isNotEmpty) {
+      log('[FCM] Token acquired: $token');
+      final box = Hive.isBoxOpen("userdata")
+          ? Hive.box("userdata")
+          : await Hive.openBox("userdata");
+      await box.put('fcm_token', token);
+    }
+
+    // ignore: deprecated_member_use
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      log('[FCM] Token refreshed: $newToken');
+      final box = Hive.isBoxOpen("userdata")
+          ? Hive.box("userdata")
+          : await Hive.openBox("userdata");
+      await box.put('fcm_token', newToken);
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      log('[FCM] Foreground message received: ${message.notification?.title}');
+      FcmNotificationService.handleNotificationPayload(message.data);
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      log('[FCM] Notification opened app: ${message.data}');
+      FcmNotificationService.handleNotificationPayload(message.data);
+    });
+  } catch (e) {
+    log('[FCM] Error setting up FirebaseMessaging: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {
