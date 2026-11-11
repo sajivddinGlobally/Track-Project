@@ -105,8 +105,10 @@ abstract class ApiStateNetwork {
 
   @GET("/api/v1/auth/searchUsers")
   Future<AddNetworkSearchResModel> getAddNetworkSearch(
-    @Query("search") String search,
-  );
+    @Query("search") String search, {
+    @Query("page") int? page,
+    @Query("limit") int? limit,
+  });
 
   @GET("/api/v1/network/requests")
   Future<NetworkRequestResModel> getNetworkRequest();

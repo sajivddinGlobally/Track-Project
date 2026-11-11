@@ -34,6 +34,7 @@ class _AddNetworkSearchScreenState
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _memberSearchController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
+  final ScrollController _globalSearchScrollController = ScrollController();
 
   String _searchQuery = '';
   String _activePincode = '';
@@ -53,6 +54,24 @@ class _AddNetworkSearchScreenState
   bool _isDeleting = false;
   final Set<String> _selectedPhones = {};
   final Map<String, String> _phoneByUserId = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _globalSearchScrollController.addListener(_onGlobalScroll);
+  }
+
+  void _onGlobalScroll() {
+    if (_globalSearchScrollController.hasClients) {
+      final maxScroll = _globalSearchScrollController.position.maxScrollExtent;
+      final currentScroll = _globalSearchScrollController.position.pixels;
+      if (currentScroll >= maxScroll - 250) {
+        ref
+            .read(addNetworkSerachProvider(_effectiveQuery).notifier)
+            .fetchNextPage();
+      }
+    }
+  }
 
   void _validatePincode(String pincode) {
     final cleanPin = pincode.trim();
@@ -1571,6 +1590,8 @@ class _AddNetworkSearchScreenState
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _globalSearchScrollController.removeListener(_onGlobalScroll);
+    _globalSearchScrollController.dispose();
     _memberSearchController.dispose();
     _pincodeController.dispose();
     super.dispose();
@@ -1578,9 +1599,9 @@ class _AddNetworkSearchScreenState
 
   @override
   Widget build(BuildContext context) {
-    final addNetwork = !_isMatchedViewActive
+    final addNetworkState = !_isMatchedViewActive
         ? ref.watch(addNetworkSerachProvider(_effectiveQuery))
-        : const AsyncValue<AddNetworkSearchResModel>.loading();
+        : const AddNetworkSearchState(isLoading: true);
     final contactState = ref.watch(getMatchContactProvider(_searchQuery));
 
     final matchData = contactState.asData?.value.data;
@@ -1671,11 +1692,11 @@ class _AddNetworkSearchScreenState
                             ),
                             hintText: _isMatchedViewActive
                                 ? (_isHindi
-                                    ? 'सहेजे गए संपर्कों में नाम या नंबर से खोजें...'
-                                    : 'Search contacts by name or phone...')
+                                      ? 'सहेजे गए संपर्कों में नाम या नंबर से खोजें...'
+                                      : 'Search contacts by name or phone...')
                                 : (_isHindi
-                                    ? 'नाम, भूमिका, शहर या पिनकोड से खोजें...'
-                                    : 'Search members by name, role, city, pincode...'),
+                                      ? 'नाम, भूमिका, शहर या पिनकोड से खोजें...'
+                                      : 'Search members by name, role, city, pincode...'),
                             hintStyle: TextStyle(
                               color: Colors.black45,
                               fontSize: 12.sp,
@@ -1880,9 +1901,42 @@ class _AddNetworkSearchScreenState
                           effectiveInviteList,
                           isLoading: contactState.isLoading,
                         )
-                      : addNetwork.when(
-                          data: (data) {
-                            final allUsers = data.data?.users ?? [];
+                      : addNetworkState.isLoading &&
+                            addNetworkState.users.isEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDynamicFilterChips(
+                              [],
+                              effectiveMatchedUsers,
+                              effectiveInviteList,
+                            ),
+                            SizedBox(height: 12.h),
+                            const Expanded(
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : addNetworkState.errorMessage != null &&
+                            addNetworkState.users.isEmpty
+                      ? Center(
+                          child: Text(
+                            _isHindi
+                                ? 'डेटा लोड करने में त्रुटि आई'
+                                : 'Error loading data',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        )
+                      : Builder(
+                          builder: (context) {
+                            final allUsers = addNetworkState.users;
                             final filteredMembers = allUsers.where((member) {
                               if (_activePincode.isEmpty) return true;
                               final memberPin = member.pincode ?? '';
@@ -1908,11 +1962,13 @@ class _AddNetworkSearchScreenState
                                       ref.invalidate(addNetworkSerachProvider);
                                       ref.invalidate(getMatchContactProvider);
                                       await Future.wait([
-                                        ref.read(
-                                          addNetworkSerachProvider(
-                                            _effectiveQuery,
-                                          ).future,
-                                        ),
+                                        ref
+                                            .read(
+                                              addNetworkSerachProvider(
+                                                _effectiveQuery,
+                                              ).notifier,
+                                            )
+                                            .refresh(),
                                         ref.read(
                                           getMatchContactProvider(
                                             _searchQuery,
@@ -1920,7 +1976,9 @@ class _AddNetworkSearchScreenState
                                         ),
                                       ]);
                                     },
-                                    child: filteredMembers.isEmpty
+                                    child:
+                                        filteredMembers.isEmpty &&
+                                            !addNetworkState.isLoading
                                         ? LayoutBuilder(
                                             builder: (context, constraints) =>
                                                 SingleChildScrollView(
@@ -1964,10 +2022,30 @@ class _AddNetworkSearchScreenState
                                                 ),
                                           )
                                         : ListView.builder(
+                                            controller:
+                                                _globalSearchScrollController,
                                             physics:
                                                 const AlwaysScrollableScrollPhysics(),
-                                            itemCount: filteredMembers.length,
+                                            itemCount:
+                                                filteredMembers.length +
+                                                (addNetworkState.isLoadingMore
+                                                    ? 1
+                                                    : 0),
                                             itemBuilder: (context, index) {
+                                              if (index ==
+                                                  filteredMembers.length) {
+                                                return Padding(
+                                                  padding: EdgeInsets.symmetric(
+                                                    vertical: 16.h,
+                                                  ),
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          color: Colors.white,
+                                                        ),
+                                                  ),
+                                                );
+                                              }
                                               return _buildMemberCard(
                                                 filteredMembers[index],
                                               );
@@ -1976,39 +2054,6 @@ class _AddNetworkSearchScreenState
                                   ),
                                 ),
                               ],
-                            );
-                          },
-                          loading: () {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildDynamicFilterChips(
-                                  [],
-                                  effectiveMatchedUsers,
-                                  effectiveInviteList,
-                                ),
-                                SizedBox(height: 12.h),
-                                const Expanded(
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                          error: (error, stackTrace) {
-                            return Center(
-                              child: Text(
-                                _isHindi
-                                    ? 'डेटा लोड करने में त्रुटि आई'
-                                    : 'Error loading data',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.sp,
-                                ),
-                              ),
                             );
                           },
                         ),
@@ -2175,107 +2220,105 @@ class _AddNetworkSearchScreenState
         Expanded(
           child: isLoading
               ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                  ),
+                  child: CircularProgressIndicator(color: Colors.white),
                 )
               : (users.isEmpty && inviteList.isEmpty)
-                  ? Center(
-                      child: SingleChildScrollView(
-                        child: Column(
+              ? Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_off_outlined,
+                          size: 48.sp,
+                          color: Colors.white60,
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? (_isHindi
+                                    ? 'खोज "$_searchQuery" से मेल खाता कोई संपर्क नहीं मिला।'
+                                    : 'No contacts found matching "$_searchQuery".')
+                              : (_isHindi
+                                    ? 'कोई सहेजा गया संपर्क नहीं मिला।'
+                                    : 'No saved contacts found.'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.person_off_outlined,
-                              size: 48.sp,
-                              color: Colors.white60,
-                            ),
-                            SizedBox(height: 8.h),
-                            Text(
-                              _searchQuery.isNotEmpty
-                                  ? (_isHindi
-                                      ? 'खोज "$_searchQuery" से मेल खाता कोई संपर्क नहीं मिला।'
-                                      : 'No contacts found matching "$_searchQuery".')
-                                  : (_isHindi
-                                      ? 'कोई सहेजा गया संपर्क नहीं मिला।'
-                                      : 'No saved contacts found.'),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.sp,
+                            ElevatedButton.icon(
+                              onPressed: _showCustomManualContactModal,
+                              icon: Icon(
+                                Icons.person_add_alt_1_rounded,
+                                size: 16.sp,
+                                color: const Color(0xFF002E29),
+                              ),
+                              label: Text(
+                                _isHindi
+                                    ? 'कस्टम संपर्क जोड़ें'
+                                    : 'Add Custom Contact',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD4AF37),
+                                foregroundColor: const Color(0xFF002E29),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 10.h,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
                               ),
                             ),
-                            SizedBox(height: 16.h),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ElevatedButton.icon(
-                                  onPressed: _showCustomManualContactModal,
-                                  icon: Icon(
-                                    Icons.person_add_alt_1_rounded,
-                                    size: 16.sp,
-                                    color: const Color(0xFF002E29),
-                                  ),
-                                  label: Text(
-                                    _isHindi
-                                        ? 'कस्टम संपर्क जोड़ें'
-                                        : 'Add Custom Contact',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFD4AF37),
-                                    foregroundColor: const Color(0xFF002E29),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 14.w,
-                                      vertical: 10.h,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.r),
-                                    ),
-                                  ),
+                            SizedBox(width: 8.w),
+                            OutlinedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isMatchedViewActive = false;
+                                  _memberSearchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white30),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 10.h,
                                 ),
-                                SizedBox(width: 8.w),
-                                OutlinedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isMatchedViewActive = false;
-                                      _memberSearchController.clear();
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    side: const BorderSide(color: Colors.white30),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 14.w,
-                                      vertical: 10.h,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.r),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _isHindi ? 'वापस जाएं' : 'Back',
-                                    style: TextStyle(fontSize: 12.sp),
-                                  ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r),
                                 ),
-                              ],
+                              ),
+                              child: Text(
+                                _isHindi ? 'वापस जाएं' : 'Back',
+                                style: TextStyle(fontSize: 12.sp),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      color: const Color(0xFF0B4F4A),
-                      onRefresh: () async {
-                        ref.invalidate(getMatchContactProvider);
-                        await ref.read(
-                          getMatchContactProvider(_searchQuery).future,
-                        );
-                      },
+                      ],
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
+                  color: const Color(0xFF0B4F4A),
+                  onRefresh: () async {
+                    ref.invalidate(getMatchContactProvider);
+                    await ref.read(
+                      getMatchContactProvider(_searchQuery).future,
+                    );
+                  },
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: users.length + inviteList.length,

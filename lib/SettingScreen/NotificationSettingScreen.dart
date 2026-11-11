@@ -30,46 +30,46 @@ class _NotificationSettingScreenState
   final List<Map<String, dynamic>> _soundTones = [
     {
       'id': 'Default Chime',
-      'nameEn': 'Default Chime',
-      'nameHi': 'डिफ़ॉल्ट चाइम',
-      'descEn': 'Classic standard alert chime',
-      'descHi': 'मानक क्लासिक अलर्ट चाइम',
+      'nameEn': 'Track Safe Chime',
+      'nameHi': 'ट्रैक सेफ चाइम (डिफ़ॉल्ट)',
+      'descEn': 'Polished 3-tone harmonic safety chime',
+      'descHi': '3-टोन मधुर व स्पष्ट सुरक्षा चाइम',
       'icon': Icons.notifications_active_rounded,
       'asset': 'assets/sounds/chime.wav',
     },
     {
-      'id': 'Gentle Bell',
-      'nameEn': 'Gentle Bell',
-      'nameHi': 'धीमी घंटी',
-      'descEn': 'Soft and pleasant notification tone',
-      'descHi': 'शांत और सुखद अधिसूचना टोन',
-      'icon': Icons.music_note_rounded,
-      'asset': 'assets/sounds/bell.wav',
-    },
-    {
-      'id': 'Alert Pulse',
-      'nameEn': 'Alert Pulse',
-      'nameHi': 'अलर्ट पल्स',
-      'descEn': 'Clear high-priority safety alert tone',
-      'descHi': 'स्पष्ट उच्च-प्राथमिकता सुरक्षा अलर्ट',
-      'icon': Icons.warning_amber_rounded,
-      'asset': 'assets/sounds/siren.wav',
-    },
-    {
       'id': 'Radar Echo',
-      'nameEn': 'Radar Echo',
-      'nameHi': 'रडार इको',
-      'descEn': 'Distinctive location ping sound',
-      'descHi': 'विशिष्ट लोकेशन पिंग ध्वनि',
+      'nameEn': 'Geo Radar Ping',
+      'nameHi': 'जियो रडar पिंग',
+      'descEn': 'Authentic GPS tracking & beacon ping',
+      'descHi': 'वास्तविक जीपीएस ट्रैकिंग व रडार पिंग',
       'icon': Icons.radar_rounded,
       'asset': 'assets/sounds/radar.wav',
     },
     {
+      'id': 'Alert Pulse',
+      'nameEn': 'Emergency SOS Siren',
+      'nameHi': 'इमरजेंसी एसओएस सायरन',
+      'descEn': 'High-urgency safety siren for critical alerts',
+      'descHi': 'आपातकालीन व उच्च-प्राथमिकता सुरक्षा अलार्म',
+      'icon': Icons.warning_amber_rounded,
+      'asset': 'assets/sounds/siren.wav',
+    },
+    {
+      'id': 'Gentle Bell',
+      'nameEn': 'Family Care Bell',
+      'nameHi': 'फैमिली केयर बेल',
+      'descEn': 'Warm resonant tubular chime for check-ins',
+      'descHi': 'शांत व मधुर फैमिली चेक-इन घंटी',
+      'icon': Icons.notifications_none_rounded,
+      'asset': 'assets/sounds/bell.wav',
+    },
+    {
       'id': 'Subtle Beep',
-      'nameEn': 'Subtle Beep',
-      'nameHi': 'हल्की बीप',
-      'descEn': 'Minimal unobtrusive beep',
-      'descHi': 'हल्की और शांत बीप ध्वनि',
+      'nameEn': 'Quick Geo Blip',
+      'nameHi': 'क्विक जियो ब्लिप',
+      'descEn': 'Snappy double blip for real-time updates',
+      'descHi': 'फास्ट व मॉडर्न डबल ब्लिप ध्वनि',
       'icon': Icons.volume_down_rounded,
       'asset': 'assets/sounds/beep.wav',
     },
@@ -114,17 +114,35 @@ class _NotificationSettingScreenState
     HapticFeedback.mediumImpact();
     if (_notificationSoundEnabled) {
       try {
+        final String asset;
         if (assetPath != null && assetPath.isNotEmpty) {
-          FlutterRingtonePlayer().play(
-            fromAsset: assetPath,
-            volume: _soundVolume,
-            asAlarm: toneName == 'Alert Pulse',
-          );
+          asset = assetPath;
         } else {
-          FlutterRingtonePlayer().playNotification(
-            volume: _soundVolume,
-          );
+          switch (toneName) {
+            case 'Gentle Bell':
+              asset = 'assets/sounds/bell.wav';
+              break;
+            case 'Alert Pulse':
+              asset = 'assets/sounds/siren.wav';
+              break;
+            case 'Radar Echo':
+              asset = 'assets/sounds/radar.wav';
+              break;
+            case 'Subtle Beep':
+              asset = 'assets/sounds/beep.wav';
+              break;
+            case 'Default Chime':
+            default:
+              asset = 'assets/sounds/chime.wav';
+              break;
+          }
         }
+
+        FlutterRingtonePlayer().play(
+          fromAsset: asset,
+          volume: _soundVolume,
+          asAlarm: toneName == 'Alert Pulse',
+        );
       } catch (e) {
         log('Error playing tone preview: $e');
       }

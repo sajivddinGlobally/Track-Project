@@ -16,6 +16,8 @@ import 'package:track_loved/core/Network/ApiStateNetwork.dart';
 import 'package:track_loved/core/Utils/key.dart';
 import 'package:track_loved/core/Utils/preety.dio.dart';
 
+import '../../DrawerScreen/NetworkRequestScreen/NetworkingRequest.dart';
+
 class FcmNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -75,31 +77,14 @@ class FcmNotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       if (androidImpl != null) {
-        // Delete old lower-importance channels if present so Android registers high importance & sounds
-        try {
-          await androidImpl.deleteNotificationChannel(
-            channelId: 'default_channel',
-          );
-          await androidImpl.deleteNotificationChannel(
-            channelId: 'emergency_channel',
-          );
-          await androidImpl.deleteNotificationChannel(
-            channelId: 'default_channel_v2',
-          );
-          await androidImpl.deleteNotificationChannel(
-            channelId: 'emergency_channel_v2',
-          );
-        } catch (_) {}
-
-        // Register main channels with raw audio resources
+        // Register all channels with raw audio resources
         await androidImpl.createNotificationChannel(emergencyChannel);
         await androidImpl.createNotificationChannel(defaultChannel);
 
-        // Also register channels matching backend channel strings
         await androidImpl.createNotificationChannel(
           const AndroidNotificationChannel(
             'emergency_channel',
-            'Emergency Alerts',
+            'Emergency & SOS Alerts',
             description: 'SOS and emergency alerts',
             importance: Importance.max,
             playSound: true,
@@ -128,9 +113,53 @@ class FcmNotificationService {
     }
   }
 
+  static final Map<String, DateTime> _recentMessages = {};
+
+  /// Checks if an incoming message is a duplicate within an 8-second window
+  static bool _isDuplicateMessage(RemoteMessage message) {
+    final now = DateTime.now();
+    // Prune entries older than 8 seconds
+    _recentMessages.removeWhere(
+      (_, time) => now.difference(time).inSeconds > 8,
+    );
+
+    final msgId = message.messageId;
+    final title =
+        message.notification?.title ?? message.data['title']?.toString() ?? '';
+    final body =
+        message.notification?.body ?? message.data['body']?.toString() ?? '';
+    final type = message.data['type']?.toString() ?? '';
+
+    if (msgId != null &&
+        msgId.isNotEmpty &&
+        _recentMessages.containsKey(msgId)) {
+      log('[FCM] Duplicate notification suppressed by messageId: $msgId');
+      return true;
+    }
+
+    final contentKey = '$title|$body|$type';
+    if (contentKey.length > 2 && _recentMessages.containsKey(contentKey)) {
+      log('[FCM] Duplicate notification suppressed by content: $contentKey');
+      return true;
+    }
+
+    if (msgId != null && msgId.isNotEmpty) {
+      _recentMessages[msgId] = now;
+    }
+    if (contentKey.length > 2) {
+      _recentMessages[contentKey] = now;
+    }
+
+    return false;
+  }
+
   /// Displays foreground notification popup with proper channel sound & priority
   static Future<void> showForegroundNotification(RemoteMessage message) async {
     try {
+      if (_isDuplicateMessage(message)) {
+        return;
+      }
+
       final notification = message.notification;
       final data = message.data;
 
@@ -166,32 +195,25 @@ class FcmNotificationService {
           (box.get('notif_sound_volume', defaultValue: 0.8) as num).toDouble();
 
       String soundFile = 'chime';
-      String assetSound = 'assets/sounds/chime.wav';
       if (isEmergency) {
         soundFile = 'siren';
-        assetSound = 'assets/sounds/siren.wav';
       } else {
         switch (selectedTone) {
           case 'Gentle Bell':
             soundFile = 'bell';
-            assetSound = 'assets/sounds/bell.wav';
             break;
           case 'Alert Pulse':
             soundFile = 'siren';
-            assetSound = 'assets/sounds/siren.wav';
             break;
           case 'Radar Echo':
             soundFile = 'radar';
-            assetSound = 'assets/sounds/radar.wav';
             break;
           case 'Subtle Beep':
             soundFile = 'beep';
-            assetSound = 'assets/sounds/beep.wav';
             break;
           case 'Default Chime':
           default:
             soundFile = 'chime';
-            assetSound = 'assets/sounds/chime.wav';
             break;
         }
       }
@@ -223,19 +245,24 @@ class FcmNotificationService {
 
       final notificationDetails = NotificationDetails(android: androidDetails);
 
+      // Deterministic notification ID based on type or title to prevent duplicate stacked cards
+      final int notifId = (type != null && type.isNotEmpty)
+          ? (type.hashCode.abs() % 100000)
+          : (title.hashCode.abs() % 100000);
+
       await _localNotifications.show(
-        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        id: notifId,
         title: title,
         body: body,
         notificationDetails: notificationDetails,
         payload: jsonEncode(data),
       );
 
-      // Play audio ringtone in foreground so it rings clearly even if OS banner suppresses audio
+      // Play audio ringtone in foreground
       if (soundEnabled) {
         try {
           FlutterRingtonePlayer().play(
-            fromAsset: assetSound,
+            fromAsset: "assets/sounds/$soundFile.wav",
             volume: soundVolume,
             asAlarm: isEmergency,
           );
@@ -245,6 +272,98 @@ class FcmNotificationService {
       }
     } catch (e) {
       log('[FCM] Error displaying foreground notification: $e');
+    }
+  }
+
+  /// Handles background / terminated FCM message: plays tone & shows notification if needed
+  static Future<void> handleBackgroundMessage(RemoteMessage message) async {
+    try {
+      if (_isDuplicateMessage(message)) {
+        return;
+      }
+
+      log(
+        '[FCM] Processing background message: ${message.messageId}, data: ${message.data}',
+      );
+      final data = message.data;
+      final type = data['type']?.toString().toLowerCase();
+      final channelId = data['channel']?.toString().toLowerCase();
+
+      final bool isEmergency =
+          type == 'sos_alert' ||
+          channelId == 'emergency_channel' ||
+          channelId == 'emergency_channel_v2' ||
+          channelId == 'emergency_channel_v3';
+
+      // Load user preferences in background isolate
+      bool soundEnabled = true;
+      String selectedTone = 'Default Chime';
+      double soundVolume = 0.8;
+
+      try {
+        final box = Hive.isBoxOpen('userdata')
+            ? Hive.box('userdata')
+            : await Hive.openBox('userdata');
+
+        soundEnabled =
+            box.get('notif_sound_enabled', defaultValue: true) as bool;
+        selectedTone =
+            box
+                .get('notif_selected_tone', defaultValue: 'Default Chime')
+                ?.toString() ??
+            'Default Chime';
+        soundVolume = (box.get('notif_sound_volume', defaultValue: 0.8) as num)
+            .toDouble();
+      } catch (e) {
+        log('[FCM] Error reading Hive settings in background: $e');
+      }
+
+      String soundFile = 'chime';
+      if (isEmergency) {
+        soundFile = 'siren';
+      } else {
+        switch (selectedTone) {
+          case 'Gentle Bell':
+            soundFile = 'bell';
+            break;
+          case 'Alert Pulse':
+            soundFile = 'siren';
+            break;
+          case 'Radar Echo':
+            soundFile = 'radar';
+            break;
+          case 'Subtle Beep':
+            soundFile = 'beep';
+            break;
+          case 'Default Chime':
+          default:
+            soundFile = 'chime';
+            break;
+        }
+      }
+
+      // 1. Play audio ringtone so user hears sound even if phone is locked/in background
+      if (soundEnabled) {
+        try {
+          await FlutterRingtonePlayer().play(
+            fromAsset: "assets/sounds/$soundFile.wav",
+            volume: soundVolume,
+            asAlarm: isEmergency,
+          );
+          log('[FCM] Background ringtone played successfully: $soundFile');
+        } catch (e) {
+          log('[FCM] Error playing ringtone in background: $e');
+        }
+      }
+
+      // 2. If it is a data-only message (message.notification == null), system did not show banner,
+      // so we must show a local notification so user sees the alert in notification tray.
+      if (message.notification == null && data.isNotEmpty) {
+        await initializeLocalNotifications();
+        await showForegroundNotification(message);
+      }
+    } catch (e) {
+      log('[FCM] Error in handleBackgroundMessage: $e');
     }
   }
 
@@ -421,8 +540,11 @@ class FcmNotificationService {
     } else if (type == 'friend_request' ||
         screen == 'addnetwork' ||
         screen == 'networkingrequest') {
+      // nav.push(
+      //   MaterialPageRoute(builder: (_) => const AddNetworkSearchScreen()),
+      // );
       nav.push(
-        MaterialPageRoute(builder: (_) => const AddNetworkSearchScreen()),
+        MaterialPageRoute(builder: (_) => const NetworkingRequestScreen()),
       );
     } else if (type == 'location_reminder' ||
         screen == 'networklocationpermissions') {

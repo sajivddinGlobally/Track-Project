@@ -19,8 +19,14 @@ import 'package:track_loved/core/Utils/key.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  log('[FCM] Handling background message: ${message.messageId}');
+  try {
+    await Firebase.initializeApp();
+    await Hive.initFlutter();
+    log('[FCM] Handling background message: ${message.messageId}');
+    await FcmNotificationService.handleBackgroundMessage(message);
+  } catch (e) {
+    log('[FCM] Error in background messaging handler: $e');
+  }
 }
 
 void main() async {

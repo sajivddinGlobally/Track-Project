@@ -132,7 +132,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         );
       }
     } catch (e) {
-      debugPrint('[FCM] Error checking fcm token: $e');
+      log('[FCM] Error checking fcm token: $e');
     }
   }
 
@@ -195,7 +195,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Track Loved',
           notificationText: 'Sharing your location with your trusted network',
-          enableWakeLock: true,
+          notificationChannelName: 'Location Service',
+          enableWakeLock: false,
+          setOngoing: false,
         ),
       );
     }
@@ -227,7 +229,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       );
       final elapsed = DateTime.now().difference(_lastSentAt!);
       if (moved < _minDistanceMeters || elapsed < _minInterval) {
-        debugPrint(
+        log(
           '[Location] skipped: moved ${moved.toStringAsFixed(1)} m, '
           '${elapsed.inSeconds}s since last send',
         );
@@ -235,9 +237,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       }
     }
     _lastSent = position;
-    debugPrint(
-      '[Location] sending ${position.latitude}, ${position.longitude}',
-    );
+    log('[Location] sending ${position.latitude}, ${position.longitude}');
     _lastSentAt = DateTime.now();
     try {
       await ref
@@ -246,9 +246,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
             latitude: position.latitude,
             longitude: position.longitude,
           );
-      debugPrint('[Location] sent OK');
+      log('[Location] sent OK');
     } catch (e) {
-      debugPrint('[Location] update FAILED: $e');
+      log('[Location] update FAILED: $e');
     }
   }
 

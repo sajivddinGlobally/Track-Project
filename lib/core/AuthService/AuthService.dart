@@ -172,9 +172,15 @@ class Authservice {
 
   Future<AddNetworkSearchResModel> addNetworkSearchData({
     required String search,
+    int? page,
+    int? limit,
   }) async {
     try {
-      final response = await api.getAddNetworkSearch(search);
+      final response = await api.getAddNetworkSearch(
+        search,
+        page: page,
+        limit: limit,
+      );
 
       return response;
     } catch (e) {

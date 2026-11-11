@@ -196,9 +196,17 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
-  Future<AddNetworkSearchResModel> getAddNetworkSearch(String search) async {
+  Future<AddNetworkSearchResModel> getAddNetworkSearch(
+    String search, {
+    int? page,
+    int? limit,
+  }) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'search': search};
+    final queryParameters = <String, dynamic>{
+      r'search': search,
+      if (page != null) r'page': page,
+      if (limit != null) r'limit': limit,
+    };
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<AddNetworkSearchResModel>(
