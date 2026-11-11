@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:typed_data';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:hive/hive.dart';
 import 'package:track_loved/DrawerScreen/AddNetworkScreen/AddNetWorkScreen.dart';
 import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
@@ -21,24 +23,28 @@ class FcmNotificationService {
   /// Channel 1: High priority / Siren sound for SOS & Emergency broadcast alerts
   static const AndroidNotificationChannel emergencyChannel =
       AndroidNotificationChannel(
-        'emergency_channel',
+        'emergency_channel_v3',
         'Emergency & SOS Alerts',
         description:
             'High priority siren alerts for emergency and SOS broadcasts',
         importance: Importance.max,
         playSound: true,
+        sound: RawResourceAndroidNotificationSound('siren'),
         enableVibration: true,
+        enableLights: true,
       );
 
-  /// Channel 2: Default sound for chat messages, friend requests, and reminders
+  /// Channel 2: High priority sound for chat messages, friend requests, and reminders
   static const AndroidNotificationChannel defaultChannel =
       AndroidNotificationChannel(
-        'default_channel',
+        'default_channel_v3',
         'General Notifications',
-        description:
-            'Default notifications for chats, reminders, and friend requests',
-        importance: Importance.defaultImportance,
+        description: 'Notifications for chats, reminders, and friend requests',
+        importance: Importance.high,
         playSound: true,
+        sound: RawResourceAndroidNotificationSound('chime'),
+        enableVibration: true,
+        enableLights: true,
       );
 
   /// Initializes Android Notification Channels & local notification display settings
@@ -69,9 +75,53 @@ class FcmNotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       if (androidImpl != null) {
+        // Delete old lower-importance channels if present so Android registers high importance & sounds
+        try {
+          await androidImpl.deleteNotificationChannel(
+            channelId: 'default_channel',
+          );
+          await androidImpl.deleteNotificationChannel(
+            channelId: 'emergency_channel',
+          );
+          await androidImpl.deleteNotificationChannel(
+            channelId: 'default_channel_v2',
+          );
+          await androidImpl.deleteNotificationChannel(
+            channelId: 'emergency_channel_v2',
+          );
+        } catch (_) {}
+
+        // Register main channels with raw audio resources
         await androidImpl.createNotificationChannel(emergencyChannel);
         await androidImpl.createNotificationChannel(defaultChannel);
-        log('[FCM] Android Notification Channels registered successfully');
+
+        // Also register channels matching backend channel strings
+        await androidImpl.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'emergency_channel',
+            'Emergency Alerts',
+            description: 'SOS and emergency alerts',
+            importance: Importance.max,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('siren'),
+            enableVibration: true,
+          ),
+        );
+        await androidImpl.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'default_channel',
+            'General Notifications',
+            description: 'Notifications for chats, reminders, and requests',
+            importance: Importance.high,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('chime'),
+            enableVibration: true,
+          ),
+        );
+
+        log(
+          '[FCM] Android Notification Channels registered successfully with high priority & sound',
+        );
       }
     } catch (e) {
       log('[FCM] Failed to initialize local notifications: $e');
@@ -93,7 +143,65 @@ class FcmNotificationService {
       final channelId = data['channel']?.toString().toLowerCase();
 
       final isEmergency =
-          type == 'sos_alert' || channelId == 'emergency_channel';
+          type == 'sos_alert' ||
+          channelId == 'emergency_channel' ||
+          channelId == 'emergency_channel_v2' ||
+          channelId == 'emergency_channel_v3';
+
+      // Respect user sound & vibration settings saved in Hive
+      final box = Hive.isBoxOpen('userdata')
+          ? Hive.box('userdata')
+          : await Hive.openBox('userdata');
+
+      final bool soundEnabled =
+          box.get('notif_sound_enabled', defaultValue: true) as bool;
+      final bool vibrationEnabled =
+          box.get('notif_vibration_enabled', defaultValue: true) as bool;
+      final String selectedTone =
+          box
+              .get('notif_selected_tone', defaultValue: 'Default Chime')
+              ?.toString() ??
+          'Default Chime';
+      final double soundVolume =
+          (box.get('notif_sound_volume', defaultValue: 0.8) as num).toDouble();
+
+      String soundFile = 'chime';
+      String assetSound = 'assets/sounds/chime.wav';
+      if (isEmergency) {
+        soundFile = 'siren';
+        assetSound = 'assets/sounds/siren.wav';
+      } else {
+        switch (selectedTone) {
+          case 'Gentle Bell':
+            soundFile = 'bell';
+            assetSound = 'assets/sounds/bell.wav';
+            break;
+          case 'Alert Pulse':
+            soundFile = 'siren';
+            assetSound = 'assets/sounds/siren.wav';
+            break;
+          case 'Radar Echo':
+            soundFile = 'radar';
+            assetSound = 'assets/sounds/radar.wav';
+            break;
+          case 'Subtle Beep':
+            soundFile = 'beep';
+            assetSound = 'assets/sounds/beep.wav';
+            break;
+          case 'Default Chime':
+          default:
+            soundFile = 'chime';
+            assetSound = 'assets/sounds/chime.wav';
+            break;
+        }
+      }
+
+      // Emergency SOS gets an urgent repeating buzzer vibration pattern
+      final Int64List? vibrationPattern = vibrationEnabled
+          ? (isEmergency
+                ? Int64List.fromList([0, 1000, 500, 1000, 500, 1000])
+                : Int64List.fromList([0, 250, 250, 250]))
+          : null;
 
       final androidDetails = AndroidNotificationDetails(
         isEmergency ? emergencyChannel.id : defaultChannel.id,
@@ -101,8 +209,15 @@ class FcmNotificationService {
         channelDescription: isEmergency
             ? emergencyChannel.description
             : defaultChannel.description,
-        importance: isEmergency ? Importance.max : Importance.defaultImportance,
-        priority: isEmergency ? Priority.high : Priority.defaultPriority,
+        importance: isEmergency ? Importance.max : Importance.high,
+        priority: isEmergency ? Priority.max : Priority.high,
+        playSound: soundEnabled,
+        sound: soundEnabled
+            ? RawResourceAndroidNotificationSound(soundFile)
+            : null,
+        enableVibration: vibrationEnabled,
+        vibrationPattern: vibrationPattern,
+        fullScreenIntent: isEmergency,
         icon: '@mipmap/ic_launcher',
       );
 
@@ -115,6 +230,19 @@ class FcmNotificationService {
         notificationDetails: notificationDetails,
         payload: jsonEncode(data),
       );
+
+      // Play audio ringtone in foreground so it rings clearly even if OS banner suppresses audio
+      if (soundEnabled) {
+        try {
+          FlutterRingtonePlayer().play(
+            fromAsset: assetSound,
+            volume: soundVolume,
+            asAlarm: isEmergency,
+          );
+        } catch (e) {
+          log('[FCM] Error playing ringtone: $e');
+        }
+      }
     } catch (e) {
       log('[FCM] Error displaying foreground notification: $e');
     }

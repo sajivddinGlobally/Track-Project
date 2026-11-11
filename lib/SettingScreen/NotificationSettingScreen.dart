@@ -1,6 +1,8 @@
+import 'dart:developer';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,6 +35,7 @@ class _NotificationSettingScreenState
       'descEn': 'Classic standard alert chime',
       'descHi': 'मानक क्लासिक अलर्ट चाइम',
       'icon': Icons.notifications_active_rounded,
+      'asset': 'assets/sounds/chime.wav',
     },
     {
       'id': 'Gentle Bell',
@@ -41,6 +44,7 @@ class _NotificationSettingScreenState
       'descEn': 'Soft and pleasant notification tone',
       'descHi': 'शांत और सुखद अधिसूचना टोन',
       'icon': Icons.music_note_rounded,
+      'asset': 'assets/sounds/bell.wav',
     },
     {
       'id': 'Alert Pulse',
@@ -49,6 +53,7 @@ class _NotificationSettingScreenState
       'descEn': 'Clear high-priority safety alert tone',
       'descHi': 'स्पष्ट उच्च-प्राथमिकता सुरक्षा अलर्ट',
       'icon': Icons.warning_amber_rounded,
+      'asset': 'assets/sounds/siren.wav',
     },
     {
       'id': 'Radar Echo',
@@ -57,6 +62,7 @@ class _NotificationSettingScreenState
       'descEn': 'Distinctive location ping sound',
       'descHi': 'विशिष्ट लोकेशन पिंग ध्वनि',
       'icon': Icons.radar_rounded,
+      'asset': 'assets/sounds/radar.wav',
     },
     {
       'id': 'Subtle Beep',
@@ -65,6 +71,7 @@ class _NotificationSettingScreenState
       'descEn': 'Minimal unobtrusive beep',
       'descHi': 'हल्की और शांत बीप ध्वनि',
       'icon': Icons.volume_down_rounded,
+      'asset': 'assets/sounds/beep.wav',
     },
   ];
 
@@ -103,8 +110,25 @@ class _NotificationSettingScreenState
     } catch (_) {}
   }
 
-  void _previewTone(String toneName) {
+  void _previewTone(String toneName, [String? assetPath]) {
     HapticFeedback.mediumImpact();
+    if (_notificationSoundEnabled) {
+      try {
+        if (assetPath != null && assetPath.isNotEmpty) {
+          FlutterRingtonePlayer().play(
+            fromAsset: assetPath,
+            volume: _soundVolume,
+            asAlarm: toneName == 'Alert Pulse',
+          );
+        } else {
+          FlutterRingtonePlayer().playNotification(
+            volume: _soundVolume,
+          );
+        }
+      } catch (e) {
+        log('Error playing tone preview: $e');
+      }
+    }
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -322,7 +346,10 @@ class _NotificationSettingScreenState
                         onTap: () {
                           setState(() => _selectedTone = tone['id']);
                           _saveNotificationSettings();
-                          _previewTone(tone['nameEn']);
+                          _previewTone(
+                            tone['nameEn'] as String,
+                            tone['asset'] as String?,
+                          );
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -384,7 +411,10 @@ class _NotificationSettingScreenState
                                   color: isSelected ? brightGold : Colors.white38,
                                   size: 24.sp,
                                 ),
-                                onPressed: () => _previewTone(tone['nameEn']),
+                                onPressed: () => _previewTone(
+                                  tone['nameEn'] as String,
+                                  tone['asset'] as String?,
+                                ),
                               ),
                               if (isSelected)
                                 Icon(
