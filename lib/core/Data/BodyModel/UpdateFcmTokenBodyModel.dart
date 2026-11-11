@@ -1,11 +1,11 @@
 class UpdateFcmTokenBodyModel {
-  final String fcmToken;
+  final String? fcmToken;
 
-  UpdateFcmTokenBodyModel({required this.fcmToken});
+  UpdateFcmTokenBodyModel({this.fcmToken});
 
   factory UpdateFcmTokenBodyModel.fromJson(Map<String, dynamic> json) =>
       UpdateFcmTokenBodyModel(
-        fcmToken: json["fcmToken"]?.toString() ?? '',
+        fcmToken: json["fcmToken"]?.toString(),
       );
 
   Map<String, dynamic> toJson() => {

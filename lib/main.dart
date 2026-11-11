@@ -1,5 +1,4 @@
 import 'dart:developer';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +31,8 @@ void main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FcmNotificationService.initializeLocalNotifications();
+    await FcmNotificationService.subscribeToEmergencyTopic();
     _initFcmNotifications();
   } catch (e) {
     log('[Firebase] Initialization error: $e');
@@ -43,34 +44,25 @@ void main() async {
 Future<void> _initFcmNotifications() async {
   try {
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
 
-    // Register with FCM for push notifications
-    await messaging.register();
-
-    messaging.onRegistered.listen((token) async {
-      log('[FCM] Token acquired via onRegistered: $token');
-      final box = Hive.isBoxOpen("userdata")
-          ? Hive.box("userdata")
-          : await Hive.openBox("userdata");
-      await box.put('fcm_token', token);
-    });
-
-    // Fallback token fetch for initial launch
-    // ignore: deprecated_member_use
-    final token = await messaging.getToken();
-    if (token != null && token.isNotEmpty) {
-      log('[FCM] Token acquired: $token');
-      final box = Hive.isBoxOpen("userdata")
-          ? Hive.box("userdata")
-          : await Hive.openBox("userdata");
-      await box.put('fcm_token', token);
+    // Fetch standard FCM Device Token
+    try {
+      // ignore: deprecated_member_use
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        log('[FCM] Token acquired:--- $token');
+        final box = Hive.isBoxOpen("userdata")
+            ? Hive.box("userdata")
+            : await Hive.openBox("userdata");
+        await box.put('fcm_token', token);
+        await FcmNotificationService.syncFcmToken(token);
+      }
+    } catch (e) {
+      log('[FCM] getToken error: $e');
     }
 
+    // Listen for token rotations
     // ignore: deprecated_member_use
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       log('[FCM] Token refreshed: $newToken');
@@ -78,17 +70,31 @@ Future<void> _initFcmNotifications() async {
           ? Hive.box("userdata")
           : await Hive.openBox("userdata");
       await box.put('fcm_token', newToken);
+      await FcmNotificationService.syncFcmToken(newToken);
     });
 
+    // Handle foreground message presentation & banner
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       log('[FCM] Foreground message received: ${message.notification?.title}');
+      FcmNotificationService.showForegroundNotification(message);
+    });
+
+    // Handle notification click when app opened from background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      log('[FCM] Notification opened app from background: ${message.data}');
       FcmNotificationService.handleNotificationPayload(message.data);
     });
 
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      log('[FCM] Notification opened app: ${message.data}');
-      FcmNotificationService.handleNotificationPayload(message.data);
-    });
+    // Handle notification click when app was completely terminated
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      log(
+        '[FCM] App launched from terminated state via notification: ${initialMessage.data}',
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FcmNotificationService.handleNotificationPayload(initialMessage.data);
+      });
+    }
   } catch (e) {
     log('[FCM] Error setting up FirebaseMessaging: $e');
   }

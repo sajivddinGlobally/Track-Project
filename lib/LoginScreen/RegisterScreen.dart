@@ -12,7 +12,8 @@ import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
-  const SignUpScreen({super.key});
+  final String? initialAccountType;
+  const SignUpScreen({super.key, this.initialAccountType});
 
   @override
   ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
@@ -33,6 +34,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   String? _selectedAccountType; // "adult" (18+) or "child" (<18)
   bool _agreedToTerms = false;
   DpdpaConsentResult? _dpdpaConsent;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAccountType != null) {
+      _selectedAccountType = widget.initialAccountType;
+    }
+  }
 
   Future<void> _selectDob(BuildContext context) async {
     final DateTime now = DateTime.now();

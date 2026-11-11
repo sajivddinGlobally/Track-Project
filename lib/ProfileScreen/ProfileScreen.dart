@@ -15,6 +15,7 @@ import 'package:track_loved/ProfileScreen/provider/getMyProfileProvider.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/UpdateProfileBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/getMyProfileModel.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -2543,19 +2544,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          Navigator.pop(dialogContext);
-
-                          var box = Hive.box("userdata");
-                          await box.clear();
-
-                          if (!mounted) return;
-                          Navigator.pushAndRemoveUntil(
-                            context,
+                          // Immediately navigate to LoginScreen, replacing dialog and all screens
+                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                             CupertinoPageRoute(
                               builder: (context) => const LoginScreen(),
                             ),
                             (route) => false,
                           );
+
+                          // Notify backend that user is logging out (fcmToken: null) & unsubscribe
+                          final authService = ref.read(authServiceProvider);
+                          await FcmNotificationService.handleLogout(
+                            authService: authService,
+                          );
+
+                          var box = Hive.box("userdata");
+                          await box.clear();
                         },
                         child: Text(
                           'Yes',

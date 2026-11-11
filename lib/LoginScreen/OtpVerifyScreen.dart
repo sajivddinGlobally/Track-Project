@@ -9,6 +9,7 @@ import 'package:track_loved/LoginScreen/CompanyPaymentScreen.dart';
 import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
@@ -394,6 +395,15 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                               response.data?.requiresPayment == true ||
                               response.requiresPayment == true;
                           await box.put("isPaymentPending", requiresPayment);
+
+                          // Sync FCM token to backend upon registration / login
+                          final cachedFcm = box.get("fcm_token")?.toString();
+                          if (cachedFcm != null && cachedFcm.isNotEmpty) {
+                            FcmNotificationService.syncFcmToken(
+                              cachedFcm,
+                              authService: service,
+                            );
+                          }
 
                           if (context.mounted) {
                             isNavigating = true;

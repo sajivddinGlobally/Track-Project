@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
 
-
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
@@ -71,20 +70,30 @@ Dio createDio() {
         String message = "Something went wrong";
 
         switch (error.type) {
+          case DioExceptionType.connectionTimeout:
+            message = "Connection timeout. Server took too long to connect.";
+            break;
+
+          case DioExceptionType.sendTimeout:
+            message = "Send timeout. Request took too long to send.";
+            break;
+
+          case DioExceptionType.receiveTimeout:
+            message = "Receive timeout. Server is taking too long to respond.";
+            break;
+
           case DioExceptionType.connectionError:
             message =
                 "No Internet Connection or Server is unreachable. Please check your network.";
             break;
 
-          case DioExceptionType.connectionTimeout:
-          case DioExceptionType.sendTimeout:
-          case DioExceptionType.receiveTimeout:
-            message =
-                "Connection timed out. Server is taking too long to respond.";
-            break;
-
           case DioExceptionType.cancel:
             message = "Request was cancelled.";
+            break;
+
+          case DioExceptionType.badCertificate:
+            message =
+                "Security certificate error. Secure connection could not be established.";
             break;
 
           case DioExceptionType.badResponse:
@@ -104,13 +113,15 @@ Dio createDio() {
                 if (errorsField is List && errorsField.isNotEmpty) {
                   for (final item in errorsField) {
                     if (item is Map) {
-                      final msg = item['message'] ?? item['msg'] ?? item['error'];
+                      final msg =
+                          item['message'] ?? item['msg'] ?? item['error'];
                       if (msg != null && msg.toString().trim().isNotEmpty) {
                         extractedErrors.add(msg.toString().trim());
                       } else {
                         extractedErrors.add(item.toString());
                       }
-                    } else if (item != null && item.toString().trim().isNotEmpty) {
+                    } else if (item != null &&
+                        item.toString().trim().isNotEmpty) {
                       extractedErrors.add(item.toString().trim());
                     }
                   }
@@ -124,7 +135,8 @@ Dio createDio() {
                     final val = entry.value;
                     if (val is List) {
                       for (final subItem in val) {
-                        if (subItem != null && subItem.toString().trim().isNotEmpty) {
+                        if (subItem != null &&
+                            subItem.toString().trim().isNotEmpty) {
                           extractedErrors.add(subItem.toString().trim());
                         }
                       }
@@ -135,7 +147,8 @@ Dio createDio() {
                       } else {
                         extractedErrors.add(val.toString());
                       }
-                    } else if (val != null && val.toString().trim().isNotEmpty) {
+                    } else if (val != null &&
+                        val.toString().trim().isNotEmpty) {
                       extractedErrors.add(val.toString().trim());
                     }
                   }
@@ -174,8 +187,14 @@ Dio createDio() {
                     responseData['error'].toString().trim().isNotEmpty) {
                   message = responseData['error'].toString().trim();
                 }
-              } else if (responseData is String && responseData.trim().isNotEmpty) {
+              } else if (responseData is String &&
+                  responseData.trim().isNotEmpty) {
                 message = responseData.trim();
+              } else {
+                final status = error.response?.statusCode;
+                if (status != null && status >= 500) {
+                  message = "Server error ($status). Please try again later.";
+                }
               }
             } catch (e) {
               log("Error while parsing DioException message: $e");
@@ -183,9 +202,46 @@ Dio createDio() {
             break;
 
           default:
-            if (error.error is SocketException) {
+            final dynamic err = error.error;
+            final String errString = (err?.toString() ?? error.message ?? '')
+                .toLowerCase();
+
+            if (err is SocketException ||
+                errString.contains('failed host lookup') ||
+                errString.contains('network is unreachable')) {
               message =
                   "No Internet Connection or Server is unreachable. Please check your network.";
+            } else if (err is HttpException ||
+                errString.contains('connection closed while receiving data') ||
+                errString.contains('connection closed')) {
+              message =
+                  "Server connection closed while receiving data. Please check your internet or try again.";
+            } else if (errString.contains('connection reset') ||
+                errString.contains('connection refused') ||
+                errString.contains('connection aborted')) {
+              message = "Server connection was interrupted. Please try again.";
+            } else if (err is HandshakeException ||
+                err is TlsException ||
+                errString.contains('handshake') ||
+                errString.contains('certificate')) {
+              message =
+                  "Secure connection to server failed. Please check your network.";
+            } else if (err is FormatException ||
+                errString.contains('formatexception')) {
+              message = "Unexpected response format received from server.";
+            } else if (error.response != null) {
+              final data = error.response?.data;
+              if (data is Map) {
+                message =
+                    data["message"]?.toString() ??
+                    data["error"]?.toString() ??
+                    "Server error";
+              } else if (data is String && data.trim().isNotEmpty) {
+                message = data.trim();
+              } else {
+                message =
+                    "Server error (${error.response?.statusCode ?? 'unknown'}). Please try again.";
+              }
             } else {
               message = "Something went wrong. Please try again.";
             }

@@ -16,8 +16,10 @@ import 'package:track_loved/DrawerScreen/PostJobOpprtunities.dart';
 import 'package:track_loved/DrawerScreen/SearchLovedOnseScreen.dart';
 import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
+import 'package:track_loved/LoginScreen/RegisterScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 
 class AppDrawer extends StatelessWidget {
   final bool isHindi;
@@ -49,6 +51,105 @@ class AppDrawer extends StatelessWidget {
       context,
       CupertinoPageRoute(builder: (context) => targetScreen),
       (route) => route.isFirst,
+    );
+  }
+
+  void _showCompanyRegistrationRequiredDialog(
+    BuildContext context, {
+    required bool isJobPosting,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          backgroundColor: Colors.white,
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6C567).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.business_center,
+                  color: const Color(0xFF002E29),
+                  size: 24.sp,
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
+                  isHindi ? 'कंपनी खाता आवश्यक' : 'Company Account Required',
+                  style: GoogleFonts.outfit(
+                    fontSize: 17.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF002E29),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            isHindi
+                ? (isJobPosting
+                    ? 'नौकरी के अवसर पोस्ट करने के लिए आपको साइन अप स्क्रीन पर कंपनी के रूप में रजिस्टर करना होगा और अपनी कंपनी प्रोफ़ाइल व KYC पूरा करना होगा।'
+                    : 'व्यापार के अवसर पोस्ट करने के लिए आपको साइन अप स्क्रीन पर कंपनी के रूप में रजिस्टर करना होगा और अपनी कंपनी प्रोफ़ाइल व KYC पूरा करना होगा।')
+                : (isJobPosting
+                    ? 'To post job opportunities, please register as a Company on the Sign Up screen and complete your Company Profile & Corporate KYC.'
+                    : 'To post business opportunities, please register as a Company on the Sign Up screen and complete your Company Profile & Corporate KYC.'),
+            style: GoogleFonts.outfit(
+              fontSize: 14.5.sp,
+              color: Colors.black87,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                isHindi ? 'रद्द करें' : 'Cancel',
+                style: GoogleFonts.outfit(
+                  fontSize: 14.sp,
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF002E29),
+                foregroundColor: const Color(0xFFE6C567),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (context) =>
+                        const SignUpScreen(initialAccountType: 'company'),
+                  ),
+                );
+              },
+              child: Text(
+                isHindi ? 'कंपनी रजिस्टर करें' : 'Sign Up as Company',
+                style: GoogleFonts.outfit(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -228,19 +329,27 @@ class AppDrawer extends StatelessWidget {
               },
             ),
 
-          if (role == "company")
+          if (role != "child")
             _buildDrawerItem(
               icon: Icons.add_business,
               title: isHindi
                   ? 'व्यापार के अवसर पोस्ट करें'
                   : 'Post Business Opportunities',
               onTap: () {
-                _navigateToScreen(
-                  context,
-                  const PostBusinessOpportunitiesScreen(),
-                );
+                if (role == "company") {
+                  _navigateToScreen(
+                    context,
+                    const PostBusinessOpportunitiesScreen(),
+                  );
+                } else {
+                  _showCompanyRegistrationRequiredDialog(
+                    context,
+                    isJobPosting: false,
+                  );
+                }
               },
             ),
+
           if (role != "company")
             _buildDrawerItem(
               icon: Icons.gavel,
@@ -250,14 +359,24 @@ class AppDrawer extends StatelessWidget {
               },
             ),
 
-          if (role == "company")
+          if (role != "child")
             _buildDrawerItem(
               icon: Icons.post_add,
               title: isHindi
                   ? 'नौकरी के अवसर पोस्ट करें'
                   : 'Post Job Opportunities',
               onTap: () {
-                _navigateToScreen(context, const PostJobOpportunitiesScreen());
+                if (role == "company") {
+                  _navigateToScreen(
+                    context,
+                    const PostJobOpportunitiesScreen(),
+                  );
+                } else {
+                  _showCompanyRegistrationRequiredDialog(
+                    context,
+                    isJobPosting: true,
+                  );
+                }
               },
             ),
 
@@ -339,21 +458,21 @@ class AppDrawer extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () async {
-                          Navigator.pop(dialogContext);
-
-                          final box = Hive.isBoxOpen("userdata")
-                              ? Hive.box("userdata")
-                              : await Hive.openBox("userdata");
-                          await box.clear();
-
-                          if (!context.mounted) return;
-                          Navigator.pushAndRemoveUntil(
-                            context,
+                          // Immediately navigate to LoginScreen, replacing dialog and all screens
+                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                             CupertinoPageRoute(
                               builder: (context) => const LoginScreen(),
                             ),
                             (route) => false,
                           );
+
+                          // Notify backend that user is logging out (fcmToken: null) & unsubscribe
+                          await FcmNotificationService.handleLogout();
+
+                          final box = Hive.isBoxOpen("userdata")
+                              ? Hive.box("userdata")
+                              : await Hive.openBox("userdata");
+                          await box.clear();
                         },
                         child: Text(
                           isHindi ? 'हाँ' : 'Yes',

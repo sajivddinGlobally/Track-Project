@@ -337,7 +337,7 @@ class Authservice {
     }
   }
 
-  Future<dynamic> updateFcmTokenData(String fcmToken) async {
+  Future<dynamic> updateFcmTokenData(String? fcmToken) async {
     try {
       final body = UpdateFcmTokenBodyModel(fcmToken: fcmToken);
       final response = await api.updateFcmToken(body);
