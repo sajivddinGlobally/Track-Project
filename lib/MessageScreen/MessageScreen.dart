@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/ChatHistoryResModel.dart';
 import 'package:track_loved/core/Network/ChatSocketService.dart';
+import 'package:track_loved/core/Utils/FcmNotificationService.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
   final String receiverId;
@@ -45,6 +46,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   @override
   void initState() {
     super.initState();
+    FcmNotificationService.currentActiveChatUserId = widget.receiverId;
     if (Hive.isBoxOpen('userdata')) {
       _currentUserId = Hive.box('userdata').get('id')?.toString() ?? '';
     }
@@ -212,6 +214,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
 
   @override
   void dispose() {
+    if (FcmNotificationService.currentActiveChatUserId == widget.receiverId) {
+      FcmNotificationService.currentActiveChatUserId = null;
+    }
     _socketService?.disconnect();
     _msgController.dispose();
     _scrollController.dispose();

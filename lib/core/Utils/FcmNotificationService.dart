@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:hive/hive.dart';
-import 'package:track_loved/DrawerScreen/AddNetworkScreen/AddNetWorkScreen.dart';
 import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
 import 'package:track_loved/DrawerScreen/NetworkLocationpermissions.dart';
 import 'package:track_loved/MessageScreen/MessageScreen.dart';
@@ -21,6 +20,11 @@ import '../../DrawerScreen/NetworkRequestScreen/NetworkingRequest.dart';
 class FcmNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+
+  /// Tracks the userId of the chat currently opened by the user.
+  /// When active, incoming chat notifications from this user are suppressed
+  /// so that redundant banners do not pop up over the active chat screen.
+  static String? currentActiveChatUserId;
 
   /// Channel 1: High priority / Siren sound for SOS & Emergency broadcast alerts
   static const AndroidNotificationChannel emergencyChannel =
@@ -162,13 +166,36 @@ class FcmNotificationService {
 
       final notification = message.notification;
       final data = message.data;
+      final type = data['type']?.toString().toLowerCase();
+      final screen = data['screen']?.toString().toLowerCase();
+
+      // If user is currently inside MessageScreen chatting with this sender,
+      // do not show the notification banner or alert sound (the chat bubble updates live via socket)
+      if (type == 'chat' ||
+          type == 'message' ||
+          screen == 'chat' ||
+          screen == 'messagescreen') {
+        final senderId =
+            data['senderId']?.toString() ??
+            data['receiverId']?.toString() ??
+            data['userId']?.toString() ??
+            '';
+        if (currentActiveChatUserId != null &&
+            currentActiveChatUserId!.isNotEmpty &&
+            senderId.isNotEmpty &&
+            currentActiveChatUserId == senderId) {
+          log(
+            '[FCM] User is currently active in chat with $senderId - suppressing notification banner',
+          );
+          return;
+        }
+      }
 
       final title =
           notification?.title ??
           data['title']?.toString() ??
           'Track Loved Ones';
       final body = notification?.body ?? data['body']?.toString() ?? '';
-      final type = data['type']?.toString().toLowerCase();
       final channelId = data['channel']?.toString().toLowerCase();
 
       final isEmergency =
