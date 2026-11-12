@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,6 +11,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:track_loved/core/Data/BodyModel/TriggerSosBodyModel.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../HomeScreen/NotificationScreen.dart';
+import 'provider/searchLovedProvider.dart';
+
 class SearchLovedOnesScreen extends ConsumerStatefulWidget {
   const SearchLovedOnesScreen({super.key});
 
@@ -21,73 +25,22 @@ class SearchLovedOnesScreen extends ConsumerStatefulWidget {
 class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   bool _isHindi = false;
-  bool _isLoading = true;
-  String? _errorMessage;
   String _searchQuery = '';
   bool _isSosLoading = false;
 
-  List<LocationSharingUser> _users = [];
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchLocationSharing();
-    });
-  }
-
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchLocationSharing({bool isRefresh = false}) async {
-    if (!isRefresh) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
-
-    try {
-      final authService = ref.read(authServiceProvider);
-      final response = await authService.getLocationSharingReceived();
-
-      if (!mounted) return;
-
-      final fetchedUsers = response.data?.users ?? [];
-
-      setState(() {
-        _users = List<LocationSharingUser>.from(fetchedUsers);
-        _isLoading = false;
-        _errorMessage = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        if (_users.isEmpty) {
-          _errorMessage = e.toString();
-        }
-      });
-    }
-  }
-
   Future<void> _handleRefresh() async {
-    await _fetchLocationSharing(isRefresh: true);
-  }
-
-  // Static client-side search filtering
-  List<LocationSharingUser> get _filteredLovedOnes {
-    final query = _searchQuery.trim().toLowerCase();
-    if (query.isEmpty) return _users;
-    return _users.where((u) {
-      final name = (u.name ?? '').toLowerCase();
-      return name.contains(query);
-    }).toList();
+    ref.invalidate(searchLovedProvider);
+    await ref.read(searchLovedProvider(_searchQuery).future);
   }
 
   String _getInitials(String name) {
@@ -557,8 +510,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                               );
                               // Back from the map (e.g. sharing was turned off):
                               // reload the list from the API.
-                              if (mounted)
-                                _fetchLocationSharing(isRefresh: true);
+                              if (mounted) {
+                                ref.invalidate(searchLovedProvider);
+                              }
                             },
                     ),
                   ),
@@ -574,7 +528,7 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredLovedOnes = _filteredLovedOnes;
+    final searchLovedState = ref.watch(searchLovedProvider(_searchQuery));
 
     return Scaffold(
       backgroundColor: const Color(0xFF002E29),
@@ -617,7 +571,12 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
             _isHindi = value;
           });
         },
-        onNotificationPressed: () {},
+        onNotificationPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => NotificationScreen()),
+          );
+        },
       ),
       body: SafeArea(
         child: Center(
@@ -644,7 +603,15 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                 TextField(
                   controller: _searchController,
                   onChanged: (val) {
-                    setState(() => _searchQuery = val);
+                    _debounceTimer?.cancel();
+                    _debounceTimer = Timer(
+                      const Duration(milliseconds: 300),
+                      () {
+                        if (mounted) {
+                          setState(() => _searchQuery = val.trim());
+                        }
+                      },
+                    );
                   },
                   style: TextStyle(fontSize: 17.sp, color: Colors.black87),
                   decoration: InputDecoration(
@@ -666,7 +633,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                       color: Colors.black45,
                       size: 20.sp,
                     ),
-                    suffixIcon: _searchQuery.isNotEmpty
+                    suffixIcon:
+                        _searchQuery.isNotEmpty ||
+                            _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: Icon(
                               Icons.clear,
@@ -674,8 +643,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                               color: Colors.black45,
                             ),
                             onPressed: () {
+                              _debounceTimer?.cancel();
+                              _searchController.clear();
                               setState(() {
-                                _searchController.clear();
                                 _searchQuery = '';
                               });
                             },
@@ -697,100 +667,126 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                 ),
                 SizedBox(height: 14.h),
                 Expanded(
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        )
-                      : _errorMessage != null && _users.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(20.w),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 48.sp,
-                                  color: Colors.white60,
-                                ),
-                                SizedBox(height: 12.h),
-                                Text(
-                                  _errorMessage != null
-                                      ? _errorMessage!
-                                      : (_isHindi
-                                            ? 'कुछ गलत हो गया। कृपया फिर से प्रयास करें।'
-                                            : 'Something went wrong. Please try again.'),
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14.sp,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 16.h),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0B4F4A),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                  ),
-                                  onPressed: () => _fetchLocationSharing(),
-                                  child: Text(
-                                    _isHindi ? 'पुनः प्रयास करें' : 'Retry',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14.sp,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : filteredLovedOnes.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(20.w),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.person_search_outlined,
-                                  size: 54.sp,
-                                  color: Colors.white38,
-                                ),
-                                SizedBox(height: 12.h),
-                                Text(
-                                  _isHindi
-                                      ? 'कोई प्रियजन नहीं मिला'
-                                      : 'No loved ones found',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14.sp,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : RefreshIndicator(
+                  child: searchLovedState.when(
+                    data: (response) {
+                      final users = response.data?.users ?? [];
+                      final query = _searchQuery.trim().toLowerCase();
+                      final filteredLovedOnes = query.isEmpty
+                          ? users
+                          : users.where((u) {
+                              final name = (u.name ?? '').toLowerCase();
+                              return name.contains(query);
+                            }).toList();
+
+                      if (filteredLovedOnes.isEmpty) {
+                        return RefreshIndicator(
                           color: Colors.white,
                           backgroundColor: const Color(0xFF0B4F4A),
                           onRefresh: _handleRefresh,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: EdgeInsets.only(bottom: 80.h),
-                            itemCount: filteredLovedOnes.length,
-                            itemBuilder: (context, index) {
-                              return _buildLovedOneCard(
-                                filteredLovedOnes[index],
-                              );
-                            },
+                          child: LayoutBuilder(
+                            builder: (context, constraints) =>
+                                SingleChildScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      minHeight: constraints.maxHeight,
+                                    ),
+                                    child: Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(20.w),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.person_search_outlined,
+                                              size: 54.sp,
+                                              color: Colors.white38,
+                                            ),
+                                            SizedBox(height: 12.h),
+                                            Text(
+                                              _isHindi
+                                                  ? 'कोई प्रियजन नहीं मिला'
+                                                  : 'No loved ones found',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14.sp,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                           ),
+                        );
+                      }
+
+                      return RefreshIndicator(
+                        color: Colors.white,
+                        backgroundColor: const Color(0xFF0B4F4A),
+                        onRefresh: _handleRefresh,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.only(bottom: 80.h),
+                          itemCount: filteredLovedOnes.length,
+                          itemBuilder: (context, index) {
+                            return _buildLovedOneCard(filteredLovedOnes[index]);
+                          },
                         ),
+                      );
+                    },
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    error: (error, stackTrace) => Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20.w),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48.sp,
+                              color: Colors.white60,
+                            ),
+                            SizedBox(height: 12.h),
+                            Text(
+                              
+                              error.toString(),
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14.sp,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 16.h),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0B4F4A),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                              ),
+                              onPressed: () {
+                                ref.invalidate(searchLovedProvider);
+                              },
+                              child: Text(
+                                _isHindi ? 'पुनः प्रयास करें' : 'Retry',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -90,8 +90,8 @@ class _NotificationSettingScreenState
       _selectedTone =
           box.get('notif_selected_tone', defaultValue: 'Default Chime')
               as String;
-      _soundVolume =
-          (box.get('notif_sound_volume', defaultValue: 0.8) as num).toDouble();
+      _soundVolume = (box.get('notif_sound_volume', defaultValue: 0.8) as num)
+          .toDouble();
       _vibrationEnabled =
           box.get('notif_vibration_enabled', defaultValue: true) as bool;
       _criticalAlertsEnabled =
@@ -152,7 +152,11 @@ class _NotificationSettingScreenState
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.volume_up_rounded, color: Color(0xFFD4AF37), size: 18),
+            const Icon(
+              Icons.volume_up_rounded,
+              color: Color(0xFFD4AF37),
+              size: 18,
+            ),
             SizedBox(width: 8.w),
             Text(
               _isHindi ? 'प्ले हो रहा है: $toneName' : 'Playing: $toneName',
@@ -313,7 +317,11 @@ class _NotificationSettingScreenState
                         SizedBox(height: 10.h),
                         Row(
                           children: [
-                            Icon(Icons.volume_mute, color: Colors.white54, size: 20.sp),
+                            Icon(
+                              Icons.volume_mute,
+                              color: Colors.white54,
+                              size: 20.sp,
+                            ),
                             Expanded(
                               child: SliderTheme(
                                 data: SliderTheme.of(context).copyWith(
@@ -333,7 +341,11 @@ class _NotificationSettingScreenState
                                 ),
                               ),
                             ),
-                            Icon(Icons.volume_up, color: brightGold, size: 20.sp),
+                            Icon(
+                              Icons.volume_up,
+                              color: brightGold,
+                              size: 20.sp,
+                            ),
                           ],
                         ),
                       ],
@@ -378,9 +390,7 @@ class _NotificationSettingScreenState
                                 : Colors.white.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(14.r),
                             border: Border.all(
-                              color: isSelected
-                                  ? brightGold
-                                  : Colors.white12,
+                              color: isSelected ? brightGold : Colors.white12,
                               width: isSelected ? 1.5 : 1,
                             ),
                           ),
@@ -407,7 +417,9 @@ class _NotificationSettingScreenState
                                             : FontWeight.w500,
                                         color: isSelected
                                             ? Colors.white
-                                            : Colors.white.withValues(alpha: 0.9),
+                                            : Colors.white.withValues(
+                                                alpha: 0.9,
+                                              ),
                                       ),
                                     ),
                                     SizedBox(height: 2.h),
@@ -426,7 +438,9 @@ class _NotificationSettingScreenState
                               IconButton(
                                 icon: Icon(
                                   Icons.play_circle_outline_rounded,
-                                  color: isSelected ? brightGold : Colors.white38,
+                                  color: isSelected
+                                      ? brightGold
+                                      : Colors.white38,
                                   size: 24.sp,
                                 ),
                                 onPressed: () => _previewTone(
@@ -450,104 +464,103 @@ class _NotificationSettingScreenState
                 ],
 
                 // Vibration Toggle Card
-                Container(
-                  padding: EdgeInsets.all(16.r),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.vibration_rounded, color: brightGold, size: 22.sp),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isHindi ? 'कंपन (Vibration)' : 'Haptic Vibration',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              _isHindi
-                                  ? 'सूचना आने पर डिवाइस को वाइब्रेट करें'
-                                  : 'Vibrate device on important alerts',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12.sp,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CupertinoSwitch(
-                        value: _vibrationEnabled,
-                        activeTrackColor: brightGold,
-                        onChanged: (val) {
-                          if (val) HapticFeedback.mediumImpact();
-                          setState(() => _vibrationEnabled = val);
-                          _saveNotificationSettings();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 12.h),
-
+                // Container(
+                //   padding: EdgeInsets.all(16.r),
+                //   decoration: BoxDecoration(
+                //     color: Colors.white.withValues(alpha: 0.05),
+                //     borderRadius: BorderRadius.circular(16.r),
+                //     border: Border.all(color: Colors.white24),
+                //   ),
+                //   child: Row(
+                //     children: [
+                //       Icon(Icons.vibration_rounded, color: brightGold, size: 22.sp),
+                //       SizedBox(width: 14.w),
+                //       Expanded(
+                //         child: Column(
+                //           crossAxisAlignment: CrossAxisAlignment.start,
+                //           children: [
+                //             Text(
+                //               _isHindi ? 'कंपन (Vibration)' : 'Haptic Vibration',
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 14.sp,
+                //                 fontWeight: FontWeight.bold,
+                //                 color: Colors.white,
+                //               ),
+                //             ),
+                //             SizedBox(height: 2.h),
+                //             Text(
+                //               _isHindi
+                //                   ? 'सूचना आने पर डिवाइस को वाइब्रेट करें'
+                //                   : 'Vibrate device on important alerts',
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 12.sp,
+                //                 color: Colors.white70,
+                //               ),
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //       CupertinoSwitch(
+                //         value: _vibrationEnabled,
+                //         activeTrackColor: brightGold,
+                //         onChanged: (val) {
+                //           if (val) HapticFeedback.mediumImpact();
+                //           setState(() => _vibrationEnabled = val);
+                //           _saveNotificationSettings();
+                //         },
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                // SizedBox(height: 12.h),
                 // Critical Alerts Card
-                Container(
-                  padding: EdgeInsets.all(16.r),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.security_rounded, color: const Color(0xFF00E676), size: 22.sp),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isHindi ? 'आपातकालीन सुरक्षा अलर्ट' : 'Critical Safety Alerts',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              _isHindi
-                                  ? 'साइलेंट मोड में भी उच्च प्राथमिकता वाले अलर्ट बजाएं'
-                                  : 'Bypass Do Not Disturb for emergency track alerts',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12.sp,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CupertinoSwitch(
-                        value: _criticalAlertsEnabled,
-                        activeTrackColor: brightGold,
-                        onChanged: (val) {
-                          setState(() => _criticalAlertsEnabled = val);
-                          _saveNotificationSettings();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                // Container(
+                //   padding: EdgeInsets.all(16.r),
+                //   decoration: BoxDecoration(
+                //     color: Colors.white.withValues(alpha: 0.05),
+                //     borderRadius: BorderRadius.circular(16.r),
+                //     border: Border.all(color: Colors.white24),
+                //   ),
+                //   child: Row(
+                //     children: [
+                //       Icon(Icons.security_rounded, color: const Color(0xFF00E676), size: 22.sp),
+                //       SizedBox(width: 14.w),
+                //       Expanded(
+                //         child: Column(
+                //           crossAxisAlignment: CrossAxisAlignment.start,
+                //           children: [
+                //             Text(
+                //               _isHindi ? 'आपातकालीन सुरक्षा अलर्ट' : 'Critical Safety Alerts',
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 14.sp,
+                //                 fontWeight: FontWeight.bold,
+                //                 color: Colors.white,
+                //               ),
+                //             ),
+                //             SizedBox(height: 2.h),
+                //             Text(
+                //               _isHindi
+                //                   ? 'साइलेंट मोड में भी उच्च प्राथमिकता वाले अलर्ट बजाएं'
+                //                   : 'Bypass Do Not Disturb for emergency track alerts',
+                //               style: GoogleFonts.outfit(
+                //                 fontSize: 12.sp,
+                //                 color: Colors.white70,
+                //               ),
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //       CupertinoSwitch(
+                //         value: _criticalAlertsEnabled,
+                //         activeTrackColor: brightGold,
+                //         onChanged: (val) {
+                //           setState(() => _criticalAlertsEnabled = val);
+                //           _saveNotificationSettings();
+                //         },
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 SizedBox(height: 32.h),
 
                 // Done Button
@@ -580,7 +593,9 @@ class _NotificationSettingScreenState
                       Navigator.pop(context, true);
                     },
                     child: Text(
-                      _isHindi ? 'सेटिंग्स सुरक्षित करें' : 'Save Notification Preferences',
+                      _isHindi
+                          ? 'सेटिंग्स सुरक्षित करें'
+                          : 'Save Notification Preferences',
                       style: GoogleFonts.outfit(
                         color: const Color(0xFF072420),
                         fontWeight: FontWeight.bold,

@@ -1202,7 +1202,7 @@ class _AddNetworkSearchScreenState
                                   Text(
                                     _isHindi
                                         ? 'मैन्युअल संपर्क जोड़ें'
-                                        : 'Add Custom Contact',
+                                        : 'Add Manually Contact',
                                     style: TextStyle(
                                       fontSize: 17.sp,
                                       fontWeight: FontWeight.bold,
@@ -1535,9 +1535,7 @@ class _AddNetworkSearchScreenState
                                       ),
                                       SizedBox(width: 8.w),
                                       Text(
-                                        _isHindi
-                                            ? 'संपर्क आयात करें'
-                                            : 'Import Contact',
+                                        _isHindi ? 'Save' : 'Save',
                                         style: TextStyle(
                                           fontSize: 14.5.sp,
                                           fontWeight: FontWeight.bold,
@@ -1773,7 +1771,7 @@ class _AddNetworkSearchScreenState
                             ),
                             SizedBox(width: 4.w),
                             Text(
-                              _isHindi ? 'कस्टम' : 'Custom',
+                              _isHindi ? 'कस्टम' : 'Manually',
                               style: TextStyle(
                                 // color: const Color(0xFF002E29),
                                 fontSize: 11.5.sp,
@@ -1959,6 +1957,12 @@ class _AddNetworkSearchScreenState
                                   child: RefreshIndicator(
                                     color: const Color(0xFF0B4F4A),
                                     onRefresh: () async {
+                                      if (mounted) {
+                                        setState(() {
+                                          _pendingUserIds.clear();
+                                          _loadingUserIds.clear();
+                                        });
+                                      }
                                       ref.invalidate(addNetworkSerachProvider);
                                       ref.invalidate(getMatchContactProvider);
                                       await Future.wait([
@@ -2314,6 +2318,13 @@ class _AddNetworkSearchScreenState
               : RefreshIndicator(
                   color: const Color(0xFF0B4F4A),
                   onRefresh: () async {
+                    if (mounted) {
+                      setState(() {
+                        _pendingUserIds.clear();
+                        _loadingUserIds.clear();
+                        _matchedContactsUsers = null;
+                      });
+                    }
                     ref.invalidate(getMatchContactProvider);
                     await ref.read(
                       getMatchContactProvider(_searchQuery).future,
@@ -2856,20 +2867,20 @@ class _AddNetworkSearchScreenState
               ),
             ),
           ),
-        _buildInfoChip(
-          _isHindi ? 'पिन कोड' : 'Pin Code',
-          _activePincode.isEmpty ? (_isHindi ? 'सभी' : 'All') : _activePincode,
-        ),
-        if (_searchQuery.isNotEmpty)
-          _buildInfoChip(_isHindi ? 'खोज' : 'Search', _searchQuery),
-        if (states.isNotEmpty)
-          _buildInfoChip(
-            _isHindi ? 'राज्य' : 'State',
-            states.take(2).join(', '),
-          ),
-        if (cities.isNotEmpty)
-          _buildInfoChip(_isHindi ? 'शहर' : 'City', cities.take(2).join(', ')),
-        _buildInfoChip(_isHindi ? 'सदस्य' : 'Members', '${users.length}'),
+        // _buildInfoChip(
+        //   _isHindi ? 'पिन कोड' : 'Pin Code',
+        //   _activePincode.isEmpty ? (_isHindi ? 'सभी' : 'All') : _activePincode,
+        // ),
+        // if (_searchQuery.isNotEmpty)
+        //   _buildInfoChip(_isHindi ? 'खोज' : 'Search', _searchQuery),
+        // if (states.isNotEmpty)
+        //   _buildInfoChip(
+        //     _isHindi ? 'राज्य' : 'State',
+        //     states.take(2).join(', '),
+        //   ),
+        // if (cities.isNotEmpty)
+        //   _buildInfoChip(_isHindi ? 'शहर' : 'City', cities.take(2).join(', ')),
+        // _buildInfoChip(_isHindi ? 'सदस्य' : 'Members', '${users.length}'),
       ],
     );
   }

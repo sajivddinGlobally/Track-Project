@@ -160,6 +160,18 @@ class FcmNotificationService {
   /// Displays foreground notification popup with proper channel sound & priority
   static Future<void> showForegroundNotification(RemoteMessage message) async {
     try {
+      // Check if user is authenticated: if logged out, do not show any notification or sound
+      final box = Hive.isBoxOpen('userdata')
+          ? Hive.box('userdata')
+          : await Hive.openBox('userdata');
+      final userToken = box.get('token')?.toString();
+      if (userToken == null || userToken.isEmpty) {
+        log(
+          '[FCM] User is logged out, suppressing foreground notification & sound',
+        );
+        return;
+      }
+
       if (_isDuplicateMessage(message)) {
         return;
       }
@@ -205,10 +217,6 @@ class FcmNotificationService {
           channelId == 'emergency_channel_v3';
 
       // Respect user sound & vibration settings saved in Hive
-      final box = Hive.isBoxOpen('userdata')
-          ? Hive.box('userdata')
-          : await Hive.openBox('userdata');
-
       final bool soundEnabled =
           box.get('notif_sound_enabled', defaultValue: true) as bool;
       final bool vibrationEnabled =
@@ -305,6 +313,18 @@ class FcmNotificationService {
   /// Handles background / terminated FCM message: plays tone & shows notification if needed
   static Future<void> handleBackgroundMessage(RemoteMessage message) async {
     try {
+      // Check if user is authenticated: if logged out, do not show any notification or sound
+      final box = Hive.isBoxOpen('userdata')
+          ? Hive.box('userdata')
+          : await Hive.openBox('userdata');
+      final userToken = box.get('token')?.toString();
+      if (userToken == null || userToken.isEmpty) {
+        log(
+          '[FCM] User is logged out, suppressing background message processing',
+        );
+        return;
+      }
+
       if (_isDuplicateMessage(message)) {
         return;
       }
@@ -464,8 +484,15 @@ class FcmNotificationService {
         }
       }
 
+      if (tokenToSend == null || tokenToSend.isEmpty) {
+        log(
+          '[FCM] Token is null or empty, skipping backend sync to avoid 400 Bad Request',
+        );
+        return;
+      }
+
       final lastSyncedToken = box.get('synced_fcm_token')?.toString();
-      if (!force && lastSyncedToken == tokenToSend && tokenToSend != null) {
+      if (!force && lastSyncedToken == tokenToSend) {
         log('[FCM] Token already synced with backend');
         return;
       }
@@ -476,27 +503,35 @@ class FcmNotificationService {
       final res = await service.updateFcmTokenData(tokenToSend);
       log('[FCM] Token synced successfully with backend: $res');
 
-      if (tokenToSend != null && tokenToSend.isNotEmpty) {
-        await box.put('synced_fcm_token', tokenToSend);
-        await subscribeToEmergencyTopic();
-      } else {
-        await box.delete('synced_fcm_token');
-        await unsubscribeFromEmergencyTopic();
-      }
+      await box.put('synced_fcm_token', tokenToSend);
+      await subscribeToEmergencyTopic();
     } catch (e) {
       log('[FCM] Failed to sync FCM token: $e');
     }
   }
 
-  /// Logout cleanup: sends fcmToken null to backend and unsubscribes from topics
+  /// Logout cleanup: deletes Firebase device token, unsubscribes from topics, and clears FCM cache
   static Future<void> handleLogout({Authservice? authService}) async {
     try {
-      log('[FCM] Executing logout cleanup: setting fcmToken to null');
-      await syncFcmToken(null, authService: authService, force: true);
+      log(
+        '[FCM] Executing logout cleanup: deleting Firebase token & unsubscribing',
+      );
       await unsubscribeFromEmergencyTopic();
+
+      // Invalidate the FCM token on Firebase servers so Firebase stops delivering pushes to this device
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+        log(
+          '[FCM] Firebase device token deleted successfully from Firebase servers',
+        );
+      } catch (e) {
+        log('[FCM] Error deleting Firebase token: $e');
+      }
+
       final box = Hive.isBoxOpen('userdata')
           ? Hive.box('userdata')
           : await Hive.openBox('userdata');
+      await box.delete('fcm_token');
       await box.delete('synced_fcm_token');
       log('[FCM] Logout cleanup finished successfully');
     } catch (e) {

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:track_loved/DrawerScreen/AddNetworkScreen/AddNetWorkScreen.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/LoginScreen/AdultOnboardingScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -13,8 +15,10 @@ import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
-import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
+import 'package:track_loved/core/Data/ResponseModel/getDashboardModel.dart';
 import 'package:track_loved/core/Utils/FcmNotificationService.dart';
+
+import 'provider/getDashbordProvider.dart';
 
 class DynamicDashboardScreen extends ConsumerStatefulWidget {
   const DynamicDashboardScreen({super.key});
@@ -286,13 +290,24 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     }
   }
 
+  String _formatTimelineTime(DateTime? date) {
+    if (date == null) return '';
+    final local = date.toLocal();
+    final diff = DateTime.now().difference(local);
+    if (diff.isNegative || diff.inSeconds < 60) return '(just now)';
+    if (diff.inMinutes < 60) return '(${diff.inMinutes}m ago)';
+    if (diff.inHours < 24) return '(${diff.inHours}h ago)';
+    if (diff.inDays == 1) return '(yesterday)';
+    return '(${diff.inDays}d ago)';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final getdashBordData = ref.watch(getDashbordProvider);
     return Scaffold(
       backgroundColor: Colors.white,
       key: _scaffoldKey,
       drawer: const AppDrawer(isHindi: false),
-
       // AppBar
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B4F4A),
@@ -312,7 +327,19 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           ),
         ),
         actions: [
-          const Icon(Icons.tune, color: Colors.white, size: 20),
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NotificationScreen()),
+              );
+            },
+            child: Icon(
+              Icons.notifications_none,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
           const SizedBox(width: 15),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
@@ -413,131 +440,213 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           ),
         ],
       ),
-
       // Body
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              constraints: const BoxConstraints(minHeight: 58),
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              color: const Color(0xFF0B4F4A),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                      decoration: InputDecoration(
-                        hintText: 'Add network...',
-                        hintStyle: const TextStyle(
-                          color: Colors.white70,
+      body: RefreshIndicator(
+        color: const Color(0xFF0B4F4A),
+        onRefresh: () async {
+          ref.invalidate(getDashbordProvider);
+          await ref.read(getDashbordProvider.future);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              Container(
+                constraints: const BoxConstraints(minHeight: 58),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                color: const Color(0xFF0B4F4A),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        readOnly: true,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddNetworkSearchScreen(),
+                            ),
+                          );
+                        },
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 12,
                         ),
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.white70,
-                          size: 18,
+                        cursorColor: Colors.white,
+                        decoration: InputDecoration(
+                          hintText: 'Add network...',
+                          hintStyle: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Colors.white70,
+                            size: 18,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          contentPadding: const EdgeInsets.only(bottom: 4),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(color: Colors.white),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(color: Colors.white),
-                        ),
-                        contentPadding: const EdgeInsets.only(bottom: 8),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CompanyProfileScreen(),
-                        ),
-                      );
-                    },
-                    child: const Icon(
-                      Icons.tune,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
+                    // const SizedBox(width: 12),
+                    // InkWell(
+                    //   onTap: () {},
+                    //   child: const Icon(
+                    //     Icons.tune,
+                    //     color: Colors.white,
+                    //     size: 20,
+                    //   ),
+                    // ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Column(
-                children: [
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+              const SizedBox(height: 20),
+              getdashBordData.when(
+                data: (dashboardModel) {
+                  final alertsAndTasks = dashboardModel.data?.alertsAndTasks;
+                  final recentTimeline = dashboardModel.data?.recentTimeline;
+                  final timelineItems = recentTimeline?.items ?? [];
+                  final networkOverview = dashboardModel.data?.networkOverview;
+                  final performance = dashboardModel.data?.performanceInsights;
+                  final byDayList = performance?.byDay ?? [];
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Column(
                       children: [
-                        // =====================================================
-                        // ALERTS & TASKS
-                        // =====================================================
-                        Expanded(
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 180),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Alerts & Tasks Card',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // =====================================================
+                              // ALERTS & TASKS
+                              // =====================================================
+                              Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 180,
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Center(
-                                  child: Text(
-                                    '12',
-                                    style: TextStyle(
-                                      fontSize: 25,
-                                      fontWeight: FontWeight.w500,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xffE5F0EF),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Row(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.people_outline,
-                                        size: 17,
-                                        color: Color(0xff0B4F4A),
+                                      const Text(
+                                        'Alerts & Tasks',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                      SizedBox(width: 5),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                      const SizedBox(height: 2),
+                                      Center(
+                                        child: Text(
+                                          '${alertsAndTasks?.total ?? 0}',
+                                          style: const TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xffE5F0EF),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Row(
                                           children: [
-                                            Text(
-                                              'Connection',
-                                              style: TextStyle(fontSize: 10),
+                                            const Icon(
+                                              Icons.people_outline,
+                                              size: 17,
+                                              color: Color(0xff0B4F4A),
                                             ),
-                                            Text(
-                                              'Requests (5)',
-                                              style: TextStyle(fontSize: 10),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'Connection',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Requests (${alertsAndTasks?.connectionRequests ?? 0})',
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xffE5F0EF),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.warning_amber_rounded,
+                                              size: 17,
+                                              color: Color(0xff0B4F4A),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text(
+                                                    'System',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Alerts (${alertsAndTasks?.systemAlerts ?? 0})',
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -545,347 +654,445 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 5),
-                                Container(
-                                  padding: const EdgeInsets.all(6),
+                              ),
+                              const SizedBox(width: 8),
+                              // =====================================================
+                              // RECENT TIMELINE
+                              // =====================================================
+                              Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 180,
+                                  ),
+                                  padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xffE5F0EF),
-                                    borderRadius: BorderRadius.circular(6),
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
-                                  child: const Row(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.warning_amber_rounded,
-                                        size: 17,
-                                        color: Color(0xff0B4F4A),
-                                      ),
-                                      SizedBox(width: 5),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'System',
-                                              style: TextStyle(fontSize: 10),
-                                            ),
-                                            Text(
-                                              'Alerts (7)',
-                                              style: TextStyle(fontSize: 10),
-                                            ),
-                                          ],
+                                      const Text(
+                                        'Recent Timeline',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // =====================================================
-                        // RECENT TIMELINE
-                        // =====================================================
-                        Expanded(
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 180),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Recent Timeline',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.circle,
-                                      size: 7,
-                                      color: Color(0xff0B4F4A),
-                                    ),
-                                    SizedBox(width: 5),
-                                    Expanded(
-                                      child: Text(
-                                        'New request from Sarah J. (just now)',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 10),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.circle,
-                                      size: 7,
-                                      color: Color(0xff0B4F4A),
-                                    ),
-                                    SizedBox(width: 5),
-                                    Expanded(
-                                      child: Text(
-                                        'Address updated (3 hours ago)',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 10),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.circle,
-                                      size: 7,
-                                      color: Color(0xff0B4F4A),
-                                    ),
-                                    SizedBox(width: 5),
-                                    Expanded(
-                                      child: Text(
-                                        'Address updated (3 hours ago)',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // =====================================================
-                        // NETWORK OVERVIEW
-                        // =====================================================
-                        Expanded(
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 180),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Network',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Text(
-                                  'Overview Card',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  '548',
-                                  style: TextStyle(
-                                    fontSize: 27,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const Text(
-                                  'Total Connections: 548',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  height: 32,
-                                  width: 115,
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        left: 0,
-                                        child: CircleAvatar(
-                                          radius: 15,
-                                          backgroundColor:
-                                              Colors.brown.shade300,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 17,
-                                            color: Colors.white,
+                                      const SizedBox(height: 10),
+                                      if (timelineItems.isEmpty)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 24,
                                           ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 17,
-                                        child: CircleAvatar(
-                                          radius: 15,
-                                          backgroundColor: Colors.grey.shade500,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 17,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 34,
-                                        child: CircleAvatar(
-                                          radius: 15,
-                                          backgroundColor:
-                                              Colors.brown.shade400,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 17,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 51,
-                                        child: CircleAvatar(
-                                          radius: 15,
-                                          backgroundColor: Colors.grey.shade600,
-                                          child: const Icon(
-                                            Icons.person,
-                                            size: 17,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        left: 68,
-                                        child: Container(
-                                          width: 30,
-                                          height: 30,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xff0B4F4A),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Center(
+                                          child: Center(
                                             child: Text(
-                                              '+34',
+                                              'No recent activity',
                                               style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                                color: Colors.grey,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ),
+                                        )
+                                      else
+                                        ...timelineItems.take(3).map((item) {
+                                          final timeStr = _formatTimelineTime(
+                                            item.occurredAt,
+                                          );
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 8,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Padding(
+                                                  padding: EdgeInsets.only(
+                                                    top: 4,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.circle,
+                                                    size: 6,
+                                                    color: Color(0xff0B4F4A),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    item.title != null &&
+                                                            item
+                                                                .title!
+                                                                .isNotEmpty
+                                                        ? '${item.title} $timeStr'
+                                                              .trim()
+                                                        : 'Activity $timeStr'
+                                                              .trim(),
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      height: 1.3,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // =====================================================
-                        // PERFORMANCE
-                        // =====================================================
-                        Expanded(
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 180),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Performance',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                        const SizedBox(height: 15),
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // =====================================================
+                              // NETWORK OVERVIEW
+                              // =====================================================
+                              Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 180,
                                   ),
-                                ),
-                                const Text(
-                                  'Insights Card',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                SizedBox(
-                                  height: 65,
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceAround,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Container(
-                                        width: 12,
-                                        height: 35,
-                                        color: const Color(0xff3B8C84),
+                                      const Text(
+                                        'Network Overview',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                      Container(
-                                        width: 12,
-                                        height: 60,
-                                        color: const Color(0xff3B8C84),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${networkOverview?.totalConnections ?? 0}',
+                                        style: const TextStyle(
+                                          fontSize: 27,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                      Container(
-                                        width: 12,
-                                        height: 45,
-                                        color: const Color(0xff3B8C84),
+                                      Text(
+                                        'Total Connections: ${networkOverview?.totalConnections ?? 0}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF555555),
+                                        ),
                                       ),
-                                      Container(
-                                        width: 12,
-                                        height: 28,
-                                        color: const Color(0xff3B8C84),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        height: 32,
+                                        width: 120,
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              left: 0,
+                                              child: CircleAvatar(
+                                                radius: 14,
+                                                backgroundColor:
+                                                    Colors.brown.shade300,
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  size: 16,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            if ((networkOverview
+                                                        ?.totalConnections ??
+                                                    0) >
+                                                1)
+                                              Positioned(
+                                                left: 18,
+                                                child: CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor:
+                                                      Colors.grey.shade500,
+                                                  child: const Icon(
+                                                    Icons.person,
+                                                    size: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            if ((networkOverview
+                                                        ?.totalConnections ??
+                                                    0) >
+                                                2)
+                                              Positioned(
+                                                left: 36,
+                                                child: CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor:
+                                                      Colors.brown.shade400,
+                                                  child: const Icon(
+                                                    Icons.person,
+                                                    size: 16,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            Positioned(
+                                              left:
+                                                  (networkOverview
+                                                              ?.totalConnections ??
+                                                          0) >
+                                                      2
+                                                  ? 54
+                                                  : ((networkOverview
+                                                                    ?.totalConnections ??
+                                                                0) >
+                                                            1
+                                                        ? 36
+                                                        : 18),
+                                              child: Container(
+                                                width: 28,
+                                                height: 28,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xff0B4F4A),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    '+${networkOverview?.totalConnections ?? 0}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      Container(
-                                        width: 12,
-                                        height: 52,
-                                        color: const Color(0xff3B8C84),
+                                      const SizedBox(height: 8),
+                                      if (networkOverview?.acceptedFriends !=
+                                              null ||
+                                          networkOverview?.sentRequests != null)
+                                        Text(
+                                          'Friends: ${networkOverview?.acceptedFriends ?? 0} | Sent: ${networkOverview?.sentRequests ?? 0}',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Color(0xFF65716D),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // =====================================================
+                              // PERFORMANCE INSIGHTS
+                              // =====================================================
+                              Expanded(
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 180,
+                                  ),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Performance Insights',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Total: ${performance?.totalConnections ?? 0}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Color(0xFF65716D),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Builder(
+                                        builder: (context) {
+                                          final List<ByDay> days =
+                                              byDayList.isNotEmpty
+                                              ? byDayList
+                                              : [
+                                                  ByDay(day: 'Mo', count: 0),
+                                                  ByDay(day: 'Tu', count: 0),
+                                                  ByDay(day: 'We', count: 0),
+                                                  ByDay(day: 'Th', count: 0),
+                                                  ByDay(day: 'Fr', count: 0),
+                                                ];
+                                          final int maxCount = days.fold<int>(
+                                            0,
+                                            (prev, e) => (e.count ?? 0) > prev
+                                                ? (e.count ?? 0)
+                                                : prev,
+                                          );
+
+                                          return Column(
+                                            children: [
+                                              SizedBox(
+                                                height: 65,
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.end,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceAround,
+                                                  children: days.map((dayItem) {
+                                                    final count =
+                                                        dayItem.count ?? 0;
+                                                    final double barHeight =
+                                                        maxCount > 0
+                                                        ? ((count / maxCount) *
+                                                                  50) +
+                                                              10
+                                                        : 8.0;
+                                                    return Tooltip(
+                                                      message:
+                                                          '${dayItem.day ?? ''}: $count',
+                                                      child: Container(
+                                                        width: 12,
+                                                        height: barHeight,
+                                                        decoration: BoxDecoration(
+                                                          color: count > 0
+                                                              ? const Color(
+                                                                  0xff0B4F4A,
+                                                                )
+                                                              : const Color(
+                                                                  0xff3B8C84,
+                                                                ).withValues(
+                                                                  alpha: 0.4,
+                                                                ),
+                                                          borderRadius:
+                                                              const BorderRadius.vertical(
+                                                                top:
+                                                                    Radius.circular(
+                                                                      3,
+                                                                    ),
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }).toList(),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 5),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceAround,
+                                                children: days.map((dayItem) {
+                                                  return Text(
+                                                    dayItem.day ?? '',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 5),
-                                const Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Text('Mo', style: TextStyle(fontSize: 11)),
-                                    Text('Tu', style: TextStyle(fontSize: 11)),
-                                    Text('We', style: TextStyle(fontSize: 11)),
-                                    Text('Th', style: TextStyle(fontSize: 11)),
-                                    Text('Fr', style: TextStyle(fontSize: 11)),
-                                  ],
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
+                  );
+                },
+                error: (error, stackTrace) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 40,
+                        horizontal: 20,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            error.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0B4F4A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            onPressed: () {
+                              ref.invalidate(getDashbordProvider);
+                            },
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                loading: () => SizedBox(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height / 2,
+                  child: const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF0B4F4A)),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -18,9 +18,9 @@ import 'package:track_loved/core/Data/ResponseModel/OtpVerifyResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/RegisterResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/getNotificationListModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/updateJobPostResModel.dart';
 import 'package:track_loved/core/Network/ApiStateNetwork.dart';
-
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
 import '../Data/BodyModel/ManualContactBodyModel.dart';
 import '../Data/BodyModel/deleteContactBodyModel.dart';
@@ -30,6 +30,7 @@ import '../Data/BodyModel/UpdateProfileBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
 import '../Data/ResponseModel/getBusinnesProfileModel.dart';
+import '../Data/ResponseModel/getDashboardModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
@@ -314,9 +315,8 @@ class Authservice {
     }
   }
 
-  Future<FriendLocationSharingStatusResModel> getFriendLocationSharingStatusData(
-    String id,
-  ) async {
+  Future<FriendLocationSharingStatusResModel>
+  getFriendLocationSharingStatusData(String id) async {
     try {
       final response = await api.getFriendLocationSharingStatus(id);
       return response;
@@ -366,9 +366,11 @@ class Authservice {
     }
   }
 
-  Future<LocationSharingReceivedResModel> getLocationSharingReceived() async {
+  Future<LocationSharingReceivedResModel> getLocationSharingReceived(
+    String? search,
+  ) async {
     try {
-      final response = await api.getLocationSharingReceived();
+      final response = await api.getLocationSharingReceived(search);
       return response;
     } catch (e) {
       rethrow;
@@ -746,7 +748,8 @@ class Authservice {
     try {
       final body = CreateOrderBodyModel(amount: amount, planName: planName);
       final client = dio ?? Dio();
-      final effectiveToken = token ??
+      final effectiveToken =
+          token ??
           (Hive.isBoxOpen("userdata")
               ? Hive.box("userdata").get("token")
               : null);
@@ -790,7 +793,8 @@ class Authservice {
         razorpaySignature: razorpaySignature,
       );
       final client = dio ?? Dio();
-      final effectiveToken = token ??
+      final effectiveToken =
+          token ??
           (Hive.isBoxOpen("userdata")
               ? Hive.box("userdata").get("token")
               : null);
@@ -816,6 +820,45 @@ class Authservice {
         return VerifyPaymentResModel.fromJson(data);
       }
       return VerifyPaymentResModel.fromJson({});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetNotificationListModel> getNotificationListData({
+    required int page,
+    required int limit,
+  }) async {
+    try {
+      final response = await api.getNotificationList(page, limit);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> readSingleNotificationData(String id) async {
+    try {
+      final response = await api.readSingleNotification(id);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> readAllNotificationsData() async {
+    try {
+      final response = await api.readAllNotifications();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GetDashboardModel> getDashboardData() async {
+    try {
+      final response = await api.getDashboardData();
+      return response;
     } catch (e) {
       rethrow;
     }

@@ -173,8 +173,8 @@ class FriendFriend {
 }
 
 class Pagination {
-  String? page;
-  String? limit;
+  dynamic page;
+  dynamic limit;
   int? total;
   int? totalPages;
 
@@ -183,9 +183,18 @@ class Pagination {
   factory Pagination.fromJson(Map<String, dynamic> json) => Pagination(
     page: json["page"],
     limit: json["limit"],
-    total: json["total"],
-    totalPages: json["totalPages"],
+    total: json["total"] is int
+        ? json["total"]
+        : int.tryParse(json["total"]?.toString() ?? ''),
+    totalPages: json["totalPages"] is int
+        ? json["totalPages"]
+        : int.tryParse(json["totalPages"]?.toString() ?? ''),
   );
+
+  int get pageInt =>
+      page is int ? page : (int.tryParse(page?.toString() ?? '1') ?? 1);
+  int get limitInt =>
+      limit is int ? limit : (int.tryParse(limit?.toString() ?? '20') ?? 20);
 
   Map<String, dynamic> toJson() => {
     "page": page,

@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
+import 'package:track_loved/DrawerScreen/provider/NetworkLocationPermissionsProvider.dart';
 
 class NetworkLocationPermissionsScreen extends ConsumerStatefulWidget {
   const NetworkLocationPermissionsScreen({super.key});
@@ -19,72 +20,47 @@ class _NetworkLocationPermissionsScreenState
     extends ConsumerState<NetworkLocationPermissionsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
 
   bool _isHindi = false;
-  bool _isLoading = true;
   final Set<String> _updatingIds = {};
-  String? _errorMessage;
   String _searchQuery = '';
-  List<FriendElement> _friends = [];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchFriends();
-    });
+    _scrollController.addListener(_onScroll);
   }
 
-  Future<void> _fetchFriends({bool isRefresh = false}) async {
-    if (!isRefresh) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
-
-    try {
-      final authService = ref.read(authServiceProvider);
-      final query = _searchQuery.trim();
-      final response = await authService.trackFriend(
-        search: query.isNotEmpty ? query : null,
-        page: 1,
-        limit: 20,
-      );
-
-      if (!mounted) return;
-
-      final fetchedFriends = response.data?.friends ?? [];
-
-      setState(() {
-        _friends = List<FriendElement>.from(fetchedFriends);
-        _isLoading = false;
-        _errorMessage = null;
-      });
-    } catch (e, st) {
-      log(st.toString());
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      if (currentScroll >= maxScroll - 250) {
+        ref
+            .read(networkLocationPermissionsProvider(_searchQuery).notifier)
+            .fetchNextPage();
+      }
     }
   }
 
   void _onSearchChanged(String val) {
-    setState(() {
-      _searchQuery = val;
-    });
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 350), () {
-      _fetchFriends();
+      if (mounted) {
+        setState(() {
+          _searchQuery = val.trim();
+        });
+      }
     });
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -115,12 +91,17 @@ class _NetworkLocationPermissionsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _friends
+    final locationState = ref.watch(
+      networkLocationPermissionsProvider(_searchQuery),
+    );
+    final friends = locationState.friends;
+    final activeCount = friends
         .where((u) => u.sharingMyLocation == true)
         .length;
 
     // Filter list based on search query matching friend name locally as well
-    final filteredFriends = _friends.where((item) {
+    final filteredFriends = friends.where((item) {
+      if (_searchQuery.isEmpty) return true;
       final name = item.friend?.name ?? '';
       return name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
@@ -138,10 +119,20 @@ class _NetworkLocationPermissionsScreenState
             _isHindi = value;
           });
         },
-        onNotificationPressed: () {},
+        onNotificationPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => NotificationScreen()),
+          );
+        },
       ),
       body: RefreshIndicator(
-        onRefresh: () => _fetchFriends(isRefresh: true),
+        onRefresh: () async {
+          ref.invalidate(networkLocationPermissionsProvider);
+          await ref
+              .read(networkLocationPermissionsProvider(_searchQuery).notifier)
+              .refresh();
+        },
         color: const Color(0xFF0B4F4A),
         child: SafeArea(
           child: Center(
@@ -224,11 +215,41 @@ class _NetworkLocationPermissionsScreenState
 
                   // User Cards List or Loader
                   Expanded(
-                    child: _isLoading
+                    child:
+                        locationState.isLoading && locationState.friends.isEmpty
                         ? const Center(
                             child: CircularProgressIndicator(
                               color: Colors.white,
                             ),
+                          )
+                        : (locationState.errorMessage != null &&
+                              locationState.friends.isEmpty)
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(height: 80.h),
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.person_search_outlined,
+                                      size: 54.sp,
+                                      color: Colors.white38,
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    Text(
+                                      locationState.errorMessage!,
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14.sp,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           )
                         : filteredFriends.isEmpty
                         ? ListView(
@@ -246,11 +267,9 @@ class _NetworkLocationPermissionsScreenState
                                     ),
                                     SizedBox(height: 12.h),
                                     Text(
-                                      _errorMessage != null
-                                          ? _errorMessage!
-                                          : (_isHindi
-                                                ? 'कोई स्वीकृत कनेक्शन नहीं मिला'
-                                                : 'No accepted connections found'),
+                                      _isHindi
+                                          ? 'कोई स्वीकृत कनेक्शन नहीं मिला'
+                                          : 'No accepted connections found',
                                       style: TextStyle(
                                         color: Colors.white70,
                                         fontSize: 14.sp,
@@ -263,80 +282,92 @@ class _NetworkLocationPermissionsScreenState
                             ],
                           )
                         : ListView.builder(
+                            controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: filteredFriends.length,
+                            itemCount:
+                                filteredFriends.length +
+                                (locationState.isLoadingMore ? 1 : 0),
                             itemBuilder: (context, index) {
+                              if (index == filteredFriends.length) {
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                );
+                              }
                               return _buildUserCard(filteredFriends[index]);
                             },
                           ),
                   ),
-                  Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _isHindi ? 'सक्रिय कनेक्शन' : 'ACTIVE CONNECTIONS',
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            '$activeCount',
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
+                  // Center(
+                  //   child: Padding(
+                  //     padding: EdgeInsets.symmetric(vertical: 8.h),
+                  //     child: Column(
+                  //       mainAxisSize: MainAxisSize.min,
+                  //       children: [
+                  //         Text(
+                  //           _isHindi ? 'सक्रिय कनेक्शन' : 'ACTIVE CONNECTIONS',
+                  //           style: TextStyle(
+                  //             fontSize: 12.5.sp,
+                  //             fontWeight: FontWeight.w600,
+                  //             color: Colors.white,
+                  //             letterSpacing: 0.8,
+                  //           ),
+                  //         ),
+                  //         SizedBox(height: 4.h),
+                  //         Text(
+                  //           '$activeCount',
+                  //           style: TextStyle(
+                  //             fontSize: 18.sp,
+                  //             fontWeight: FontWeight.bold,
+                  //             color: Colors.white,
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   // Save Permissions Button
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 16.h, top: 4.h),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48.h,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                _isHindi
-                                    ? 'अनुमतियाँ सफलतापूर्वक सहेजी गईं!'
-                                    : 'Permissions saved successfully!',
-                                style: TextStyle(fontSize: 13.5.sp),
-                              ),
-                              backgroundColor: const Color(0xFF0B4F4A),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B4F4A),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24.r),
-                          ),
-                        ),
-                        child: Text(
-                          _isHindi ? 'अनुमतियाँ सहेजें' : 'Save Permissions',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: EdgeInsets.only(bottom: 16.h, top: 4.h),
+                  //   child: SizedBox(
+                  //     width: double.infinity,
+                  //     height: 48.h,
+                  //     child: ElevatedButton(
+                  //       onPressed: () {
+                  //         ScaffoldMessenger.of(context).showSnackBar(
+                  //           SnackBar(
+                  //             content: Text(
+                  //               _isHindi
+                  //                   ? 'अनुमतियाँ सफलतापूर्वक सहेजी गईं!'
+                  //                   : 'Permissions saved successfully!',
+                  //               style: TextStyle(fontSize: 13.5.sp),
+                  //             ),
+                  //             backgroundColor: const Color(0xFF0B4F4A),
+                  //           ),
+                  //         );
+                  //       },
+                  //       style: ElevatedButton.styleFrom(
+                  //         backgroundColor: const Color(0xFF0B4F4A),
+                  //         elevation: 0,
+                  //         shape: RoundedRectangleBorder(
+                  //           borderRadius: BorderRadius.circular(24.r),
+                  //         ),
+                  //       ),
+                  //       child: Text(
+                  //         _isHindi ? 'अनुमतियाँ सहेजें' : 'Save Permissions',
+                  //         style: TextStyle(
+                  //           color: Colors.white,
+                  //           fontWeight: FontWeight.w600,
+                  //           fontSize: 15.sp,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -444,6 +475,13 @@ class _NetworkLocationPermissionsScreenState
                         item.sharingMyLocation = value;
                         _updatingIds.add(id);
                       });
+                      ref
+                          .read(
+                            networkLocationPermissionsProvider(
+                              _searchQuery,
+                            ).notifier,
+                          )
+                          .updateFriendSharingLocally(id, value);
                       try {
                         await ref
                             .read(authServiceProvider)
@@ -454,6 +492,13 @@ class _NetworkLocationPermissionsScreenState
                         if (mounted) {
                           setState(() => item.sharingMyLocation = previous);
                         }
+                        ref
+                            .read(
+                              networkLocationPermissionsProvider(
+                                _searchQuery,
+                              ).notifier,
+                            )
+                            .updateFriendSharingLocally(id, previous);
                       } finally {
                         if (mounted) setState(() => _updatingIds.remove(id));
                       }

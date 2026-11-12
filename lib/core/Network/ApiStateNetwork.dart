@@ -27,7 +27,9 @@ import '../Data/BodyModel/updateJobPostBodyModel.dart';
 import '../Data/ResponseModel/MatchContactsResModel.dart';
 import '../Data/ResponseModel/acceptResModel.dart';
 import '../Data/ResponseModel/deleteContactResModel.dart';
+import '../Data/ResponseModel/getDashboardModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
+import '../Data/ResponseModel/getNotificationListModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
 import '../Data/ResponseModel/updateJobPostResModel.dart';
@@ -76,6 +78,7 @@ part 'ApiStateNetwork.g.dart';
 
 // @RestApi(baseUrl: "https://loveable-backend-5qi0.onrender.com")
 @RestApi(baseUrl: "https://api.tracklovedones.com")
+// @RestApi(baseUrl: "https://www.tracklovedones.com")
 abstract class ApiStateNetwork {
   factory ApiStateNetwork(Dio dio, {String baseUrl}) = _ApiStateNetwork;
 
@@ -166,7 +169,9 @@ abstract class ApiStateNetwork {
   );
 
   @GET("/api/v1/network/location-sharing/received")
-  Future<LocationSharingReceivedResModel> getLocationSharingReceived();
+  Future<LocationSharingReceivedResModel> getLocationSharingReceived(
+    @Query("search") String? search,
+  );
 
   @GET("/api/v1/network/contacts/match")
   Future<MatchContactsResModel> getMatchContacts([
@@ -330,4 +335,19 @@ abstract class ApiStateNetwork {
 
   @PATCH("/api/v1/auth/fcm-token")
   Future<dynamic> updateFcmToken(@Body() UpdateFcmTokenBodyModel body);
+
+  @GET("/api/v1/notifications")
+  Future<GetNotificationListModel> getNotificationList(
+    @Query("page") int page,
+    @Query("limit") int limit,
+  );
+
+  @PATCH("/api/v1/notifications/{id}/read")
+  Future<dynamic> readSingleNotification(@Path("id") String id);
+
+  @PATCH("/api/v1/notifications/read-all")
+  Future<dynamic> readAllNotifications();
+
+  @GET("/api/v1/auth/dashboard")
+  Future<GetDashboardModel> getDashboardData();
 }
