@@ -50,7 +50,6 @@ void main() async {
 Future<void> _initFcmNotifications() async {
   try {
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     // Fetch standard FCM Device Token
     try {

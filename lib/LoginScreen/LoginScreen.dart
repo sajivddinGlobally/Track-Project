@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -382,6 +383,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     setState(() {
                                       isLoading = true;
                                     });
+
+                                    // Request notification permission and wait for user's decision (Allow or Don't Allow)
+                                    try {
+                                      await FirebaseMessaging.instance.requestPermission(
+                                        alert: true,
+                                        badge: true,
+                                        sound: true,
+                                      );
+                                      // ignore: deprecated_member_use
+                                      final token = await FirebaseMessaging.instance.getToken();
+                                      if (token != null && token.isNotEmpty) {
+                                        final box = Hive.isBoxOpen("userdata")
+                                            ? Hive.box("userdata")
+                                            : await Hive.openBox("userdata");
+                                        await box.put('fcm_token', token);
+                                      }
+                                    } catch (e) {
+                                      log('[FCM] Error requesting notification permission on login: $e');
+                                    }
 
                                     final service = ref.read(
                                       authServiceProvider,

@@ -436,7 +436,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
             size: 70,
             color: primaryColor.withValues(alpha: 0.45),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             isUnreadTab
                 ? (widget.isHindi

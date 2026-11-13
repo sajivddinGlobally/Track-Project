@@ -136,7 +136,8 @@ class GetNotificationNotifier
     if (current == null || current.data == null) return;
 
     final hasUnread = current.data!.any((item) => item.isRead != true);
-    if (!hasUnread && (current.unreadCount == null || current.unreadCount == 0)) {
+    if (!hasUnread &&
+        (current.unreadCount == null || current.unreadCount == 0)) {
       return;
     }
 
@@ -172,7 +173,7 @@ class GetNotificationNotifier
 }
 
 final getNotificationProvider =
-    StateNotifierProvider<
+    StateNotifierProvider.autoDispose<
       GetNotificationNotifier,
       AsyncValue<GetNotificationListModel>
     >((ref) {
