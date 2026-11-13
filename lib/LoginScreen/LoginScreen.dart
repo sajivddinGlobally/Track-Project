@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:track_loved/HomeScreen/DashboardScreen.dart';
@@ -33,8 +34,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool isLoading = false;
+  bool isGoogleLoading = false;
   bool isPasswordVisible = false;
   bool rememberMe = false;
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    serverClientId:
+        '466509770539-u0mdd2p5ge1fr561lo78cm4hvpg5ev62.apps.googleusercontent.com',
+  );
 
   // Keychain / Keystore backed, and separate from Hive so that logout
   // (which clears Hive) does not wipe the remembered login.
@@ -84,6 +92,186 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       log('Could not save credentials: $e');
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() {
+        isGoogleLoading = true;
+      });
+
+      // Request notification permission and wait for user's decision (Allow or Don't Allow)
+      try {
+        await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        // ignore: deprecated_member_use
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          final box = Hive.isBoxOpen("userdata")
+              ? Hive.box("userdata")
+              : await Hive.openBox("userdata");
+          await box.put('fcm_token', fcmToken);
+        }
+      } catch (e) {
+        log('[FCM] Error requesting notification permission on google login: $e');
+      }
+
+      // Disconnect/sign out any cached account so that the Google Account Chooser
+      // always pops up showing all accounts available on the device
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        log('[GoogleSignIn] Previous session signout error (ignored): $e');
+      }
+
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) {
+        // User dismissed the account selection dialog
+        if (mounted) {
+          setState(() {
+            isGoogleLoading = false;
+          });
+        }
+        return;
+      }
+
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final String? idToken = auth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        if (mounted) {
+          showErrorSnackBar("Failed to obtain Google ID Token. Please try again.");
+          setState(() {
+            isGoogleLoading = false;
+          });
+        }
+        return;
+      }
+
+      final service = ref.read(authServiceProvider);
+      final response = await service.googleSignUpData(idToken: idToken);
+
+      if (response.success == true && response.data != null) {
+        final box = Hive.isBoxOpen("userdata")
+            ? Hive.box("userdata")
+            : await Hive.openBox("userdata");
+
+        if (response.data!.token != null) {
+          await box.put("token", response.data!.token);
+        }
+        if (response.data!.user?.id != null) {
+          await box.put("id", response.data!.user!.id);
+        }
+        if (response.data!.user?.name != null) {
+          await box.put("name", response.data!.user!.name);
+        }
+        if (response.data?.user?.profileImage != null &&
+            response.data!.user!.profileImage!.trim().isNotEmpty) {
+          await box.put("profileImage", response.data!.user!.profileImage);
+        }
+        await box.put(
+          "isProfileComplete",
+          response.data?.user?.isProfileComplete == true,
+        );
+        if (response.data!.user?.email != null) {
+          await box.put("email", response.data!.user!.email);
+        }
+        if (response.data!.user?.role != null) {
+          await box.put("role", response.data!.user!.role);
+        }
+        if (response.data?.user?.phone != null) {
+          await box.put("phone", response.data!.user!.phone);
+        }
+        await box.put("isParentConsentApproved", true);
+
+        final requiresAdultReconsent =
+            response.data?.user?.requiresAdultReconsent == true ||
+            response.data?.user?.role == 'adult_pending_consent';
+        await box.put("requiresAdultReconsent", requiresAdultReconsent);
+
+        final cachedFcm = box.get("fcm_token")?.toString();
+        if (cachedFcm != null && cachedFcm.isNotEmpty) {
+          FcmNotificationService.syncFcmToken(
+            cachedFcm,
+            authService: service,
+          );
+        }
+
+        if (!mounted) return;
+
+        if (requiresAdultReconsent) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AdultOnboardingScreen(),
+            ),
+            (route) => false,
+          );
+          return;
+        }
+
+        final isLocationGranted = await Permission.location.isGranted;
+        final isContactsGranted = await Permission.contacts.isGranted;
+        if (!mounted) return;
+
+        if (!isLocationGranted || !isContactsGranted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const RegistrationConsentScreen(),
+            ),
+            (route) => false,
+          );
+          return;
+        }
+
+        if (response.data?.user?.isProfileComplete == true) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DynamicDashboardScreen(),
+            ),
+            (route) => false,
+          );
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ProfileScreen(),
+            ),
+            (route) => false,
+          );
+        }
+      } else {
+        if (mounted) {
+          showErrorSnackBar(
+            response.message ?? "Google Sign-In failed. Please try again.",
+          );
+        }
+      }
+    } catch (e) {
+      log('Google Sign-In Error: $e');
+      if (mounted) {
+        if (e is DioException) {
+          final resData = e.response?.data;
+          final msg = (resData is Map)
+              ? (resData['message']?.toString() ?? 'Google Sign-In error')
+              : 'Google Sign-In request failed';
+          showErrorSnackBar(msg);
+        } else {
+          showErrorSnackBar('Google Sign-In failed: ${e.toString()}');
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isGoogleLoading = false;
+        });
+      }
     }
   }
 
@@ -373,7 +561,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
 
-                          onPressed: isLoading
+                          onPressed: (isLoading || isGoogleLoading)
                               ? null
                               : () async {
                                   if (!_formKey.currentState!.validate()) {
@@ -766,14 +954,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             borderRadius: BorderRadius.circular(14.r),
                           ),
                         ),
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.g_mobiledata,
-                          size: 32.sp,
-                          color: Colors.white,
-                        ),
+                        onPressed: (isLoading || isGoogleLoading)
+                            ? null
+                            : _handleGoogleSignIn,
+                        icon: isGoogleLoading
+                            ? SizedBox(
+                                width: 22.sp,
+                                height: 22.sp,
+                                child: CircularProgressIndicator(
+                                  color: const Color(0xFFD4AF37),
+                                  strokeWidth: 2.w,
+                                ),
+                              )
+                            : Icon(
+                                Icons.g_mobiledata,
+                                size: 32.sp,
+                                color: Colors.white,
+                              ),
                         label: Text(
-                          'Continue with Google',
+                          isGoogleLoading
+                              ? 'Signing in...'
+                              : 'Continue with Google',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 15.5.sp,

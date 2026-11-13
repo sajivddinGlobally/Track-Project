@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
-import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
 import 'package:track_loved/core/Utils/AddressText.dart';
@@ -77,45 +76,54 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
     return '$dateStr $timeStr';
   }
 
-  Future<void> _openMapWithCoordinates(double? lat, double? lng) async {
+  Future<void> _viewLocationOnGoogleMap(LocationSharingUser user) async {
+    final lat = user.latitude;
+    final lng = user.longitude;
+    final targetId = user.userId;
+
+    // 1. Send location-view notification to the loved one
+    if (targetId != null && targetId.isNotEmpty) {
+      try {
+        final authService = ref.read(authServiceProvider);
+        await authService.sendNotificationByIdData(id: targetId);
+      } catch (e) {
+        debugPrint('[LocationView] Error sending view notification: $e');
+      }
+    }
+
+    // 2. Open Google Maps with full directions
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
-                : 'Location coordinates not available',
-            style: TextStyle(fontSize: 13.sp),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isHindi
+                  ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
+                  : 'Location coordinates not available',
+              style: TextStyle(fontSize: 13.sp),
+            ),
           ),
-        ),
-      );
+        );
+      }
       return;
     }
 
+    // Google Maps Directions URL (from user's current location to loved one's coordinates)
     final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
     );
     try {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isHindi ? 'मानचित्र नहीं खोला जा सका' : 'Could not launch map',
-                style: TextStyle(fontSize: 13.sp),
-              ),
-            ),
-          );
-        }
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening map',
+              _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
               style: TextStyle(fontSize: 13.sp),
             ),
           ),
@@ -497,19 +505,8 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                       onPressed: !canViewMap
                           ? null
                           : () async {
-                              final screenContext = this.context;
                               Navigator.pop(context);
-                              await Navigator.push(
-                                screenContext,
-                                MaterialPageRoute(
-                                  builder: (_) => LiveLocationMapScreen(
-                                    user: user,
-                                    isHindi: _isHindi,
-                                  ),
-                                ),
-                              );
-                              // Back from the map (e.g. sharing was turned off):
-                              // reload the list from the API.
+                              await _viewLocationOnGoogleMap(user);
                               if (mounted) {
                                 ref.invalidate(searchLovedProvider);
                               }

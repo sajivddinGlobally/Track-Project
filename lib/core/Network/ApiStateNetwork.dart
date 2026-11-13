@@ -31,6 +31,7 @@ import '../Data/ResponseModel/getDashboardModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/getNotificationListModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
+import '../Data/ResponseModel/sendNotificatoinResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
 import '../Data/ResponseModel/updateJobPostResModel.dart';
 import '../Data/ResponseModel/updateProfileResModel.dart';
@@ -71,6 +72,8 @@ import '../Data/BodyModel/CompanyTransferExecuteBodyModel.dart';
 import '../Data/ResponseModel/CompanyTransferExecuteResModel.dart';
 import '../Data/BodyModel/UpdateUserLocationBodyModel.dart';
 import '../Data/BodyModel/UpdateFcmTokenBodyModel.dart';
+import '../Data/BodyModel/GoogleSignInBodyModel.dart';
+import '../Data/ResponseModel/GoogleSignInResModel.dart';
 import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
 import '../Data/ResponseModel/FriendLocationResModel.dart';
 
@@ -84,6 +87,9 @@ abstract class ApiStateNetwork {
 
   @POST("/api/v1/auth/login")
   Future<LoginResModel> login(@Body() LoginBodyModel body);
+
+  @POST("/api/v1/auth/google/signup")
+  Future<GoogleSignInResModel> googleSignUp(@Body() GoogleSignInBodyModel body);
 
   @POST("/api/v1/auth/register")
   Future<RegisterResModel> register(@Body() RegisterBodyModel body);
@@ -350,4 +356,7 @@ abstract class ApiStateNetwork {
 
   @GET("/api/v1/auth/dashboard")
   Future<GetDashboardModel> getDashboardData();
+
+  @POST("/api/v1/notifications/location-view/{id}")
+  Future<SendNotificatonResModel> sendNotificationById(@Path("id") String id);
 }

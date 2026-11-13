@@ -1088,10 +1088,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   Text(
                     _isGoogleAvatar
-                        ? (_isHindi ? 'गूगल से जुड़ा है' : 'Linked to Google')
-                        : (_isHindi
+                        ? (_isHindi
                               ? 'कस्टम अपलोड की गई फोटो'
-                              : 'Custom Uploaded Photo'),
+                              : 'Custom Uploaded Photo')
+                        : (_isHindi ? 'गूगल से जुड़ा है' : 'Linked to Google'),
                     style: TextStyle(
                       fontSize: 12,
                       color: _isGoogleAvatar
@@ -2545,7 +2545,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       TextButton(
                         onPressed: () async {
                           // Immediately navigate to LoginScreen, replacing dialog and all screens
-                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                          Navigator.of(
+                            context,
+                            rootNavigator: true,
+                          ).pushAndRemoveUntil(
                             CupertinoPageRoute(
                               builder: (context) => const LoginScreen(),
                             ),

@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hive/hive.dart';
 import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
 import 'package:track_loved/DrawerScreen/NetworkLocationpermissions.dart';
@@ -533,6 +534,18 @@ class FcmNotificationService {
           : await Hive.openBox('userdata');
       await box.delete('fcm_token');
       await box.delete('synced_fcm_token');
+
+      // Sign out from Google Sign-In if active
+      try {
+        final googleSignIn = GoogleSignIn();
+        if (await googleSignIn.isSignedIn()) {
+          await googleSignIn.signOut();
+          log('[GoogleSignIn] Signed out from Google successfully');
+        }
+      } catch (e) {
+        log('[GoogleSignIn] Error signing out from Google: $e');
+      }
+
       log('[FCM] Logout cleanup finished successfully');
     } catch (e) {
       log('[FCM] Error in handleLogout: $e');

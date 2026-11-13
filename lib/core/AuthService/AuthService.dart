@@ -33,6 +33,7 @@ import '../Data/ResponseModel/getBusinnesProfileModel.dart';
 import '../Data/ResponseModel/getDashboardModel.dart';
 import '../Data/ResponseModel/getMyProfileModel.dart';
 import '../Data/ResponseModel/rejectResModel.dart';
+import '../Data/ResponseModel/sendNotificatoinResModel.dart';
 import '../Data/ResponseModel/sendReqeustResModel.dart';
 import '../Data/ResponseModel/trackFriendModel.dart';
 import '../Data/ResponseModel/updateProfileResModel.dart';
@@ -78,6 +79,8 @@ import '../Data/ResponseModel/FriendLocationResModel.dart';
 import 'package:hive/hive.dart';
 import '../Data/BodyModel/CreateOrderBodyModel.dart';
 import '../Data/ResponseModel/CreateOrderResModel.dart';
+import '../Data/BodyModel/GoogleSignInBodyModel.dart';
+import '../Data/ResponseModel/GoogleSignInResModel.dart';
 import '../Data/BodyModel/VerifyPaymentBodyModel.dart';
 import '../Data/ResponseModel/VerifyPaymentResModel.dart';
 
@@ -90,6 +93,18 @@ class Authservice {
     try {
       final body = LoginBodyModel(email: email, password: password);
       final response = await api.login(body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<GoogleSignInResModel> googleSignUpData({
+    required String idToken,
+  }) async {
+    try {
+      final body = GoogleSignInBodyModel(idToken: idToken);
+      final response = await api.googleSignUp(body);
       return response;
     } catch (e) {
       rethrow;
@@ -858,6 +873,17 @@ class Authservice {
   Future<GetDashboardModel> getDashboardData() async {
     try {
       final response = await api.getDashboardData();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<SendNotificatonResModel> sendNotificationByIdData({
+    required String id,
+  }) async {
+    try {
+      final response = await api.sendNotificationById(id);
       return response;
     } catch (e) {
       rethrow;
