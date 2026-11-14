@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import 'package:track_loved/DrawerScreen/AddNetworkScreen/AddNetWorkScreen.dart';
+import 'package:track_loved/DrawerScreen/NetworkLocationpermissions.dart';
 import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/LoginScreen/AdultOnboardingScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -39,6 +41,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   Position? _lastSent;
   DateTime? _lastSentAt;
   io.Socket? _ageOutSocket;
+  bool _isExtendingPermissions = false;
+  bool _isDismissingPermissions = false;
+  bool _actionTakenInSession = false;
 
   @override
   void initState() {
@@ -145,6 +150,10 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       await Hive.openBox('userdata');
       if (mounted) setState(() {});
     }
+    try {
+      final box = Hive.box('userdata');
+      await box.delete('location_permission_alert_dismissed_until');
+    } catch (_) {}
   }
 
   Future<void> _startLocationUpdates() async {
@@ -288,6 +297,862 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         );
       }
     }
+  }
+
+  bool _isAlertLocallyMuted() {
+    return _actionTakenInSession;
+  }
+
+  Future<void> _recordAlertActionTaken() async {
+    _actionTakenInSession = true;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _handleExtendPermissions({BuildContext? dialogContext}) async {
+    if (_isExtendingPermissions || _isDismissingPermissions) return;
+    try {
+      FlutterRingtonePlayer().stop();
+    } catch (_) {}
+    setState(() => _isExtendingPermissions = true);
+    try {
+      final service = ref.read(authServiceProvider);
+      // Call backend dynamic action API to renew location access for next 24 hours
+      final res = await service.locationSharingActionData(
+        locationAccessRenew: true,
+      );
+
+      await _recordAlertActionTaken();
+      ref.invalidate(getDashbordProvider);
+
+      if (dialogContext != null && dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              res.message ??
+                  'Expiring location access was renewed for the next 24 hours.',
+            ),
+            backgroundColor: const Color(0xFF0B4F4A),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      log('[Dashboard] Error extending permissions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to extend permissions: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExtendingPermissions = false);
+    }
+  }
+
+  Future<void> _handleDismissPermissions({BuildContext? dialogContext}) async {
+    if (_isExtendingPermissions || _isDismissingPermissions) return;
+    try {
+      FlutterRingtonePlayer().stop();
+    } catch (_) {}
+    setState(() => _isDismissingPermissions = true);
+    try {
+      final service = ref.read(authServiceProvider);
+      // Call backend dynamic action API to disable location access for all friends
+      final res = await service.locationSharingActionData(
+        locationAccessDisable: true,
+      );
+
+      await _recordAlertActionTaken();
+      ref.invalidate(getDashbordProvider);
+
+      if (dialogContext != null && dialogContext.mounted) {
+        Navigator.of(dialogContext).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              res.message ?? 'Location sharing was disabled for all friends.',
+            ),
+            backgroundColor: Colors.black87,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      log('[Dashboard] Error dismissing permissions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to disable location sharing: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDismissingPermissions = false);
+    }
+  }
+
+  void _handleManageManually({BuildContext? dialogContext}) async {
+    try {
+      FlutterRingtonePlayer().stop();
+    } catch (_) {}
+    await _recordAlertActionTaken();
+
+    if (dialogContext != null && dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NetworkLocationPermissionsScreen(),
+        ),
+      );
+    }
+  }
+
+  Widget _buildLocationPermissionExpiryBanner({
+    List<SystemAlertItem> items = const [],
+    LocationPermissionAlert? locAlert,
+  }) {
+    final allItems = <SystemAlertItem>[];
+    if (items.isNotEmpty) {
+      allItems.addAll(items);
+    } else if (locAlert != null) {
+      allItems.add(
+        SystemAlertItem(
+          message: locAlert.message,
+          friendName: locAlert.friendName,
+          minutesRemaining: locAlert.minutesRemaining,
+          isExpiring: locAlert.isExpiring,
+          isExpired: locAlert.isExpired,
+          canRenew: locAlert.canRenew,
+        ),
+      );
+    }
+
+    final isExpired =
+        allItems.any((item) => item.isExpired == true) ||
+        (locAlert?.isExpired == true);
+    final count = allItems.length;
+
+    final badgeText = isExpired
+        ? (count > 1 ? 'PERMISSIONS EXPIRED ($count)' : 'PERMISSION EXPIRED')
+        : (count > 1
+              ? 'SYSTEM ALERTS ($count)'
+              : (allItems.isNotEmpty &&
+                        allItems.first.minutesRemaining != null &&
+                        allItems.first.minutesRemaining! > 0
+                    ? 'EXPIRING IN ${allItems.first.minutesRemaining} MIN'
+                    : 'SYSTEM ALERT'));
+
+    final badgeColor = isExpired
+        ? const Color(0xFFC62828)
+        : const Color(0xFFE65100);
+    final badgeBg = isExpired
+        ? const Color(0xFFFFCDD2)
+        : const Color(0xFFFFE0B2);
+
+    final title = count > 1
+        ? (isExpired
+              ? 'Location permissions expired for $count contacts'
+              : 'Location permissions are about to expire for $count contacts')
+        : (allItems.isNotEmpty &&
+                  allItems.first.message?.trim().isNotEmpty == true
+              ? allItems.first.message!
+              : (isExpired
+                    ? 'Location permission expired'
+                    : 'Your location permissions are about to expire'));
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isExpired ? const Color(0xFFFFEBEE) : const Color(0xFFFFF9E6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isExpired ? const Color(0xFFEF9A9A) : const Color(0xFFFFB74D),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isExpired ? Colors.red : Colors.orange).withValues(
+              alpha: 0.08,
+            ),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isExpired ? Icons.error_outline : Icons.warning_amber_rounded,
+                  color: badgeColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      badgeText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF263238),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // If multiple items, list each contact cleanly
+          if (count > 1) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isExpired
+                      ? const Color(0xFFFFCDD2)
+                      : const Color(0xFFFFE0B2),
+                  width: 0.8,
+                ),
+              ),
+              child: Column(
+                children: allItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  final itemExpired = item.isExpired == true;
+                  final friendName = item.friendName ?? 'Contact';
+                  final minLeft = item.minutesRemaining;
+
+                  return Column(
+                    children: [
+                      if (index > 0)
+                        Divider(
+                          height: 12,
+                          thickness: 0.6,
+                          color: Colors.grey.shade300,
+                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: const Color(0xFF0B4F4A),
+                            child: Text(
+                              friendName.isNotEmpty
+                                  ? friendName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        friendName,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF263238),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: itemExpired
+                                            ? const Color(0xFFFFCDD2)
+                                            : const Color(0xFFFFE0B2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        itemExpired
+                                            ? 'Expired'
+                                            : (minLeft != null && minLeft > 0
+                                                  ? '${minLeft}m left'
+                                                  : 'Expiring'),
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: itemExpired
+                                              ? const Color(0xFFC62828)
+                                              : const Color(0xFFE65100),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (item.message != null &&
+                                    item.message!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.message!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 8),
+          Text(
+            isExpired
+                ? 'Your 24-hour location sharing has ended. Renew to continue sharing for the next 24 hours, or dismiss to disable.'
+                : 'Extend to continue sharing with your assigned contacts for 24 hours, dismiss to turn off sharing for all, or manage manually.',
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: Colors.black87,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: ElevatedButton(
+                    onPressed:
+                        (_isExtendingPermissions || _isDismissingPermissions)
+                        ? null
+                        : () => _handleExtendPermissions(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0B4F4A),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    child: _isExtendingPermissions
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            isExpired
+                                ? (count > 1 ? 'RENEW ALL' : 'RENEW')
+                                : (count > 1 ? 'EXTEND ALL' : 'EXTEND'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: OutlinedButton(
+                    onPressed:
+                        (_isExtendingPermissions || _isDismissingPermissions)
+                        ? null
+                        : () => _handleDismissPermissions(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFD32F2F),
+                      side: const BorderSide(color: Color(0xFFD32F2F)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    child: _isDismissingPermissions
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFD32F2F),
+                            ),
+                          )
+                        : Text(
+                            count > 1 ? 'DISMISS ALL' : 'DISMISS',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            height: 36,
+            child: OutlinedButton.icon(
+              onPressed: (_isExtendingPermissions || _isDismissingPermissions)
+                  ? null
+                  : () => _handleManageManually(),
+              icon: const Icon(Icons.tune, size: 15, color: Color(0xFF0B4F4A)),
+              label: const Text(
+                'MANAGE MANUALLY',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B4F4A),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF0B4F4A)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLocationPermissionBottomSheet({
+    List<SystemAlertItem> items = const [],
+    LocationPermissionAlert? locAlert,
+  }) {
+    final allItems = <SystemAlertItem>[];
+    if (items.isNotEmpty) {
+      allItems.addAll(items);
+    } else if (locAlert != null) {
+      allItems.add(
+        SystemAlertItem(
+          message: locAlert.message,
+          friendName: locAlert.friendName,
+          minutesRemaining: locAlert.minutesRemaining,
+          isExpiring: locAlert.isExpiring,
+          isExpired: locAlert.isExpired,
+          canRenew: locAlert.canRenew,
+        ),
+      );
+    }
+
+    final isExpired =
+        allItems.any((item) => item.isExpired == true) ||
+        (locAlert?.isExpired == true);
+    final count = allItems.length;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.85,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isExpired
+                                ? const Color(0xFFFFCDD2)
+                                : const Color(0xFFFFE0B2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isExpired
+                                ? Icons.error_outline
+                                : Icons.warning_amber_rounded,
+                            color: isExpired
+                                ? const Color(0xFFC62828)
+                                : const Color(0xFFE65100),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isExpired
+                                    ? (count > 1
+                                          ? 'Permissions Expired ($count)'
+                                          : 'Permission Expired')
+                                    : (count > 1
+                                          ? 'System Alerts ($count)'
+                                          : 'System Alert'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isExpired
+                                      ? const Color(0xFFC62828)
+                                      : const Color(0xFFE65100),
+                                ),
+                              ),
+                              Text(
+                                count > 1
+                                    ? '$count Contacts Affected'
+                                    : 'Location Permissions Expiry',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Scrollable list of items
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...allItems.map((item) {
+                              final itemExpired = item.isExpired == true;
+                              final friendName = item.friendName ?? 'Contact';
+                              final minLeft = item.minutesRemaining;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: itemExpired
+                                      ? const Color(0xFFFFEBEE)
+                                      : const Color(0xFFFFF9E6),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: itemExpired
+                                        ? const Color(0xFFEF9A9A)
+                                        : const Color(0xFFFFCC80),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: const Color(
+                                            0xFF0B4F4A,
+                                          ),
+                                          child: Text(
+                                            friendName.isNotEmpty
+                                                ? friendName[0].toUpperCase()
+                                                : '?',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            friendName,
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF263238),
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: itemExpired
+                                                ? const Color(0xFFFFCDD2)
+                                                : const Color(0xFFFFE0B2),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            itemExpired
+                                                ? 'Expired'
+                                                : (minLeft != null &&
+                                                          minLeft > 0
+                                                      ? '${minLeft}m left'
+                                                      : 'Expiring'),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: itemExpired
+                                                  ? const Color(0xFFC62828)
+                                                  : const Color(0xFFE65100),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (item.message != null &&
+                                        item.message!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        item.message!,
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          color: Color(0xFF37474F),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 6),
+                            Text(
+                              isExpired
+                                  ? 'Choose an action to handle your location sharing:\n'
+                                        '• RENEW: Renew expiring location access for the next 24 hours.\n'
+                                        '• DISMISS: Automatically disable location sharing for all.\n'
+                                        '• MANAGE MANUALLY: Review and toggle individual contacts.'
+                                  : 'Choose an action to handle your location sharing:\n'
+                                        '• EXTEND: Automatically extend location permission for assigned contacts for 24 hours.\n'
+                                        '• DISMISS: Automatically disable location sharing for all.\n'
+                                        '• MANAGE MANUALLY: Review and toggle individual contacts on the permissions screen.',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: ElevatedButton(
+                              onPressed:
+                                  (_isExtendingPermissions ||
+                                      _isDismissingPermissions)
+                                  ? null
+                                  : () async {
+                                      setSheetState(() {});
+                                      await _handleExtendPermissions(
+                                        dialogContext: sheetContext,
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0B4F4A),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: _isExtendingPermissions
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      isExpired
+                                          ? (count > 1 ? 'RENEW ALL' : 'RENEW')
+                                          : (count > 1
+                                                ? 'EXTEND ALL'
+                                                : 'EXTEND'),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: OutlinedButton(
+                              onPressed:
+                                  (_isExtendingPermissions ||
+                                      _isDismissingPermissions)
+                                  ? null
+                                  : () async {
+                                      setSheetState(() {});
+                                      await _handleDismissPermissions(
+                                        dialogContext: sheetContext,
+                                      );
+                                    },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFD32F2F),
+                                side: const BorderSide(
+                                  color: Color(0xFFD32F2F),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: _isDismissingPermissions
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFFD32F2F),
+                                      ),
+                                    )
+                                  : Text(
+                                      count > 1 ? 'DISMISS ALL' : 'DISMISS',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            (_isExtendingPermissions ||
+                                _isDismissingPermissions)
+                            ? null
+                            : () => _handleManageManually(
+                                dialogContext: sheetContext,
+                              ),
+                        icon: const Icon(
+                          Icons.tune,
+                          size: 16,
+                          color: Color(0xFF0B4F4A),
+                        ),
+                        label: const Text(
+                          'MANAGE MANUALLY',
+                          style: TextStyle(
+                            color: Color(0xFF0B4F4A),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0B4F4A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String _formatTimelineTime(DateTime? date) {
@@ -444,6 +1309,13 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       body: RefreshIndicator(
         color: const Color(0xFF0B4F4A),
         onRefresh: () async {
+          _actionTakenInSession = false;
+          try {
+            final box = Hive.isBoxOpen('userdata')
+                ? Hive.box('userdata')
+                : null;
+            await box?.delete('location_permission_alert_dismissed_until');
+          } catch (_) {}
           ref.invalidate(getDashbordProvider);
           await ref.read(getDashbordProvider.future);
         },
@@ -516,6 +1388,30 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
               getdashBordData.when(
                 data: (dashboardModel) {
                   final alertsAndTasks = dashboardModel.data?.alertsAndTasks;
+                  final systemAlertItems =
+                      alertsAndTasks?.systemAlertItems ?? [];
+                  final locAlert = alertsAndTasks?.locationPermissionAlert;
+
+                  final hasSystemAlertItems = systemAlertItems.any(
+                    (item) =>
+                        item.isExpiring == true ||
+                        item.isExpired == true ||
+                        item.canRenew == true,
+                  );
+                  final hasLocAlert =
+                      locAlert != null &&
+                      (locAlert.isExpiring == true ||
+                          locAlert.isExpired == true ||
+                          locAlert.canRenew == true);
+                  final hasCountAlert =
+                      (alertsAndTasks?.systemAlerts ?? 0) > 0 &&
+                      (systemAlertItems.isNotEmpty || locAlert != null);
+
+                  final hasBackendAlert =
+                      hasSystemAlertItems || hasLocAlert || hasCountAlert;
+                  final shouldShowAlert =
+                      hasBackendAlert && !_isAlertLocallyMuted();
+
                   final recentTimeline = dashboardModel.data?.recentTimeline;
                   final timelineItems = recentTimeline?.items ?? [];
                   final networkOverview = dashboardModel.data?.networkOverview;
@@ -526,6 +1422,11 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
                       children: [
+                        if (shouldShowAlert)
+                          _buildLocationPermissionExpiryBanner(
+                            items: systemAlertItems,
+                            locAlert: locAlert,
+                          ),
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -610,45 +1511,83 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                         ),
                                       ),
                                       const SizedBox(height: 5),
-                                      Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xffE5F0EF),
-                                          borderRadius: BorderRadius.circular(
-                                            6,
+                                      InkWell(
+                                        onTap: shouldShowAlert
+                                            ? () {
+                                                _showLocationPermissionBottomSheet(
+                                                  items: systemAlertItems,
+                                                  locAlert: locAlert,
+                                                );
+                                              }
+                                            : null,
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: shouldShowAlert
+                                                ? const Color(0xFFFFECC8)
+                                                : const Color(0xffE5F0EF),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: shouldShowAlert
+                                                ? Border.all(
+                                                    color: const Color(
+                                                      0xFFFFA000,
+                                                    ),
+                                                    width: 1,
+                                                  )
+                                                : null,
                                           ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.warning_amber_rounded,
-                                              size: 17,
-                                              color: Color(0xff0B4F4A),
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text(
-                                                    'System',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    'Alerts (${alertsAndTasks?.systemAlerts ?? 0})',
-                                                    style: const TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.warning_amber_rounded,
+                                                size: 17,
+                                                color: shouldShowAlert
+                                                    ? const Color(0xFFE65100)
+                                                    : const Color(0xff0B4F4A),
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(width: 5),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Text(
+                                                      'System',
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'Alerts (${alertsAndTasks?.systemAlerts ?? 0})',
+                                                      style: const TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              if (shouldShowAlert)
+                                                Container(
+                                                  width: 7,
+                                                  height: 7,
+                                                  margin: const EdgeInsets.only(
+                                                    right: 2,
+                                                  ),
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color: Color(
+                                                          0xFFE65100,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1035,6 +1974,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                             ],
                           ),
                         ),
+                        const SizedBox(height: 15),
                       ],
                     ),
                   );

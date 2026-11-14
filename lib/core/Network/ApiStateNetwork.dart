@@ -76,6 +76,8 @@ import '../Data/BodyModel/GoogleSignInBodyModel.dart';
 import '../Data/ResponseModel/GoogleSignInResModel.dart';
 import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
 import '../Data/ResponseModel/FriendLocationResModel.dart';
+import '../Data/BodyModel/LocationSharingActionBodyModel.dart';
+import '../Data/ResponseModel/LocationSharingActionResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -167,6 +169,11 @@ abstract class ApiStateNetwork {
   Future<dynamic> locationSharing(
     @Path("id") String id,
     @Body() LocationSharingBodyModel body,
+  );
+
+  @POST("/api/v1/network/location-sharing/action")
+  Future<LocationSharingActionResModel> locationSharingAction(
+    @Body() LocationSharingActionBodyModel body,
   );
 
   @GET("/api/v1/network/friend/{id}/location-sharing")

@@ -617,6 +617,36 @@ class _ApiStateNetwork implements ApiStateNetwork {
   }
 
   @override
+  Future<LocationSharingActionResModel> locationSharingAction(
+    LocationSharingActionBodyModel body,
+  ) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    final _data = <String, dynamic>{};
+    _data.addAll(body.toJson());
+    final _options = _setStreamType<LocationSharingActionResModel>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/api/v1/network/location-sharing/action',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late LocationSharingActionResModel _value;
+    try {
+      _value = LocationSharingActionResModel.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<FriendLocationSharingStatusResModel> getFriendLocationSharingStatus(
     String id,
   ) async {

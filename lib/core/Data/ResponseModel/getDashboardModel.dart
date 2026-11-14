@@ -64,23 +64,138 @@ class AlertsAndTasks {
     int? total;
     int? connectionRequests;
     int? systemAlerts;
+    List<SystemAlertItem>? systemAlertItems;
+    LocationPermissionAlert? locationPermissionAlert;
 
     AlertsAndTasks({
         this.total,
         this.connectionRequests,
         this.systemAlerts,
+        this.systemAlertItems,
+        this.locationPermissionAlert,
     });
 
     factory AlertsAndTasks.fromJson(Map<String, dynamic> json) => AlertsAndTasks(
         total: json["total"] is int ? json["total"] : int.tryParse(json["total"]?.toString() ?? ''),
         connectionRequests: json["connectionRequests"] is int ? json["connectionRequests"] : int.tryParse(json["connectionRequests"]?.toString() ?? ''),
         systemAlerts: json["systemAlerts"] is int ? json["systemAlerts"] : int.tryParse(json["systemAlerts"]?.toString() ?? ''),
+        systemAlertItems: json["systemAlertItems"] == null
+            ? []
+            : List<SystemAlertItem>.from(
+                (json["systemAlertItems"] as List).map(
+                  (x) => SystemAlertItem.fromJson(
+                    x is Map ? Map<String, dynamic>.from(x) : <String, dynamic>{},
+                  ),
+                ),
+              ),
+        locationPermissionAlert: json["locationPermissionAlert"] == null
+            ? null
+            : LocationPermissionAlert.fromJson(
+                json["locationPermissionAlert"] is Map
+                    ? Map<String, dynamic>.from(json["locationPermissionAlert"] as Map)
+                    : <String, dynamic>{},
+              ),
     );
 
     Map<String, dynamic> toJson() => {
         "total": total,
         "connectionRequests": connectionRequests,
         "systemAlerts": systemAlerts,
+        "systemAlertItems": systemAlertItems == null
+            ? []
+            : List<dynamic>.from(systemAlertItems!.map((x) => x.toJson())),
+        "locationPermissionAlert": locationPermissionAlert?.toJson(),
+    };
+}
+
+class SystemAlertItem {
+    String? type;
+    String? message;
+    String? friendId;
+    String? friendName;
+    int? minutesRemaining;
+    bool? isExpiring;
+    bool? isExpired;
+    bool? canRenew;
+    DateTime? expiresAt;
+
+    SystemAlertItem({
+        this.type,
+        this.message,
+        this.friendId,
+        this.friendName,
+        this.minutesRemaining,
+        this.isExpiring,
+        this.isExpired,
+        this.canRenew,
+        this.expiresAt,
+    });
+
+    factory SystemAlertItem.fromJson(Map<String, dynamic> json) => SystemAlertItem(
+        type: json["type"]?.toString(),
+        message: json["message"]?.toString(),
+        friendId: json["friendId"]?.toString(),
+        friendName: json["friendName"]?.toString(),
+        minutesRemaining: json["minutesRemaining"] is int
+            ? json["minutesRemaining"]
+            : int.tryParse(json["minutesRemaining"]?.toString() ?? ''),
+        isExpiring: json["isExpiring"] == true || json["isExpiring"] == 'true',
+        isExpired: json["isExpired"] == true || json["isExpired"] == 'true',
+        canRenew: json["canRenew"] == true || json["canRenew"] == 'true',
+        expiresAt: json["expiresAt"] == null
+            ? null
+            : DateTime.tryParse(json["expiresAt"].toString()),
+    );
+
+    Map<String, dynamic> toJson() => {
+        "type": type,
+        "message": message,
+        "friendId": friendId,
+        "friendName": friendName,
+        "minutesRemaining": minutesRemaining,
+        "isExpiring": isExpiring,
+        "isExpired": isExpired,
+        "canRenew": canRenew,
+        "expiresAt": expiresAt?.toIso8601String(),
+    };
+}
+
+class LocationPermissionAlert {
+    bool? isExpiring;
+    bool? isExpired;
+    String? message;
+    String? friendName;
+    int? minutesRemaining;
+    bool? canRenew;
+
+    LocationPermissionAlert({
+        this.isExpiring,
+        this.isExpired,
+        this.message,
+        this.friendName,
+        this.minutesRemaining,
+        this.canRenew,
+    });
+
+    factory LocationPermissionAlert.fromJson(Map<String, dynamic> json) =>
+        LocationPermissionAlert(
+            isExpiring: json["isExpiring"] == true || json["isExpiring"] == 'true',
+            isExpired: json["isExpired"] == true || json["isExpired"] == 'true',
+            message: json["message"]?.toString(),
+            friendName: json["friendName"]?.toString(),
+            minutesRemaining: json["minutesRemaining"] is int
+                ? json["minutesRemaining"]
+                : int.tryParse(json["minutesRemaining"]?.toString() ?? ''),
+            canRenew: json["canRenew"] == true || json["canRenew"] == 'true',
+        );
+
+    Map<String, dynamic> toJson() => {
+        "isExpiring": isExpiring,
+        "isExpired": isExpired,
+        "message": message,
+        "friendName": friendName,
+        "minutesRemaining": minutesRemaining,
+        "canRenew": canRenew,
     };
 }
 

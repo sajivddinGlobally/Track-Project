@@ -83,6 +83,8 @@ import '../Data/BodyModel/GoogleSignInBodyModel.dart';
 import '../Data/ResponseModel/GoogleSignInResModel.dart';
 import '../Data/BodyModel/VerifyPaymentBodyModel.dart';
 import '../Data/ResponseModel/VerifyPaymentResModel.dart';
+import '../Data/BodyModel/LocationSharingActionBodyModel.dart';
+import '../Data/ResponseModel/LocationSharingActionResModel.dart';
 
 class Authservice {
   final ApiStateNetwork api;
@@ -375,6 +377,22 @@ class Authservice {
     try {
       final body = LocationSharingBodyModel(enabled: value);
       final response = await api.locationSharing(id, body);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<LocationSharingActionResModel> locationSharingActionData({
+    bool? locationAccessDisable,
+    bool? locationAccessRenew,
+  }) async {
+    try {
+      final body = LocationSharingActionBodyModel(
+        locationAccessDisable: locationAccessDisable,
+        locationAccessRenew: locationAccessRenew,
+      );
+      final response = await api.locationSharingAction(body);
       return response;
     } catch (e) {
       rethrow;

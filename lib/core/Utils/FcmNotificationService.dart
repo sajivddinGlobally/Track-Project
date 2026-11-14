@@ -218,9 +218,31 @@ class FcmNotificationService {
           channelId == 'emergency_channel_v2' ||
           channelId == 'emergency_channel_v3';
 
+      final isLocationReminder =
+          type == 'location_reminder' ||
+          title.toLowerCase().contains('location sharing active');
+
+      // If user took action in last 24 hours, completely suppress location reminder notification
+      if (isLocationReminder) {
+        final dismissedUntilStr =
+            box.get('location_permission_alert_dismissed_until')?.toString();
+        if (dismissedUntilStr != null && dismissedUntilStr.isNotEmpty) {
+          final dismissedUntil = DateTime.tryParse(dismissedUntilStr);
+          if (dismissedUntil != null &&
+              DateTime.now().isBefore(dismissedUntil)) {
+            log('[FCM] location_reminder suppressed: 24h action active until $dismissedUntil');
+            return;
+          }
+        }
+      }
+
       // Respect user sound & vibration settings saved in Hive
-      final bool soundEnabled =
+      bool soundEnabled =
           box.get('notif_sound_enabled', defaultValue: true) as bool;
+      if (isLocationReminder) {
+        // Mute loud ringtone player for location_reminder
+        soundEnabled = false;
+      }
       final bool vibrationEnabled =
           box.get('notif_vibration_enabled', defaultValue: true) as bool;
       final String selectedTone =
@@ -344,6 +366,10 @@ class FcmNotificationService {
           channelId == 'emergency_channel_v2' ||
           channelId == 'emergency_channel_v3';
 
+      final isLocationReminder =
+          type == 'location_reminder' ||
+          (data['title']?.toString().toLowerCase().contains('location sharing active') ?? false);
+
       // Load user preferences in background isolate
       bool soundEnabled = true;
       String selectedTone = 'Default Chime';
@@ -354,8 +380,24 @@ class FcmNotificationService {
             ? Hive.box('userdata')
             : await Hive.openBox('userdata');
 
+        if (isLocationReminder) {
+          final dismissedUntilStr =
+              box.get('location_permission_alert_dismissed_until')?.toString();
+          if (dismissedUntilStr != null && dismissedUntilStr.isNotEmpty) {
+            final dismissedUntil = DateTime.tryParse(dismissedUntilStr);
+            if (dismissedUntil != null &&
+                DateTime.now().isBefore(dismissedUntil)) {
+              log('[FCM Background] location_reminder suppressed: 24h action active until $dismissedUntil');
+              return;
+            }
+          }
+        }
+
         soundEnabled =
             box.get('notif_sound_enabled', defaultValue: true) as bool;
+        if (isLocationReminder) {
+          soundEnabled = false;
+        }
         selectedTone =
             box
                 .get('notif_selected_tone', defaultValue: 'Default Chime')
