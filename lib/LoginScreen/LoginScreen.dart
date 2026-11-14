@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -117,7 +118,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await box.put('fcm_token', fcmToken);
         }
       } catch (e) {
-        log('[FCM] Error requesting notification permission on google login: $e');
+        log(
+          '[FCM] Error requesting notification permission on google login: $e',
+        );
       }
 
       // Disconnect/sign out any cached account so that the Google Account Chooser
@@ -144,12 +147,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (idToken == null || idToken.isEmpty) {
         if (mounted) {
-          showErrorSnackBar("Failed to obtain Google ID Token. Please try again.");
+          showErrorSnackBar(
+            "Failed to obtain Google ID Token. Please try again.",
+          );
           setState(() {
             isGoogleLoading = false;
           });
         }
         return;
+      }
+
+      // Sign in to Firebase Authentication so user appears in Firebase Console Users table
+      try {
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: auth.accessToken,
+          idToken: idToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+        log('[FirebaseAuth] Signed in successfully with Firebase Auth');
+      } catch (e) {
+        log('[FirebaseAuth] Error signing in with Firebase Auth: $e');
       }
 
       final service = ref.read(authServiceProvider);
@@ -195,10 +212,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         final cachedFcm = box.get("fcm_token")?.toString();
         if (cachedFcm != null && cachedFcm.isNotEmpty) {
-          FcmNotificationService.syncFcmToken(
-            cachedFcm,
-            authService: service,
-          );
+          FcmNotificationService.syncFcmToken(cachedFcm, authService: service);
         }
 
         if (!mounted) return;
@@ -240,9 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         } else {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(
-              builder: (context) => const ProfileScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
             (route) => false,
           );
         }
@@ -574,13 +586,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                                     // Request notification permission and wait for user's decision (Allow or Don't Allow)
                                     try {
-                                      await FirebaseMessaging.instance.requestPermission(
-                                        alert: true,
-                                        badge: true,
-                                        sound: true,
-                                      );
+                                      await FirebaseMessaging.instance
+                                          .requestPermission(
+                                            alert: true,
+                                            badge: true,
+                                            sound: true,
+                                          );
                                       // ignore: deprecated_member_use
-                                      final token = await FirebaseMessaging.instance.getToken();
+                                      final token = await FirebaseMessaging
+                                          .instance
+                                          .getToken();
                                       if (token != null && token.isNotEmpty) {
                                         final box = Hive.isBoxOpen("userdata")
                                             ? Hive.box("userdata")
@@ -588,7 +603,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         await box.put('fcm_token', token);
                                       }
                                     } catch (e) {
-                                      log('[FCM] Error requesting notification permission on login: $e');
+                                      log(
+                                        '[FCM] Error requesting notification permission on login: $e',
+                                      );
                                     }
 
                                     final service = ref.read(
@@ -656,9 +673,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           response.requiresAdultReconsent ==
                                               true ||
                                           response
-                                              .data
-                                              ?.user
-                                              ?.requiresAdultReconsent ==
+                                                  .data
+                                                  ?.user
+                                                  ?.requiresAdultReconsent ==
                                               true ||
                                           response.data?.user?.role ==
                                               'adult_pending_consent';
@@ -666,8 +683,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "requiresAdultReconsent",
                                         requiresAdultReconsent,
                                       );
-                                      final cachedFcm =
-                                          box.get("fcm_token")?.toString();
+                                      final cachedFcm = box
+                                          .get("fcm_token")
+                                          ?.toString();
                                       if (cachedFcm != null &&
                                           cachedFcm.isNotEmpty) {
                                         FcmNotificationService.syncFcmToken(
@@ -731,25 +749,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     } else if (response
                                             .isParentConsentPending ==
                                         true) {
-                                      final childPh = response
-                                              .data
-                                              ?.user
-                                              ?.phone ??
+                                      final childPh =
+                                          response.data?.user?.phone ??
                                           _emailController.text.trim();
-                                      final parentPh = response
-                                          .data
-                                          ?.user
-                                          ?.parentPhone;
+                                      final parentPh =
+                                          response.data?.user?.parentPhone;
 
                                       final pBox = Hive.isBoxOpen("userdata")
                                           ? Hive.box("userdata")
                                           : await Hive.openBox("userdata");
                                       await pBox.put("role", "child");
-                                      await pBox.put("isParentConsentApproved", false);
+                                      await pBox.put(
+                                        "isParentConsentApproved",
+                                        false,
+                                      );
                                       if (childPh.isNotEmpty) {
                                         await pBox.put("phone", childPh);
                                       }
-                                      if (parentPh != null && parentPh.isNotEmpty) {
+                                      if (parentPh != null &&
+                                          parentPh.isNotEmpty) {
                                         await pBox.put("parentPhone", parentPh);
                                       }
 
@@ -773,42 +791,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       final statusCode = e.response?.statusCode;
                                       if (responseData is Map) {
                                         // 4. Company Subscription Payment Pending (HTTP 402 / isPaymentPending: true)
-                                        final isPaymentPending = statusCode == 402 ||
-                                            responseData['isPaymentPending'] == true ||
-                                            responseData['isPaymentPending'] == 'true' ||
+                                        final isPaymentPending =
+                                            statusCode == 402 ||
+                                            responseData['isPaymentPending'] ==
+                                                true ||
+                                            responseData['isPaymentPending'] ==
+                                                'true' ||
                                             (responseData['data'] is Map &&
-                                                responseData['data']['isPaymentPending'] == true);
+                                                responseData['data']['isPaymentPending'] ==
+                                                    true);
 
-                                        if (isPaymentPending && context.mounted) {
-                                          final newToken = responseData['token']?.toString() ??
-                                              responseData['accessToken']?.toString() ??
+                                        if (isPaymentPending &&
+                                            context.mounted) {
+                                          final newToken =
+                                              responseData['token']
+                                                  ?.toString() ??
+                                              responseData['accessToken']
+                                                  ?.toString() ??
                                               (responseData['data'] is Map
-                                                  ? (responseData['data']['token']?.toString() ??
-                                                      responseData['data']['accessToken']?.toString())
+                                                  ? (responseData['data']['token']
+                                                            ?.toString() ??
+                                                        responseData['data']['accessToken']
+                                                            ?.toString())
                                                   : null);
 
-                                          final pBox = Hive.isBoxOpen("userdata")
+                                          final pBox =
+                                              Hive.isBoxOpen("userdata")
                                               ? Hive.box("userdata")
                                               : await Hive.openBox("userdata");
 
-                                          if (newToken != null && newToken.isNotEmpty) {
+                                          if (newToken != null &&
+                                              newToken.isNotEmpty) {
                                             await pBox.put("token", newToken);
                                           }
-                                          await pBox.put("isPaymentPending", true);
+                                          await pBox.put(
+                                            "isPaymentPending",
+                                            true,
+                                          );
                                           await pBox.put("role", "company");
 
-                                          final compEmail = _emailController.text.trim();
-                                          final compPhone = responseData['phone']?.toString() ??
+                                          final compEmail = _emailController
+                                              .text
+                                              .trim();
+                                          final compPhone =
+                                              responseData['phone']
+                                                  ?.toString() ??
                                               (responseData['data'] is Map
-                                                  ? responseData['data']['phone']?.toString()
+                                                  ? responseData['data']['phone']
+                                                        ?.toString()
                                                   : null);
-                                          final compName = responseData['name']?.toString() ??
+                                          final compName =
+                                              responseData['name']
+                                                  ?.toString() ??
                                               (responseData['data'] is Map
-                                                  ? responseData['data']['name']?.toString()
+                                                  ? responseData['data']['name']
+                                                        ?.toString()
                                                   : null);
 
                                           showErrorSnackBar(
-                                            responseData['message']?.toString() ??
+                                            responseData['message']
+                                                    ?.toString() ??
                                                 'Payment Required: Please complete your company subscription.',
                                           );
 
@@ -816,12 +858,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           Navigator.push(
                                             context,
                                             CupertinoPageRoute(
-                                              builder: (context) => CompanyPaymentScreen(
-                                                token: newToken,
-                                                email: compEmail,
-                                                phone: compPhone,
-                                                companyName: compName,
-                                              ),
+                                              builder: (context) =>
+                                                  CompanyPaymentScreen(
+                                                    token: newToken,
+                                                    email: compEmail,
+                                                    phone: compPhone,
+                                                    companyName: compName,
+                                                  ),
                                             ),
                                           );
                                           return;
@@ -862,17 +905,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                             ?.toString())
                                                   : null);
 
-                                          final pBox = Hive.isBoxOpen("userdata")
+                                          final pBox =
+                                              Hive.isBoxOpen("userdata")
                                               ? Hive.box("userdata")
                                               : await Hive.openBox("userdata");
                                           await pBox.put("role", "child");
-                                          await pBox.put("isParentConsentApproved", false);
-                                          final effectiveChildPh = childPh ?? _emailController.text.trim();
+                                          await pBox.put(
+                                            "isParentConsentApproved",
+                                            false,
+                                          );
+                                          final effectiveChildPh =
+                                              childPh ??
+                                              _emailController.text.trim();
                                           if (effectiveChildPh.isNotEmpty) {
-                                            await pBox.put("phone", effectiveChildPh);
+                                            await pBox.put(
+                                              "phone",
+                                              effectiveChildPh,
+                                            );
                                           }
-                                          if (parentPh != null && parentPh.isNotEmpty) {
-                                            await pBox.put("parentPhone", parentPh);
+                                          if (parentPh != null &&
+                                              parentPh.isNotEmpty) {
+                                            await pBox.put(
+                                              "parentPhone",
+                                              parentPh,
+                                            );
                                           }
 
                                           if (context.mounted) {

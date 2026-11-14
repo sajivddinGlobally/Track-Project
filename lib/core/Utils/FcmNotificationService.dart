@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -544,6 +545,14 @@ class FcmNotificationService {
         }
       } catch (e) {
         log('[GoogleSignIn] Error signing out from Google: $e');
+      }
+
+      // Sign out from Firebase Auth if active
+      try {
+        await FirebaseAuth.instance.signOut();
+        log('[FirebaseAuth] Signed out from Firebase successfully');
+      } catch (e) {
+        log('[FirebaseAuth] Error signing out from Firebase: $e');
       }
 
       log('[FCM] Logout cleanup finished successfully');
