@@ -405,19 +405,22 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     try {
       FlutterRingtonePlayer().stop();
     } catch (_) {}
-    await _recordAlertActionTaken();
 
     if (dialogContext != null && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
     }
 
     if (mounted) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => const NetworkLocationPermissionsScreen(),
         ),
       );
+      if (mounted) {
+        _actionTakenInSession = false;
+        ref.invalidate(getDashbordProvider);
+      }
     }
   }
 
