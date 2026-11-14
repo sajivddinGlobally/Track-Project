@@ -55,6 +55,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     _initAgeOutSocket();
     _startLocationUpdates();
     _syncFcmTokenIfAvailable();
+    FcmNotificationService.dashboardRefreshNotifier
+        .addListener(_onFcmDashboardRefresh);
+  }
+
+  void _onFcmDashboardRefresh() {
+    if (mounted) {
+      log('[Dashboard] Auto-refreshing dashboard due to FCM expiring notification');
+      _actionTakenInSession = false;
+      ref.invalidate(getDashbordProvider);
+    }
   }
 
   void _checkAgeOutGate() {
@@ -267,6 +277,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   void dispose() {
+    FcmNotificationService.dashboardRefreshNotifier
+        .removeListener(_onFcmDashboardRefresh);
     _ageOutSocket?.disconnect();
     _ageOutSocket?.dispose();
     _ageOutSocket = null;
@@ -666,7 +678,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           const SizedBox(height: 8),
           Text(
             isExpired
-                ? 'Your 24-hour location sharing has ended. Renew to continue sharing for the next 24 hours, or dismiss to disable.'
+                ? 'Your 10 mins location sharing has ended. Renew to continue sharing for the next 10 mins, or dismiss to disable.'
                 : 'Extend to continue sharing with your assigned contacts for 24 hours, dismiss to turn off sharing for all, or manage manually.',
             style: const TextStyle(
               fontSize: 11.5,

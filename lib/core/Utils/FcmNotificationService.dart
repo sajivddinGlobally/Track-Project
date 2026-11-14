@@ -18,10 +18,21 @@ import 'package:track_loved/core/Utils/key.dart';
 import 'package:track_loved/core/Utils/preety.dio.dart';
 
 import '../../DrawerScreen/NetworkRequestScreen/NetworkingRequest.dart';
+import 'package:track_loved/HomeScreen/DashboardScreen.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 
 class FcmNotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+
+  /// Notifier triggered when an expiring location alert push arrives,
+  /// causing the Dashboard screen to auto-refresh its API data in real time.
+  static final ValueNotifier<int> dashboardRefreshNotifier =
+      ValueNotifier<int>(0);
+
+  static void notifyDashboardRefresh() {
+    dashboardRefreshNotifier.value++;
+  }
 
   /// Tracks the userId of the chat currently opened by the user.
   /// When active, incoming chat notifications from this user are suppressed
@@ -221,6 +232,16 @@ class FcmNotificationService {
       final isLocationReminder =
           type == 'location_reminder' ||
           title.toLowerCase().contains('location sharing active');
+
+      final isExpiringAlert =
+          type == 'location_permission_expiring' ||
+          type == 'location_permission_expired' ||
+          (type != null && type.contains('location_permission'));
+
+      // If an expiring permission notification arrives, trigger real-time dashboard refresh
+      if (isExpiringAlert) {
+        notifyDashboardRefresh();
+      }
 
       // If user took action in last 24 hours, completely suppress location reminder notification
       if (isLocationReminder) {
@@ -625,7 +646,16 @@ class FcmNotificationService {
     final type = data['type']?.toString().toLowerCase() ?? '';
     final screen = data['screen']?.toString().toLowerCase() ?? '';
 
-    if (type == 'sos_alert' || screen == 'livelocation' || screen == 'sos') {
+    // Location permission expiring or expired -> Redirect to DashboardScreen & refresh data
+    if (type == 'location_permission_expiring' ||
+        type == 'location_permission_expired' ||
+        type.contains('location_permission')) {
+      notifyDashboardRefresh();
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const DynamicDashboardScreen()),
+        (route) => false,
+      );
+    } else if (type == 'sos_alert' || screen == 'livelocation' || screen == 'sos') {
       final userId =
           data['senderId']?.toString() ?? data['userId']?.toString() ?? '';
       final name =
@@ -680,7 +710,13 @@ class FcmNotificationService {
         ),
       );
     } else {
-      log('[FCM] Unhandled notification payload type: $type, screen: $screen');
+      // Default: If notification has no specific screen, navigate to NotificationScreen
+      log('[FCM] Generic / unhandled notification payload, navigating to NotificationScreen: $data');
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => const NotificationScreen(),
+        ),
+      );
     }
   }
 }
