@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 
-/// Reverse-geocodes coordinates to a readable address, with an in-memory cache
-/// (keyed to ~11 m) so lists and live updates do not repeat lookups.
+/// Reverse-geocodes coordinates to a readable address, prioritizing specific building/premise names,
+/// with an in-memory cache keyed to ~1.1m precision so lists and live updates do not repeat lookups unnecessarily.
 class AddressResolver {
   static final Map<String, String?> _cache = {};
 
+  // 5 decimal places is ~1.1 meter resolution for fine-grained building precision
   static String _key(double lat, double lng, bool hindi) =>
-      '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)},$hindi';
+      '${lat.toStringAsFixed(5)},${lng.toStringAsFixed(5)},$hindi';
 
   static Future<String?> resolve(
     double lat,
@@ -23,19 +24,85 @@ class AddressResolver {
         locale: Locale(hindi ? 'hi' : 'en', 'IN'),
       );
       if (places.isEmpty) return _cache[key] = null;
-      final p = places.first;
-      final parts = <String>[];
-      for (final part in [
-        p.name,
-        p.street,
-        p.subLocality,
-        p.locality,
-        p.administrativeArea,
-      ]) {
-        final v = part?.trim() ?? '';
-        if (v.isNotEmpty && !parts.contains(v)) parts.add(v);
+
+      // Check across placemarks for any identified building / premise name
+      Placemark bestPlacemark = places.first;
+      String? bestBuildingName;
+
+      for (final p in places) {
+        final name = p.name?.trim() ?? '';
+        final isPlusCode =
+            RegExp(r'^[A-Z0-9]{4,}\+[A-Z0-9]+', caseSensitive: false)
+                .hasMatch(name);
+        final isOnlyDigits = RegExp(r'^\d+$').hasMatch(name);
+        if (name.isNotEmpty && !isPlusCode && !isOnlyDigits) {
+          bestBuildingName ??= name;
+          bestPlacemark = p;
+          break;
+        }
       }
-      return _cache[key] = parts.isEmpty ? null : parts.join(', ');
+
+      final p = bestPlacemark;
+      final parts = <String>[];
+
+      // Helper function to add distinct address elements without redundant duplicates
+      void addPart(String? text) {
+        final val = text?.trim() ?? '';
+        if (val.isEmpty) return;
+        final alreadyPresent = parts.any(
+          (existing) =>
+              existing.toLowerCase() == val.toLowerCase() ||
+              (existing.length > 4 &&
+                  existing.toLowerCase().contains(val.toLowerCase())) ||
+              (val.length > 4 &&
+                  val.toLowerCase().contains(existing.toLowerCase())),
+        );
+        if (!alreadyPresent) {
+          parts.add(val);
+        }
+      }
+
+      // 1. Building / Premise / POI Name first
+      if (bestBuildingName != null && bestBuildingName.isNotEmpty) {
+        addPart(bestBuildingName);
+      } else if (p.name != null && p.name!.isNotEmpty) {
+        addPart(p.name);
+      }
+
+      // 2. House / Plot / Sub-thoroughfare
+      if (p.subThoroughfare != null && p.subThoroughfare!.isNotEmpty) {
+        addPart(p.subThoroughfare);
+      }
+
+      // 3. Street / Road / Thoroughfare
+      if (p.thoroughfare != null && p.thoroughfare!.isNotEmpty) {
+        addPart(p.thoroughfare);
+      } else if (p.street != null && p.street!.isNotEmpty) {
+        addPart(p.street);
+      }
+
+      // 4. Sector / Colony / SubLocality
+      if (p.subLocality != null && p.subLocality!.isNotEmpty) {
+        addPart(p.subLocality);
+      }
+
+      // 5. City / Locality
+      if (p.locality != null && p.locality!.isNotEmpty) {
+        addPart(p.locality);
+      }
+
+      // 6. State / Administrative Area
+      if (p.administrativeArea != null && p.administrativeArea!.isNotEmpty) {
+        addPart(p.administrativeArea);
+      }
+
+      // 7. PIN Code
+      if (p.postalCode != null && p.postalCode!.isNotEmpty) {
+        addPart(p.postalCode);
+      }
+
+      final resolved = parts.isEmpty ? null : parts.join(', ');
+      return _cache[key] = resolved;
     } catch (e) {
       debugPrint('[Address] lookup failed: $e');
       return null; // not cached, so a later build can retry

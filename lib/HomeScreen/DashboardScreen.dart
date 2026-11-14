@@ -34,8 +34,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<Position>? _locationSub;
-  static const double _minDistanceMeters = 15;
-  static const Duration _minInterval = Duration(seconds: 5);
+  static const double _minDistanceMeters = 5;
+  static const Duration _minInterval = Duration(seconds: 3);
   bool _askedAlwaysPermission = false;
   bool _isStarting = false;
   Position? _lastSent;
@@ -55,13 +55,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     _initAgeOutSocket();
     _startLocationUpdates();
     _syncFcmTokenIfAvailable();
-    FcmNotificationService.dashboardRefreshNotifier
-        .addListener(_onFcmDashboardRefresh);
+    FcmNotificationService.dashboardRefreshNotifier.addListener(
+      _onFcmDashboardRefresh,
+    );
   }
 
   void _onFcmDashboardRefresh() {
     if (mounted) {
-      log('[Dashboard] Auto-refreshing dashboard due to FCM expiring notification');
+      log(
+        '[Dashboard] Auto-refreshing dashboard due to FCM expiring notification',
+      );
       _actionTakenInSession = false;
       ref.invalidate(getDashbordProvider);
     }
@@ -196,30 +199,44 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         _askedAlwaysPermission = true;
         await Permission.locationAlways.request();
       }
-      // Fires only after the user moves at least 15 metres.
+      // Fires when the user moves at least 5 metres.
       _locationSub = Geolocator.getPositionStream(
         locationSettings: _buildLocationSettings(),
       ).listen(_sendLocation);
-      // Send the starting point once, without waiting for movement.
-      _sendLocation(await Geolocator.getCurrentPosition());
+      // Send the starting point once with maximum precision
+      try {
+        final initPos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        _sendLocation(initPos);
+      } catch (_) {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) _sendLocation(lastPos);
+      }
     } catch (e) {
       debugPrint('Location stream failed: $e');
     }
   }
 
   LocationSettings _buildLocationSettings() {
-    const accuracy = LocationAccuracy.high;
-    const distanceFilter = 15; // keep in sync with _minDistanceMeters
+    const accuracy = LocationAccuracy.bestForNavigation;
+    const distanceFilter = 5; // keep in sync with _minDistanceMeters
     if (defaultTargetPlatform == TargetPlatform.android) {
       return AndroidSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
+        intervalDuration: const Duration(seconds: 5),
+        forceLocationManager: false,
         // Foreground service keeps updates alive when the app is in background.
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Track Loved',
-          notificationText: 'Sharing your location with your trusted network',
+          notificationText:
+              'Sharing precise live location with your trusted network',
           notificationChannelName: 'Location Service',
-          enableWakeLock: false,
+          enableWakeLock: true,
           setOngoing: false,
         ),
       );
@@ -228,8 +245,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       return AppleSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,
-        activityType: ActivityType.otherNavigation,
-        pauseLocationUpdatesAutomatically: true,
+        activityType: ActivityType.fitness,
+        pauseLocationUpdatesAutomatically: false,
         showBackgroundLocationIndicator: true,
         allowBackgroundLocationUpdates: true,
       );
@@ -277,8 +294,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   void dispose() {
-    FcmNotificationService.dashboardRefreshNotifier
-        .removeListener(_onFcmDashboardRefresh);
+    FcmNotificationService.dashboardRefreshNotifier.removeListener(
+      _onFcmDashboardRefresh,
+    );
     _ageOutSocket?.disconnect();
     _ageOutSocket?.dispose();
     _ageOutSocket = null;
@@ -679,7 +697,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           Text(
             isExpired
                 ? 'Your 10 mins location sharing has ended. Renew to continue sharing for the next 10 mins, or dismiss to disable.'
-                : 'Extend to continue sharing with your assigned contacts for 24 hours, dismiss to turn off sharing for all, or manage manually.',
+                : 'Extend to continue sharing with your assigned contacts for 10 mins dismiss to turn off sharing for all, or manage manually.',
             style: const TextStyle(
               fontSize: 11.5,
               color: Colors.black87,

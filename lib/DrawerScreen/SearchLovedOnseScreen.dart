@@ -231,8 +231,8 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 6),
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 8),
           ),
         );
       } catch (_) {
