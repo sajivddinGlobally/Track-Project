@@ -76,22 +76,11 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
     return '$dateStr $timeStr';
   }
 
-  Future<void> _viewLocationOnGoogleMap(LocationSharingUser user) async {
+  void _viewLocationOnGoogleMap(LocationSharingUser user) {
     final lat = user.latitude;
     final lng = user.longitude;
     final targetId = user.userId;
 
-    // 1. Send location-view notification to the loved one
-    if (targetId != null && targetId.isNotEmpty) {
-      try {
-        final authService = ref.read(authServiceProvider);
-        await authService.sendNotificationByIdData(id: targetId);
-      } catch (e) {
-        debugPrint('[LocationView] Error sending view notification: $e');
-      }
-    }
-
-    // 2. Open Google Maps with full directions
     if (lat == null || lng == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,16 +97,24 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       return;
     }
 
-    // Google Maps Directions URL (from user's current location to loved one's coordinates)
+    // 1. Immediately launch Google Maps (zero-delay Intent, no blocking awaits)
     final uri = Uri.parse(
       'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
     );
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
+                style: TextStyle(fontSize: 13.sp),
+              ),
+            ),
+          );
+        }
+        return false;
+      });
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -128,6 +125,21 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
             ),
           ),
         );
+      }
+    }
+
+    // 2. Send location-view notification in background asynchronously without blocking navigation
+    if (targetId != null && targetId.isNotEmpty) {
+      try {
+        final authService = ref.read(authServiceProvider);
+        authService
+            .sendNotificationByIdData(id: targetId)
+            .then((_) {})
+            .catchError((e) {
+              debugPrint('[LocationView] Error sending view notification: $e');
+            });
+      } catch (e) {
+        debugPrint('[LocationView] Error dispatching view notification: $e');
       }
     }
   }
@@ -326,7 +338,8 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
     final lat = user.latitude;
     final lng = user.longitude;
     final hasCoordinates = lat != null && lng != null;
-    final canViewMap = user.access != false && hasCoordinates;
+    final isActive = user.access != false;
+    final canViewMap = isActive && hasCoordinates;
     final coordinatesText = hasCoordinates
         ? 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}'
         : (_isHindi ? 'स्थान उपलब्ध नहीं' : 'Location not available');
@@ -467,14 +480,39 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                           ),
                           SizedBox(height: 6.h),
                         ],
-                        Text(
-                          _isHindi
-                              ? 'अंतिम अपडेट: ${_formatDateTime(user.updatedAt)}'
-                              : 'Last updated: ${_formatDateTime(user.updatedAt)}',
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12.5.sp,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.circle,
+                              size: 8.sp,
+                              color: isActive
+                                  ? const Color(0xFF2E7D32)
+                                  : const Color(0xFFC62828),
+                            ),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                isActive
+                                    ? (_isHindi
+                                          ? 'स्थान सक्रिय (लाइव)'
+                                          : 'Location Active (Live)')
+                                    : (user.updatedAt != null
+                                          ? (_isHindi
+                                                ? 'स्थान निष्क्रिय (अंतिम अपडेट: ${_formatDateTime(user.updatedAt)})'
+                                                : 'Location Inactive (Last updated: ${_formatDateTime(user.updatedAt)})')
+                                          : (_isHindi
+                                                ? 'स्थान निष्क्रिय'
+                                                : 'Location Inactive')),
+                                style: TextStyle(
+                                  color: isActive
+                                      ? const Color(0xFF2E7D32)
+                                      : const Color(0xFFC62828),
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -504,12 +542,10 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                       ),
                       onPressed: !canViewMap
                           ? null
-                          : () async {
+                          : () {
+                              _viewLocationOnGoogleMap(user);
                               Navigator.pop(context);
-                              await _viewLocationOnGoogleMap(user);
-                              if (mounted) {
-                                ref.invalidate(searchLovedProvider);
-                              }
+                              ref.invalidate(searchLovedProvider);
                             },
                     ),
                   ),
