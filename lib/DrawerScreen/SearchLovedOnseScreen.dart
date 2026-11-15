@@ -97,25 +97,17 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       return;
     }
 
-    // 1. Immediately launch Google Maps (zero-delay Intent, no blocking awaits)
-    final uri = Uri.parse(
+    // 1. Immediately launch Google Maps in Directions Route Overview mode (shows route options + Start button)
+    // Old link (kept as comment as requested):
+    // final oldUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    final dirUri = Uri.parse(
       'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
     );
-    try {
-      launchUrl(uri, mode: LaunchMode.externalApplication).catchError((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
-                style: TextStyle(fontSize: 13.sp),
-              ),
-            ),
-          );
-        }
-        return false;
-      });
-    } catch (_) {
+    final searchUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    void showMapError() {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -127,6 +119,26 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
         );
       }
     }
+
+    Future<bool> tryLaunch(Uri u) async {
+      try {
+        return await launchUrl(u, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    void openMapDirections() async {
+      final dirSuccess = await tryLaunch(dirUri);
+      if (!dirSuccess) {
+        final searchSuccess = await tryLaunch(searchUri);
+        if (!searchSuccess) {
+          showMapError();
+        }
+      }
+    }
+
+    openMapDirections();
 
     // 2. Send location-view notification in background asynchronously without blocking navigation
     if (targetId != null && targetId.isNotEmpty) {
