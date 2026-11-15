@@ -51,6 +51,22 @@ Future<void> _initFcmNotifications() async {
   try {
     final messaging = FirebaseMessaging.instance;
 
+    // Explicitly request notification permissions on launch (critical for Android 13+ & iOS release builds)
+    try {
+      final settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: true,
+        provisional: false,
+        sound: true,
+      );
+      log('[FCM] Permission status on launch: ${settings.authorizationStatus}');
+    } catch (e) {
+      log('[FCM] Error requesting notification permissions: $e');
+    }
+
     // Fetch standard FCM Device Token
     try {
       // ignore: deprecated_member_use
@@ -61,7 +77,7 @@ Future<void> _initFcmNotifications() async {
             ? Hive.box("userdata")
             : await Hive.openBox("userdata");
         await box.put('fcm_token', token);
-        await FcmNotificationService.syncFcmToken(token);
+        await FcmNotificationService.syncFcmToken(token, force: true);
       }
     } catch (e) {
       log('[FCM] getToken error: $e');

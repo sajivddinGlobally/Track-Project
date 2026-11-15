@@ -27,8 +27,9 @@ class FcmNotificationService {
 
   /// Notifier triggered when an expiring location alert push arrives,
   /// causing the Dashboard screen to auto-refresh its API data in real time.
-  static final ValueNotifier<int> dashboardRefreshNotifier =
-      ValueNotifier<int>(0);
+  static final ValueNotifier<int> dashboardRefreshNotifier = ValueNotifier<int>(
+    0,
+  );
 
   static void notifyDashboardRefresh() {
     dashboardRefreshNotifier.value++;
@@ -42,7 +43,7 @@ class FcmNotificationService {
   /// Channel 1: High priority / Siren sound for SOS & Emergency broadcast alerts
   static const AndroidNotificationChannel emergencyChannel =
       AndroidNotificationChannel(
-        'emergency_channel_v3',
+        'emergency_channel_v4',
         'Emergency & SOS Alerts',
         description:
             'High priority siren alerts for emergency and SOS broadcasts',
@@ -56,7 +57,7 @@ class FcmNotificationService {
   /// Channel 2: High priority sound for chat messages, friend requests, and reminders
   static const AndroidNotificationChannel defaultChannel =
       AndroidNotificationChannel(
-        'default_channel_v3',
+        'default_channel_v4',
         'General Notifications',
         description: 'Notifications for chats, reminders, and friend requests',
         importance: Importance.high,
@@ -245,13 +246,16 @@ class FcmNotificationService {
 
       // If user took action in last 24 hours, completely suppress location reminder notification
       if (isLocationReminder) {
-        final dismissedUntilStr =
-            box.get('location_permission_alert_dismissed_until')?.toString();
+        final dismissedUntilStr = box
+            .get('location_permission_alert_dismissed_until')
+            ?.toString();
         if (dismissedUntilStr != null && dismissedUntilStr.isNotEmpty) {
           final dismissedUntil = DateTime.tryParse(dismissedUntilStr);
           if (dismissedUntil != null &&
               DateTime.now().isBefore(dismissedUntil)) {
-            log('[FCM] location_reminder suppressed: 24h action active until $dismissedUntil');
+            log(
+              '[FCM] location_reminder suppressed: 24h action active until $dismissedUntil',
+            );
             return;
           }
         }
@@ -389,7 +393,10 @@ class FcmNotificationService {
 
       final isLocationReminder =
           type == 'location_reminder' ||
-          (data['title']?.toString().toLowerCase().contains('location sharing active') ?? false);
+          (data['title']?.toString().toLowerCase().contains(
+                'location sharing active',
+              ) ??
+              false);
 
       // Load user preferences in background isolate
       bool soundEnabled = true;
@@ -402,13 +409,16 @@ class FcmNotificationService {
             : await Hive.openBox('userdata');
 
         if (isLocationReminder) {
-          final dismissedUntilStr =
-              box.get('location_permission_alert_dismissed_until')?.toString();
+          final dismissedUntilStr = box
+              .get('location_permission_alert_dismissed_until')
+              ?.toString();
           if (dismissedUntilStr != null && dismissedUntilStr.isNotEmpty) {
             final dismissedUntil = DateTime.tryParse(dismissedUntilStr);
             if (dismissedUntil != null &&
                 DateTime.now().isBefore(dismissedUntil)) {
-              log('[FCM Background] location_reminder suppressed: 24h action active until $dismissedUntil');
+              log(
+                '[FCM Background] location_reminder suppressed: 24h action active until $dismissedUntil',
+              );
               return;
             }
           }
@@ -655,7 +665,9 @@ class FcmNotificationService {
         MaterialPageRoute(builder: (_) => const DynamicDashboardScreen()),
         (route) => false,
       );
-    } else if (type == 'sos_alert' || screen == 'livelocation' || screen == 'sos') {
+    } else if (type == 'sos_alert' ||
+        screen == 'livelocation' ||
+        screen == 'sos') {
       final userId =
           data['senderId']?.toString() ?? data['userId']?.toString() ?? '';
       final name =
@@ -711,12 +723,10 @@ class FcmNotificationService {
       );
     } else {
       // Default: If notification has no specific screen, navigate to NotificationScreen
-      log('[FCM] Generic / unhandled notification payload, navigating to NotificationScreen: $data');
-      nav.push(
-        MaterialPageRoute(
-          builder: (_) => const NotificationScreen(),
-        ),
+      log(
+        '[FCM] Generic / unhandled notification payload, navigating to NotificationScreen: $data',
       );
+      nav.push(MaterialPageRoute(builder: (_) => const NotificationScreen()));
     }
   }
 }

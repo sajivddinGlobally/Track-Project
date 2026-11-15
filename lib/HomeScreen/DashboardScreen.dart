@@ -1451,6 +1451,15 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                   final performance = dashboardModel.data?.performanceInsights;
                   final byDayList = performance?.byDay ?? [];
 
+                  final connectionCount =
+                      alertsAndTasks?.connectionRequests ?? 0;
+                  final systemCount = alertsAndTasks?.systemAlerts ?? 0;
+                  final calculatedTotal = connectionCount + systemCount;
+                  final rawTotal = alertsAndTasks?.total ?? 0;
+                  final totalAlerts = rawTotal > calculatedTotal
+                      ? rawTotal
+                      : calculatedTotal;
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
@@ -1494,7 +1503,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                       const SizedBox(height: 2),
                                       Center(
                                         child: Text(
-                                          '${alertsAndTasks?.total ?? 0}',
+                                          '$totalAlerts',
                                           style: const TextStyle(
                                             fontSize: 25,
                                             fontWeight: FontWeight.w500,

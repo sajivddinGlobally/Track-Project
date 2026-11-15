@@ -35,8 +35,8 @@ class MainApplication : Application() {
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .build()
 
-                // Emergency SOS Channels (covers emergency_channel, v2, v3)
-                val emergencyChannels = listOf("emergency_channel", "emergency_channel_v2", "emergency_channel_v3")
+                // Emergency SOS Channels (covers emergency_channel, v2, v3, v4)
+                val emergencyChannels = listOf("emergency_channel", "emergency_channel_v2", "emergency_channel_v3", "emergency_channel_v4")
                 for (id in emergencyChannels) {
                     val channel = NotificationChannel(
                         id,
@@ -52,8 +52,8 @@ class MainApplication : Application() {
                     notificationManager.createNotificationChannel(channel)
                 }
 
-                // General Notification Channels (covers default_channel, v2, v3)
-                val defaultChannels = listOf("default_channel", "default_channel_v2", "default_channel_v3")
+                // General Notification Channels (covers default_channel, v2, v3, v4)
+                val defaultChannels = listOf("default_channel", "default_channel_v2", "default_channel_v3", "default_channel_v4")
                 for (id in defaultChannels) {
                     val channel = NotificationChannel(
                         id,
