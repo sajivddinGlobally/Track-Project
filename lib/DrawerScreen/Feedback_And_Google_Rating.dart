@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/SubmitFeedbackBodyModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class FeedbackRatingScreen extends ConsumerStatefulWidget {
@@ -146,14 +147,11 @@ class _FeedbackRatingScreenState extends ConsumerState<FeedbackRatingScreen> {
     } catch (e) {
       log('Error picking screenshot: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'इमेज चुनने में त्रुटि: $e'
-                  : 'Error attaching screenshot: $e',
-            ),
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'इमेज चुनने में त्रुटि: $e'
+              : 'Error attaching screenshot: $e',
+          context,
         );
       }
     }
@@ -288,20 +286,11 @@ class _FeedbackRatingScreenState extends ConsumerState<FeedbackRatingScreen> {
     final text = _feedbackController.text.trim();
 
     if (_rating == 0 && text.isEmpty && _selectedIssues.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.orange.shade800,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          content: Text(
-            _isHindi
-                ? 'कृपया रेटिंग दें या अपनी समस्या / सुझाव का विवरण लिखें!'
-                : 'Please provide a rating or share your comments/issue details!',
-            style: GoogleFonts.outfit(fontSize: 13.sp, color: Colors.white),
-          ),
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'कृपया रेटिंग दें या अपनी समस्या / सुझाव का विवरण लिखें!'
+            : 'Please provide a rating or share your comments/issue details!',
+        context,
       );
       return;
     }
@@ -371,20 +360,11 @@ class _FeedbackRatingScreenState extends ConsumerState<FeedbackRatingScreen> {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red.shade800,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          content: Text(
-            _isHindi
-                ? 'फीडबैक सबमिट करने में विफल: ${e.toString()}'
-                : 'Failed to submit feedback: ${e.toString()}',
-            style: GoogleFonts.outfit(fontSize: 13.sp, color: Colors.white),
-          ),
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'फीडबैक सबमिट करने में विफल: ${e.toString()}'
+            : 'Failed to submit feedback: ${e.toString()}',
+        context,
       );
     }
   }

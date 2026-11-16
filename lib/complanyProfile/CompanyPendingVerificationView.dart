@@ -6,6 +6,7 @@ import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class CompanyPendingVerificationView extends ConsumerWidget {
   final Datum datum;
@@ -524,29 +525,11 @@ class CompanyPendingVerificationView extends ConsumerWidget {
                                 ),
                                 onPressed: () {
                                   ref.invalidate(getBussinessProfileProvider);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        isHindi
-                                            ? 'स्थिति ताज़ा की जा रही है...'
-                                            : 'Checking latest approval status...',
-                                        style: GoogleFonts.outfit(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      backgroundColor: const Color(0xFF0F3D38),
-                                      duration: const Duration(seconds: 2),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          10.r,
-                                        ),
-                                        side: const BorderSide(
-                                          color: brandGold,
-                                          width: 1,
-                                        ),
-                                      ),
-                                    ),
+                                  showSuccessSnackBar(
+                                    isHindi
+                                        ? 'स्थिति ताज़ा की जा रही है...'
+                                        : 'Checking latest approval status...',
+                                    context,
                                   );
                                 },
                                 icon: Icon(

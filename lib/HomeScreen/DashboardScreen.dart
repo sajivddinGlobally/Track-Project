@@ -19,6 +19,7 @@ import 'package:track_loved/ProfileScreen/ProfileScreen.dart';
 import 'package:track_loved/SettingScreen/SettingScreen.dart';
 import 'package:track_loved/core/Data/ResponseModel/getDashboardModel.dart';
 import 'package:track_loved/core/Utils/FcmNotificationService.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 import 'provider/getDashbordProvider.dart';
 
@@ -359,26 +360,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              res.message ??
-                  'Expiring location access was renewed for the next 24 hours.',
-            ),
-            backgroundColor: const Color(0xFF0B4F4A),
-            duration: const Duration(seconds: 3),
-          ),
+        showSuccessSnackBar(
+          res.message ??
+              'Expiring location access was renewed for the next 24 hours.',
+          context,
         );
       }
     } catch (e) {
       log('[Dashboard] Error extending permissions: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to extend permissions: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        showErrorSnackBar('Failed to extend permissions: $e', context);
       }
     } finally {
       if (mounted) setState(() => _isExtendingPermissions = false);
@@ -406,25 +397,15 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              res.message ?? 'Location sharing was disabled for all friends.',
-            ),
-            backgroundColor: Colors.black87,
-            duration: const Duration(seconds: 3),
-          ),
+        showSuccessSnackBar(
+          res.message ?? 'Location sharing was disabled for all friends.',
+          context,
         );
       }
     } catch (e) {
       log('[Dashboard] Error dismissing permissions: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to disable location sharing: $e'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        showErrorSnackBar('Failed to disable location sharing: $e', context);
       }
     } finally {
       if (mounted) setState(() => _isDismissingPermissions = false);

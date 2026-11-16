@@ -16,6 +16,7 @@ import 'package:track_loved/SettingScreen/SystemPermissionsScreen.dart';
 import 'package:track_loved/SettingScreen/font_scale_provider.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/RequestDataSummaryBodyModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class SettingScreen extends ConsumerStatefulWidget {
   final bool isHindi;
@@ -167,17 +168,11 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
     _loadCompanyData();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isHindi
-              ? 'असाइनमेंट सफलतापूर्वक निरस्त कर दिया गया है'
-              : 'Assignment successfully revoked',
-          style: GoogleFonts.outfit(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF0F3D38),
-        duration: const Duration(seconds: 2),
-      ),
+    showSuccessSnackBar(
+      _isHindi
+          ? 'असाइनमेंट सफलतापूर्वक निरस्त कर दिया गया है'
+          : 'Assignment successfully revoked',
+      context,
     );
   }
 
@@ -317,16 +312,11 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                     : () async {
                         final targetEmail = emailController.text.trim();
                         if (targetEmail.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: Colors.redAccent,
-                              content: Text(
-                                _isHindi
-                                    ? 'कृपया मान्य ईमेल दर्ज करें'
-                                    : 'Please enter a valid email',
-                                style: GoogleFonts.outfit(color: Colors.white),
-                              ),
-                            ),
+                          showErrorSnackBar(
+                            _isHindi
+                                ? 'कृपया मान्य ईमेल दर्ज करें'
+                                : 'Please enter a valid email',
+                            context,
                           );
                           return;
                         }
@@ -346,27 +336,12 @@ class _SettingScreenState extends ConsumerState<SettingScreen> {
                           }
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  res.message ??
-                                      (_isHindi
-                                          ? 'आपका सत्यापित डेटा सारांश संग्रह आपको ईमेल कर दिया गया है।'
-                                          : 'Your verified data summary archive has been emailed to you.'),
-                                  style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                backgroundColor: const Color(0xFF0F3D38),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  side: const BorderSide(
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                                duration: const Duration(seconds: 3),
-                              ),
+                            showSuccessSnackBar(
+                              res.message ??
+                                  (_isHindi
+                                      ? 'आपका सत्यापित डेटा सारांश संग्रह आपको ईमेल कर दिया गया है।'
+                                      : 'Your verified data summary archive has been emailed to you.'),
+                              context,
                             );
                           }
                         } catch (e) {

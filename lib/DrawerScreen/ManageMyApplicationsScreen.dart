@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getMyJobApplicationsProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 /// Data Model for a candidate application entry (Jobs & Business Opportunities)
 class CandidateApplicationItem {
@@ -418,21 +419,11 @@ class _ManageMyApplicationsScreenState
                 revocationType: 'Granular Right to Erasure Execution',
               );
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF0F3D38),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                    side: const BorderSide(color: Color(0xFF10B981)),
-                  ),
-                  content: Text(
-                    _isHindi
-                        ? '✅ टोकन रद्द किया गया! कंपनी के पास से आपकी फ़ाइलें और संपर्क तुरंत ब्लॉक कर दिए गए हैं।'
-                        : '✅ Token Nullified! Employer access to your resume & contact has been permanently erased.',
-                    style: TextStyle(fontSize: 13.sp, color: Colors.white),
-                  ),
-                ),
+              showSuccessSnackBar(
+                _isHindi
+                    ? '✅ टोकन रद्द किया गया! कंपनी के पास से आपकी फ़ाइलें और संपर्क तुरंत ब्लॉक कर दिए गए हैं।'
+                    : '✅ Token Nullified! Employer access to your resume & contact has been permanently erased.',
+                context,
               );
             },
             child: Text(
@@ -522,21 +513,11 @@ class _ManageMyApplicationsScreenState
                 }
               });
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF0F3D38),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                    side: const BorderSide(color: Color(0xFFFBBF24)),
-                  ),
-                  content: Text(
-                    _isHindi
-                        ? '🔄 सभी कॉर्पोरेट एक्सेस टोकन सफलतापूर्वक रद्द कर दिए गए हैं।'
-                        : '🔄 Universal corporate data access tokens successfully revoked.',
-                    style: TextStyle(fontSize: 13.sp, color: Colors.white),
-                  ),
-                ),
+              showSuccessSnackBar(
+                _isHindi
+                    ? '🔄 सभी कॉर्पोरेट एक्सेस टोकन सफलतापूर्वक रद्द कर दिए गए हैं।'
+                    : '🔄 Universal corporate data access tokens successfully revoked.',
+                context,
               );
             },
             child: Text(

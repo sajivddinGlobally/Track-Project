@@ -11,6 +11,7 @@ import 'package:track_loved/complanyProfile/CompanyPendingVerificationView.dart'
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/CreateJobPostBodyModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class PostJobOpportunitiesScreen extends ConsumerStatefulWidget {
   const PostJobOpportunitiesScreen({super.key});
@@ -111,14 +112,11 @@ class _PostJobOpportunitiesScreenState
     if (_formKey.currentState!.validate()) {
       if (_selectedPincodes.isEmpty &&
           _pincodeInputController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'कृपया कम से कम एक लक्ष्य पिन कोड जोड़ें।'
-                  : 'Please select at least one target pin code.',
-            ),
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'कृपया कम से कम एक लक्ष्य पिन कोड जोड़ें।'
+              : 'Please select at least one target pin code.',
+          context,
         );
         return;
       }
@@ -133,15 +131,11 @@ class _PostJobOpportunitiesScreenState
           Hive.box('userdata').get('companyId');
 
       if (compId == null || compId.toString().trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'कंपनी आईडी उपलब्ध नहीं है। कृपया पहले अपनी कंपनी प्रोफ़ाइल पूरी करें।'
-                  : 'Company ID not found. Please complete your company profile first.',
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'कंपनी आईडी उपलब्ध नहीं है। कृपया पहले अपनी कंपनी प्रोफ़ाइल पूरी करें।'
+              : 'Company ID not found. Please complete your company profile first.',
+          context,
         );
         return;
       }

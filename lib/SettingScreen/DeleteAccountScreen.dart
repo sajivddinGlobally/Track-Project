@@ -9,6 +9,7 @@ import 'package:hive/hive.dart';
 import 'package:track_loved/LoginScreen/LoginScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/DeleteUserAccountBodyModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   final bool isHindi;
@@ -101,32 +102,17 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           .read(authServiceProvider)
           .sendDeleteAccountOtpData();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            res.message ??
-                (widget.isHindi
-                    ? 'सत्यापन OTP आपके पंजीकृत संपर्क पर भेज दिया गया है।'
-                    : 'Verification OTP has been sent to your registered contact.'),
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF0F3D38),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showSuccessSnackBar(
+        res.message ??
+            (widget.isHindi
+                ? 'सत्यापन OTP आपके पंजीकृत संपर्क पर भेज दिया गया है।'
+                : 'Verification OTP has been sent to your registered contact.'),
+        context,
       );
     } catch (e) {
       if (!mounted) return;
       if (!silent) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString(),
-              style: GoogleFonts.outfit(color: Colors.white),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showErrorSnackBar(e.toString(), context);
       }
     } finally {
       if (mounted) setState(() => _isSendingOtp = false);
@@ -140,50 +126,32 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     }
 
     if (!_isAcknowledged) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isHindi
-                ? 'कृपया आगे बढ़ने के लिए शपथ पत्र चेकबॉक्स चुनें'
-                : 'Please acknowledge the irrevocable action checkbox',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showErrorSnackBar(
+        widget.isHindi
+            ? 'कृपया आगे बढ़ने के लिए शपथ पत्र चेकबॉक्स चुनें'
+            : 'Please acknowledge the irrevocable action checkbox',
+        context,
       );
       return;
     }
 
     if (_confirmTextController.text.trim() != 'DELETE') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isHindi
-                ? 'सत्यापन के लिए कृपया बॉक्स में "DELETE" (बड़े अक्षरों में) टाइप करें'
-                : 'Please type exact word "DELETE" in capital letters to confirm',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showErrorSnackBar(
+        widget.isHindi
+            ? 'सत्यापन के लिए कृपया बॉक्स में "DELETE" (बड़े अक्षरों में) टाइप करें'
+            : 'Please type exact word "DELETE" in capital letters to confirm',
+        context,
       );
       return;
     }
 
     final otpText = _otpController.text.trim();
     if (otpText.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isHindi
-                ? 'कृपया 6 अंकों का सत्यापन ओटीपी दर्ज करें'
-                : 'Please enter 6-digit verification OTP',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showErrorSnackBar(
+        widget.isHindi
+            ? 'कृपया 6 अंकों का सत्यापन ओटीपी दर्ज करें'
+            : 'Please enter 6-digit verification OTP',
+        context,
       );
       return;
     }
@@ -210,18 +178,12 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
 
         if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              res.message ??
-                  (widget.isHindi
-                      ? 'आपका खाता और डेटा स्थायी रूप से मिटा दिया गया है।'
-                      : 'Your account and data have been permanently deleted.'),
-              style: GoogleFonts.outfit(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
+        showSuccessSnackBar(
+          res.message ??
+              (widget.isHindi
+                  ? 'आपका खाता और डेटा स्थायी रूप से मिटा दिया गया है।'
+                  : 'Your account and data have been permanently deleted.'),
+          context,
         );
 
         Navigator.pushAndRemoveUntil(
@@ -231,18 +193,12 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
         );
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              res.message ??
-                  (widget.isHindi
-                      ? 'खाता मिटाने में विफल'
-                      : 'Failed to delete account'),
-              style: GoogleFonts.outfit(color: Colors.white),
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
+        showErrorSnackBar(
+          res.message ??
+              (widget.isHindi
+                  ? 'खाता मिटाने में विफल'
+                  : 'Failed to delete account'),
+          context,
         );
       }
     } catch (e) {

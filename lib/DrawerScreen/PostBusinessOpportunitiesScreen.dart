@@ -10,6 +10,7 @@ import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/CreateBusinessOpportunityBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/CreateBusinessOpportunityResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class PostBusinessOpportunitiesScreen extends ConsumerStatefulWidget {
   final MyBusinessOpportunityItem? editOpportunity;
@@ -75,8 +76,10 @@ class PostBusinessOpportunitiesScreenState
     }
     // 2. Fallback to Hive's companyName (ensuring it is not mistakenly the personal username)
     if (initialCompanyName == null || initialCompanyName.isEmpty) {
-      final savedInHive =
-          box.get('companyName', defaultValue: '')?.toString().trim();
+      final savedInHive = box
+          .get('companyName', defaultValue: '')
+          ?.toString()
+          .trim();
       if (savedInHive != null &&
           savedInHive.isNotEmpty &&
           savedInHive != userName) {
@@ -232,15 +235,11 @@ class PostBusinessOpportunitiesScreenState
           _companyId ?? datum?.companyId ?? datum?.id ?? box.get('companyId');
 
       if (compId == null || compId.toString().trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'कंपनी आईडी उपलब्ध नहीं है। कृपया प्रोफ़ाइल जांचें।'
-                  : 'Company ID not found. Please verify your company profile.',
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'कंपनी आईडी उपलब्ध नहीं है। कृपया प्रोफ़ाइल जांचें।'
+              : 'Company ID not found. Please verify your company profile.',
+          context,
         );
         return;
       }
@@ -249,25 +248,27 @@ class PostBusinessOpportunitiesScreenState
 
       final companyType =
           (widget.editOpportunity?.companyType?.isNotEmpty == true)
-              ? widget.editOpportunity!.companyType!
-              : (datum?.companyType ??
-                  box.get('companyType', defaultValue: 'Hospitality'));
+          ? widget.editOpportunity!.companyType!
+          : (datum?.companyType ??
+                box.get('companyType', defaultValue: 'Hospitality'));
 
       final address = (widget.editOpportunity?.address?.isNotEmpty == true)
           ? widget.editOpportunity!.address!
           : ((datum?.registeredCorporateAddress?.isNotEmpty == true)
-              ? datum!.registeredCorporateAddress!
-              : (box.get('companyAddress', defaultValue: '') as String).isNotEmpty
-              ? box.get('companyAddress') as String
-              : _locationController.text.trim());
+                ? datum!.registeredCorporateAddress!
+                : (box.get('companyAddress', defaultValue: '') as String)
+                      .isNotEmpty
+                ? box.get('companyAddress') as String
+                : _locationController.text.trim());
 
       final state = (widget.editOpportunity?.state?.isNotEmpty == true)
           ? widget.editOpportunity!.state!
           : ((datum?.state?.isNotEmpty == true)
-              ? datum!.state!
-              : (box.get('companyState', defaultValue: '') as String).isNotEmpty
-              ? box.get('companyState') as String
-              : 'Maharashtra');
+                ? datum!.state!
+                : (box.get('companyState', defaultValue: '') as String)
+                      .isNotEmpty
+                ? box.get('companyState') as String
+                : 'Maharashtra');
 
       setState(() => _isLoading = true);
 
@@ -323,11 +324,11 @@ class PostBusinessOpportunitiesScreenState
                   child: Text(
                     isEdit
                         ? (_isHindi
-                            ? 'अवसर सफलतापूर्वक अपडेट हुआ!'
-                            : 'Opportunity Updated Successfully!')
+                              ? 'अवसर सफलतापूर्वक अपडेट हुआ!'
+                              : 'Opportunity Updated Successfully!')
                         : (_isHindi
-                            ? 'अवसर सफलतापूर्वक पोस्ट हुआ!'
-                            : 'Opportunity Posted Successfully!'),
+                              ? 'अवसर सफलतापूर्वक पोस्ट हुआ!'
+                              : 'Opportunity Posted Successfully!'),
                     style: TextStyle(
                       fontSize: 18.sp,
                       fontWeight: FontWeight.bold,
@@ -341,11 +342,11 @@ class PostBusinessOpportunitiesScreenState
               res.message ??
                   (isEdit
                       ? (_isHindi
-                          ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक अपडेट कर दिया गया है।'
-                          : 'Your business expansion opportunity listing has been updated successfully.')
+                            ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक अपडेट कर दिया गया है।'
+                            : 'Your business expansion opportunity listing has been updated successfully.')
                       : (_isHindi
-                          ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक पोस्ट कर दिया गया है।'
-                          : 'Your business expansion opportunity listing has been posted successfully and is now active.')),
+                            ? 'आपका व्यवसाय विस्तार अवसर सफलतापूर्वक पोस्ट कर दिया गया है।'
+                            : 'Your business expansion opportunity listing has been posted successfully and is now active.')),
               style: TextStyle(
                 fontSize: 13.5.sp,
                 color: Colors.white70,
@@ -373,20 +374,6 @@ class PostBusinessOpportunitiesScreenState
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isEdit
-                  ? (_isHindi
-                      ? 'अवसर अपडेट करने में विफल: ${e.toString()}'
-                      : 'Failed to update opportunity: ${e.toString()}')
-                  : (_isHindi
-                      ? 'अवसर पोस्ट करने में विफल: ${e.toString()}'
-                      : 'Failed to post opportunity: ${e.toString()}'),
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
       }
     }
   }
@@ -587,11 +574,11 @@ class PostBusinessOpportunitiesScreenState
                   Text(
                     isEdit
                         ? (_isHindi
-                            ? 'व्यापार अवसर के विवरण संपादित करें'
-                            : 'Edit Business Opportunity')
+                              ? 'व्यापार अवसर के विवरण संपादित करें'
+                              : 'Edit Business Opportunity')
                         : (_isHindi
-                            ? 'व्यवसाय विस्तार अवसर प्रकाशित करें'
-                            : 'Publish an Expansion Opportunity'),
+                              ? 'व्यवसाय विस्तार अवसर प्रकाशित करें'
+                              : 'Publish an Expansion Opportunity'),
                     style: TextStyle(
                       fontSize: 22.sp,
                       fontWeight: FontWeight.bold,
@@ -602,11 +589,11 @@ class PostBusinessOpportunitiesScreenState
                   Text(
                     isEdit
                         ? (_isHindi
-                            ? 'अपने प्रकाशित अवसर के वित्तीय मापदंड, विवरण और संपर्क जानकारी अपडेट करें।'
-                            : 'Update financial parameters, description, and contact information for your listing.')
+                              ? 'अपने प्रकाशित अवसर के वित्तीय मापदंड, विवरण और संपर्क जानकारी अपडेट करें।'
+                              : 'Update financial parameters, description, and contact information for your listing.')
                         : (_isHindi
-                            ? 'अपने व्यवसाय के विकास के लिए सत्यापित वितरकों, साझेदारों या फ्रेंचाइजी को आमंत्रित करें।'
-                            : 'Invite verified distributors, partners, or franchisees for your business growth.'),
+                              ? 'अपने व्यवसाय के विकास के लिए सत्यापित वितरकों, साझेदारों या फ्रेंचाइजी को आमंत्रित करें।'
+                              : 'Invite verified distributors, partners, or franchisees for your business growth.'),
                     style: TextStyle(fontSize: 13.sp, color: Colors.white70),
                   ),
                   SizedBox(height: 20.h),
@@ -748,7 +735,9 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'आवश्यक स्थान (क्षेत्रफल) *'
                               : 'Space / Area Required *',
-                          hintText: _isHindi ? 'उदा. 1200 sq ft' : 'e.g. 1200 sq ft',
+                          hintText: _isHindi
+                              ? 'उदा. 1200 sq ft'
+                              : 'e.g. 1200 sq ft',
                           validatorMsg: _isHindi
                               ? 'क्षेत्रफल दर्ज करें'
                               : 'Enter area details',
@@ -763,7 +752,9 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'अनुमानित रिटर्न / लाभ मार्जिन *'
                         : 'Expected Returns / Profit Margin *',
-                    hintText: _isHindi ? 'उदा. 15% वार्षिक' : 'e.g. 15% annually',
+                    hintText: _isHindi
+                        ? 'उदा. 15% वार्षिक'
+                        : 'e.g. 15% annually',
                     validatorMsg: _isHindi
                         ? 'रिटर्न विवरण दर्ज करें'
                         : 'Please specify returns details',
@@ -857,7 +848,9 @@ class PostBusinessOpportunitiesScreenState
                     label: _isHindi
                         ? 'संपर्क व्यक्ति का नाम *'
                         : 'Contact Person Name *',
-                    hintText: _isHindi ? 'उदा. राहुल शर्मा' : 'e.g. Rahul Sharma',
+                    hintText: _isHindi
+                        ? 'उदा. राहुल शर्मा'
+                        : 'e.g. Rahul Sharma',
                     validatorMsg: _isHindi
                         ? 'संपर्क व्यक्ति का नाम दर्ज करें'
                         : 'Enter contact person name',
@@ -872,7 +865,9 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'मोबाइल / व्हाट्सएप नंबर *'
                               : 'Mobile / WhatsApp Number *',
-                          hintText: _isHindi ? 'उदा. 9876543210' : 'e.g. 9876543210',
+                          hintText: _isHindi
+                              ? 'उदा. 9876543210'
+                              : 'e.g. 9876543210',
                           validatorMsg: _isHindi
                               ? 'फ़ोन नंबर दर्ज करें'
                               : 'Enter phone number',
@@ -887,7 +882,9 @@ class PostBusinessOpportunitiesScreenState
                           label: _isHindi
                               ? 'व्यापारिक ईमेल *'
                               : 'Business Email *',
-                          hintText: _isHindi ? 'उदा. rahul@example.com' : 'e.g. rahul@example.com',
+                          hintText: _isHindi
+                              ? 'उदा. rahul@example.com'
+                              : 'e.g. rahul@example.com',
                           validatorMsg: _isHindi
                               ? 'ईमेल दर्ज करें'
                               : 'Enter email address',
@@ -922,11 +919,11 @@ class PostBusinessOpportunitiesScreenState
                           : Text(
                               isEdit
                                   ? (_isHindi
-                                      ? 'अवसर अपडेट करें'
-                                      : 'Update Opportunity Listing')
+                                        ? 'अवसर अपडेट करें'
+                                        : 'Update Opportunity Listing')
                                   : (_isHindi
-                                      ? 'अवसर सूची प्रकाशित करें'
-                                      : 'Publish Opportunity Listing'),
+                                        ? 'अवसर सूची प्रकाशित करें'
+                                        : 'Publish Opportunity Listing'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -1221,32 +1218,16 @@ class PostBusinessOpportunitiesScreenState
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        labelStyle: TextStyle(
-          color: Colors.white60,
-          fontSize: 14.5.sp,
-        ),
-        hintStyle: TextStyle(
-          color: Colors.white38,
-          fontSize: 12.5.sp,
-        ),
+        labelStyle: TextStyle(color: Colors.white60, fontSize: 14.5.sp),
+        hintStyle: TextStyle(color: Colors.white38, fontSize: 12.5.sp),
         prefixIcon: Padding(
           padding: EdgeInsets.only(left: 14.w, right: 8.w),
-          child: Icon(
-            icon,
-            color: Colors.white60,
-            size: 22.sp,
-          ),
+          child: Icon(icon, color: Colors.white60, size: 22.sp),
         ),
-        prefixIconConstraints: BoxConstraints(
-          minWidth: 44.w,
-          minHeight: 46.h,
-        ),
+        prefixIconConstraints: BoxConstraints(minWidth: 44.w, minHeight: 46.h),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.05),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 16.w,
-          vertical: 16.h,
-        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
           borderSide: const BorderSide(color: Colors.white24),
@@ -1265,10 +1246,7 @@ class PostBusinessOpportunitiesScreenState
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: BorderSide(
-            color: Colors.redAccent,
-            width: 1.5.w,
-          ),
+          borderSide: BorderSide(color: Colors.redAccent, width: 1.5.w),
         ),
       ),
       validator: (value) {
@@ -1288,36 +1266,20 @@ class PostBusinessOpportunitiesScreenState
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: TextStyle(
-        color: Colors.white60,
-        fontSize: 14.5.sp,
-      ),
-      hintStyle: TextStyle(
-        color: Colors.white38,
-        fontSize: 12.5.sp,
-      ),
+      labelStyle: TextStyle(color: Colors.white60, fontSize: 14.5.sp),
+      hintStyle: TextStyle(color: Colors.white38, fontSize: 12.5.sp),
       prefixIcon: icon != null
           ? Padding(
               padding: EdgeInsets.only(left: 14.w, right: 8.w),
-              child: Icon(
-                icon,
-                color: Colors.white60,
-                size: 22.sp,
-              ),
+              child: Icon(icon, color: Colors.white60, size: 22.sp),
             )
           : null,
       prefixIconConstraints: icon != null
-          ? BoxConstraints(
-              minWidth: 44.w,
-              minHeight: 46.h,
-            )
+          ? BoxConstraints(minWidth: 44.w, minHeight: 46.h)
           : null,
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: 16.w,
-        vertical: 16.h,
-      ),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14.r),
         borderSide: const BorderSide(color: Colors.white24),
@@ -1336,10 +1298,7 @@ class PostBusinessOpportunitiesScreenState
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14.r),
-        borderSide: BorderSide(
-          color: Colors.redAccent,
-          width: 1.5.w,
-        ),
+        borderSide: BorderSide(color: Colors.redAccent, width: 1.5.w),
       ),
     );
   }

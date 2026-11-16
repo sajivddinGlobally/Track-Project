@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/SubmitGrievanceBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/SubmitGrievanceResModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class GrievanceDpoScreen extends ConsumerStatefulWidget {
   final bool isHindi;
@@ -77,16 +78,11 @@ class _GrievanceDpoScreenState extends ConsumerState<GrievanceDpoScreen> {
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isHindi
-                ? 'ईमेल ऐप नहीं खुला। कृपया मैन्युअल ईमेल भेजें: $email'
-                : 'Could not launch email client. Please email manually: $email',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF0F3D38),
-        ),
+      showErrorSnackBar(
+        widget.isHindi
+            ? 'ईमेल ऐप नहीं खुला। कृपया मैन्युअल ईमेल भेजें: $email'
+            : 'Could not launch email client. Please email manually: $email',
+        context,
       );
     }
   }
@@ -95,16 +91,11 @@ class _GrievanceDpoScreenState extends ConsumerState<GrievanceDpoScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_isVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            widget.isHindi
-                ? 'कृपया आगे बढ़ने के लिए सत्यापन चेकबॉक्स चुनें'
-                : 'Please verify the declaration checkbox before submitting',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-        ),
+      showErrorSnackBar(
+        widget.isHindi
+            ? 'कृपया आगे बढ़ने के लिए सत्यापन चेकबॉक्स चुनें'
+            : 'Please verify the declaration checkbox before submitting',
+        context,
       );
       return;
     }
@@ -287,18 +278,11 @@ class _GrievanceDpoScreenState extends ConsumerState<GrievanceDpoScreen> {
                               Clipboard.setData(
                                 ClipboardData(text: receiptCode),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    widget.isHindi
-                                        ? 'कोड कॉपी कर लिया गया'
-                                        : 'Receipt code copied',
-                                    style: GoogleFonts.outfit(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  duration: const Duration(seconds: 1),
-                                ),
+                              showSuccessSnackBar(
+                                widget.isHindi
+                                    ? 'कोड कॉपी कर लिया गया'
+                                    : 'Receipt code copied',
+                                context,
                               );
                             },
                           ),

@@ -19,6 +19,7 @@ import 'package:track_loved/DrawerScreen/PostBusinessOpportunitiesScreen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/Data/BodyModel/updateJobPostBodyModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 /// Model for Employer Job Posting
 class EmployerJobItem {
@@ -381,20 +382,11 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                   ? null
                   : () async {
                       if (titleController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: Colors.red.shade800,
-                            behavior: SnackBarBehavior.floating,
-                            content: Text(
-                              _isHindi
-                                  ? 'कृपया पद का शीर्षक दर्ज करें'
-                                  : 'Please enter job title',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.sp,
-                              ),
-                            ),
-                          ),
+                        showErrorSnackBar(
+                          _isHindi
+                              ? 'कृपया पद का शीर्षक दर्ज करें'
+                              : 'Please enter job title',
+                          context,
                         );
                         return;
                       }
@@ -431,60 +423,33 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                             Navigator.pop(dialogCtx);
                           }
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: const Color(0xFF0F3D38),
-                                behavior: SnackBarBehavior.floating,
-                                content: Text(
-                                  res.message ??
-                                      (_isHindi
-                                          ? '✅ नौकरी सफलतापूर्वक अपडेट कर दी गई!'
-                                          : '✅ Job post updated successfully.'),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13.sp,
-                                  ),
-                                ),
-                              ),
+                            showSuccessSnackBar(
+                              res.message ??
+                                  (_isHindi
+                                      ? '✅ नौकरी सफलतापूर्वक अपडेट कर दी गई!'
+                                      : '✅ Job post updated successfully.'),
+                              context,
                             );
                           }
                         } else {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: Colors.red.shade800,
-                                behavior: SnackBarBehavior.floating,
-                                content: Text(
-                                  res.message ??
-                                      (_isHindi
-                                          ? 'अपडेट करने में विफल!'
-                                          : 'Failed to update job post.'),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13.sp,
-                                  ),
-                                ),
-                              ),
+                            showErrorSnackBar(
+                              res.message ??
+                                  (_isHindi
+                                      ? 'अपडेट करने में विफल!'
+                                      : 'Failed to update job post.'),
+                              context,
                             );
                           }
                         }
                       } catch (e) {
                         log(e.toString());
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: Colors.red.shade800,
-                              behavior: SnackBarBehavior.floating,
-                              content: Text(
-                                _isHindi
-                                    ? 'अपडेट करने में त्रुटि हुई!'
-                                    : 'An error occurred while updating.',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13.sp,
-                                ),
-                              ),
-                            ),
+                          showErrorSnackBar(
+                            _isHindi
+                                ? 'अपडेट करने में त्रुटि हुई!'
+                                : 'An error occurred while updating.',
+                            context,
                           );
                         }
                       } finally {
@@ -679,15 +644,11 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                     ? null
                     : () async {
                         if (job.id == null || job.id!.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color(0xFFDC2626),
-                              content: Text(
-                                _isHindi
-                                    ? 'अमान्य नौकरी आईडी'
-                                    : 'Invalid Job Post ID.',
-                              ),
-                            ),
+                          showErrorSnackBar(
+                            _isHindi
+                                ? 'अमान्य नौकरी आईडी'
+                                : 'Invalid Job Post ID.',
+                            context,
                           );
                           return;
                         }
@@ -723,27 +684,12 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                                 .refresh();
 
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFF0F3D38),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    side: const BorderSide(
-                                      color: Color(0xFF10B981),
-                                    ),
-                                  ),
-                                  content: Text(
-                                    res.message ??
-                                        (_isHindi
-                                            ? '🗑️ पोस्ट सफलतापूर्वक हटा दी गई।'
-                                            : '🗑️ Job post deleted successfully.'),
-                                    style: TextStyle(
-                                      fontSize: 12.5.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                              showSuccessSnackBar(
+                                res.message ??
+                                    (_isHindi
+                                        ? '🗑️ पोस्ट सफलतापूर्वक हटा दी गई।'
+                                        : '🗑️ Job post deleted successfully.'),
+                                context,
                               );
                             }
                           } else {
@@ -751,24 +697,12 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                               isDeleting = false;
                             });
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: const Color(0xFFDC2626),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  content: Text(
-                                    res.message ??
-                                        (_isHindi
-                                            ? 'हटाने में विफलता हुई!'
-                                            : 'Failed to delete job post.'),
-                                    style: TextStyle(
-                                      fontSize: 12.5.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                              showErrorSnackBar(
+                                res.message ??
+                                    (_isHindi
+                                        ? 'हटाने में विफलता हुई!'
+                                        : 'Failed to delete job post.'),
+                                context,
                               );
                             }
                           }
@@ -777,21 +711,9 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                             isDeleting = false;
                           });
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: const Color(0xFFDC2626),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                content: Text(
-                                  e.toString().replaceAll("Exception: ", ""),
-                                  style: TextStyle(
-                                    fontSize: 12.5.sp,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
+                            showErrorSnackBar(
+                              e.toString().replaceAll("Exception: ", ""),
+                              context,
                             );
                           }
                         }
@@ -1005,20 +927,11 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                         }
 
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: const Color(0xFF0F3D38),
-                              behavior: SnackBarBehavior.floating,
-                              content: Text(
-                                _isHindi
-                                    ? '🗑️ बिज़नेस एक्सपैंशन पोस्ट सफलतापूर्वक हटा दी गई।'
-                                    : '🗑️ Business expansion purged and access tokens revoked.',
-                                style: TextStyle(
-                                  fontSize: 12.5.sp,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                          showSuccessSnackBar(
+                            _isHindi
+                                ? '🗑️ बिज़नेस एक्सपैंशन पोस्ट सफलतापूर्वक हटा दी गई।'
+                                : '🗑️ Business expansion purged and access tokens revoked.',
+                            context,
                           );
                         }
                       },
@@ -2165,14 +2078,11 @@ class _ManageMyPostingsScreenState extends ConsumerState<ManageMyPostingsScreen>
                       );
                     } else {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isHindi
-                                  ? 'बायोडाटा लिंक नहीं खुल सका'
-                                  : 'Could not open resume URL',
-                            ),
-                          ),
+                        showErrorSnackBar(
+                          _isHindi
+                              ? 'बायोडाटा लिंक नहीं खुल सका'
+                              : 'Could not open resume URL',
+                          context,
                         );
                       }
                     }

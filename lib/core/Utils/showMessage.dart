@@ -3,9 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'key.dart';
 
-void showSuccessSnackBar(String message) {
-  snackBarKey.currentState?.hideCurrentSnackBar();
-  snackBarKey.currentState?.showSnackBar(
+void showSuccessSnackBar(String message, [BuildContext? context]) {
+  final messenger = context != null
+      ? (ScaffoldMessenger.maybeOf(context) ?? snackBarKey.currentState)
+      : snackBarKey.currentState;
+  messenger?.hideCurrentSnackBar();
+  messenger?.showSnackBar(
     SnackBar(
       content: Row(
         children: [
@@ -24,7 +27,7 @@ void showSuccessSnackBar(String message) {
           ),
         ],
       ),
-      backgroundColor: Colors.green.shade600,
+      backgroundColor: const Color(0xFF002E29),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       margin: EdgeInsets.all(16.w),
@@ -34,9 +37,12 @@ void showSuccessSnackBar(String message) {
   );
 }
 
-void showErrorSnackBar(String message) {
-  snackBarKey.currentState?.hideCurrentSnackBar();
-  snackBarKey.currentState?.showSnackBar(
+void showErrorSnackBar(String message, [BuildContext? context]) {
+  final messenger = context != null
+      ? (ScaffoldMessenger.maybeOf(context) ?? snackBarKey.currentState)
+      : snackBarKey.currentState;
+  messenger?.hideCurrentSnackBar();
+  messenger?.showSnackBar(
     SnackBar(
       content: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

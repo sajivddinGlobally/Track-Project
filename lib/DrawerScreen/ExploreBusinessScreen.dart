@@ -13,6 +13,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/CreateOpportunityReportBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetBusinessOpportunitiesResModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class ExploreBusinessScreen extends ConsumerStatefulWidget {
   const ExploreBusinessScreen({super.key});
@@ -1880,25 +1881,12 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                                 Navigator.pop(sheetCtx);
 
                                 if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: const Color(0xFF0B4F4A),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                    content: Text(
-                                      reportResponse.message ??
-                                          (_isHindi
-                                              ? 'अवसर रिपोर्ट सफलतापूर्वक दर्ज की गई।'
-                                              : 'Opportunity report submitted successfully.'),
-                                      style: TextStyle(
-                                        fontSize: 13.5.sp,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
+                                showSuccessSnackBar(
+                                  reportResponse.message ??
+                                      (_isHindi
+                                          ? 'अवसर रिपोर्ट सफलतापूर्वक दर्ज की गई।'
+                                          : 'Opportunity report submitted successfully.'),
+                                  context,
                                 );
                               } catch (e) {
                                 log("Create opportunity report error: $e");
@@ -2443,23 +2431,11 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                                         final picked = result.files.first;
                                         if (picked.size > 5 * 1024 * 1024) {
                                           if (sheetCtx.mounted) {
-                                            ScaffoldMessenger.of(
+                                            showErrorSnackBar(
+                                              _isHindi
+                                                  ? 'बायोडाटा फ़ाइल का आकार 5 MB से कम होना चाहिए।'
+                                                  : 'Resume file size must be less than 5 MB.',
                                               sheetCtx,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                content: Text(
-                                                  _isHindi
-                                                      ? 'बायोडाटा फ़ाइल का आकार 5 MB से कम होना चाहिए।'
-                                                      : 'Resume file size must be less than 5 MB.',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
                                             );
                                           }
                                         } else {
@@ -2928,19 +2904,11 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                               final comment = commentController.text.trim();
 
                               if (name.isEmpty) {
-                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.redAccent,
-                                    behavior: SnackBarBehavior.floating,
-                                    content: Text(
-                                      _isHindi
-                                          ? 'कृपया अपना पूरा नाम दर्ज करें।'
-                                          : 'Please enter your full name.',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                                showErrorSnackBar(
+                                  _isHindi
+                                      ? 'कृपया अपना पूरा नाम दर्ज करें।'
+                                      : 'Please enter your full name.',
+                                  sheetCtx,
                                 );
                                 return;
                               }
@@ -2950,19 +2918,11 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                                 '',
                               );
                               if (cleanPhone.length < 10) {
-                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.redAccent,
-                                    behavior: SnackBarBehavior.floating,
-                                    content: Text(
-                                      _isHindi
-                                          ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'
-                                          : 'Please enter a valid 10-digit mobile number.',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                                showErrorSnackBar(
+                                  _isHindi
+                                      ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'
+                                      : 'Please enter a valid 10-digit mobile number.',
+                                  sheetCtx,
                                 );
                                 return;
                               }
@@ -2970,38 +2930,22 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                               if (email.isEmpty ||
                                   !email.contains('@') ||
                                   !email.contains('.')) {
-                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.redAccent,
-                                    behavior: SnackBarBehavior.floating,
-                                    content: Text(
-                                      _isHindi
-                                          ? 'कृपया एक मान्य ईमेल पता दर्ज करें।'
-                                          : 'Please enter a valid email address.',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                                showErrorSnackBar(
+                                  _isHindi
+                                      ? 'कृपया एक मान्य ईमेल पता दर्ज करें।'
+                                      : 'Please enter a valid email address.',
+                                  sheetCtx,
                                 );
                                 return;
                               }
 
                               final postId = item.id ?? '';
                               if (postId.isEmpty) {
-                                ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: Colors.redAccent,
-                                    behavior: SnackBarBehavior.floating,
-                                    content: Text(
-                                      _isHindi
-                                          ? 'अमान्य पोस्ट आईडी।'
-                                          : 'Invalid post ID.',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                                showErrorSnackBar(
+                                  _isHindi
+                                      ? 'अमान्य पोस्ट आईडी।'
+                                      : 'Invalid post ID.',
+                                  sheetCtx,
                                 );
                                 return;
                               }
@@ -3034,26 +2978,12 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                                 }
 
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      backgroundColor: const Color(0xFF0B4F4A),
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      content: Text(
-                                        response.message ??
-                                            (_isHindi
-                                                ? 'आवेदन एवं प्रोफ़ाइल सुरक्षित रूप से जमा की गई।'
-                                                : 'Application and profile submitted successfully!'),
-                                        style: TextStyle(
-                                          fontSize: 13.5.sp,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
+                                  showSuccessSnackBar(
+                                    response.message ??
+                                        (_isHindi
+                                            ? 'आवेदन एवं प्रोफ़ाइल सुरक्षित रूप से जमा की गई।'
+                                            : 'Application and profile submitted successfully!'),
+                                    context,
                                   );
                                   _showContactDialog(context, item);
                                 }
@@ -3061,25 +2991,11 @@ class _ExploreBusinessScreenState extends ConsumerState<ExploreBusinessScreen>
                                 log('Apply Job Profile Error: $e');
                                 if (sheetCtx.mounted) {
                                   setModalState(() => isSubmitting = false);
-                                  ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                                    SnackBar(
-                                      backgroundColor: Colors.redAccent,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                      ),
-                                      content: Text(
-                                        _isHindi
-                                            ? 'आवेदन सबमिट करने में त्रुटि: ${e.toString().replaceAll('Exception: ', '')}'
-                                            : 'Failed to submit application: ${e.toString().replaceAll('Exception: ', '')}',
-                                        style: TextStyle(
-                                          fontSize: 13.5.sp,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
+                                  showErrorSnackBar(
+                                    _isHindi
+                                        ? 'आवेदन सबमिट करने में त्रुटि: ${e.toString().replaceAll('Exception: ', '')}'
+                                        : 'Failed to submit application: ${e.toString().replaceAll('Exception: ', '')}',
+                                    sheetCtx,
                                   );
                                 }
                               }

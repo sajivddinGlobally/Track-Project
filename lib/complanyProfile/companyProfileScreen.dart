@@ -10,6 +10,7 @@ import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.da
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/BusinessProfileBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class CompanyProfileScreen extends ConsumerStatefulWidget {
   final bool isEdit;
@@ -205,31 +206,21 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         !_agreeSurveillanceProhibition ||
         !_agreeDataErasure ||
         !_agreeNoEmploymentContract) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'कृपया आगे बढ़ने से पहले सभी 4 अनिवार्य वैधानिक समझौतों को स्वीकार करें।'
-                : 'Please accept all 4 mandatory DPDPA statutory terms before proceeding.',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'कृपया आगे बढ़ने से पहले सभी 4 अनिवार्य वैधानिक समझौतों को स्वीकार करें।'
+            : 'Please accept all 4 mandatory DPDPA statutory terms before proceeding.',
+        context,
       );
       return;
     }
 
     if (_selectedCompanyType == null || _selectedCompanyType!.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'कृपया कंपनी का प्रकार चुनें'
-                : 'Please select company entity type',
-            style: const TextStyle(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'कृपया कंपनी का प्रकार चुनें'
+            : 'Please select company entity type',
+        context,
       );
       return;
     }

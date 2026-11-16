@@ -78,6 +78,8 @@ import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
 import '../Data/ResponseModel/FriendLocationResModel.dart';
 import '../Data/BodyModel/LocationSharingActionBodyModel.dart';
 import '../Data/ResponseModel/LocationSharingActionResModel.dart';
+import '../Data/BodyModel/DeleteNotificationsBodyModel.dart';
+import '../Data/ResponseModel/DeleteNotificationResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -360,6 +362,16 @@ abstract class ApiStateNetwork {
 
   @PATCH("/api/v1/notifications/read-all")
   Future<dynamic> readAllNotifications();
+
+  @DELETE("/api/v1/notifications")
+  Future<DeleteNotificationResModel> deleteSingleNotification(
+    @Query("notificationId") String notificationId,
+  );
+
+  @DELETE("/api/v1/notifications")
+  Future<DeleteNotificationResModel> deleteNotifications(
+    @Body() DeleteNotificationsBodyModel body,
+  );
 
   @GET("/api/v1/auth/dashboard")
   Future<GetDashboardModel> getDashboardData();

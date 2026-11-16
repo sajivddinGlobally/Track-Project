@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
+import 'package:track_loved/core/Data/ResponseModel/DeleteNotificationResModel.dart';
 
 import '../../core/Data/ResponseModel/getNotificationListModel.dart';
 
@@ -169,6 +170,110 @@ class GetNotificationNotifier
       final service = ref.read(authServiceProvider);
       await service.readAllNotificationsData();
     } catch (_) {}
+  }
+
+  Future<DeleteNotificationResModel> deleteSingleNotification(String id) async {
+    final service = ref.read(authServiceProvider);
+    final response = await service.deleteSingleNotificationData(
+      notificationId: id,
+    );
+
+    if (response.success == true) {
+      final current = state.value;
+      if (current != null && current.data != null) {
+        final target = current.data!.firstWhere(
+          (item) => item.id == id,
+          orElse: () => Datum(),
+        );
+        final bool wasUnread = target.isRead != true;
+        final updatedList =
+            current.data!.where((item) => item.id != id).toList();
+
+        final currentTotal =
+            current.totalNotifications ?? current.data!.length;
+        final currentUnread = current.unreadCount ?? 0;
+
+        state = AsyncValue.data(
+          GetNotificationListModel(
+            success: current.success,
+            message: response.message ?? current.message,
+            unreadCount: wasUnread && currentUnread > 0
+                ? currentUnread - 1
+                : currentUnread,
+            totalNotifications:
+                currentTotal > 0 ? currentTotal - 1 : 0,
+            currentPage: current.currentPage,
+            totalPages: current.totalPages,
+            data: updatedList,
+          ),
+        );
+      }
+    }
+    return response;
+  }
+
+  Future<DeleteNotificationResModel> deleteSelectedNotifications(
+    List<String> ids,
+  ) async {
+    final service = ref.read(authServiceProvider);
+    final response = await service.deleteSelectedNotificationsData(
+      notificationIds: ids,
+    );
+
+    if (response.success == true) {
+      final current = state.value;
+      if (current != null && current.data != null) {
+        final idSet = ids.toSet();
+        int unreadDeletedCount = 0;
+        for (final item in current.data!) {
+          if (idSet.contains(item.id) && item.isRead != true) {
+            unreadDeletedCount++;
+          }
+        }
+        final updatedList =
+            current.data!.where((item) => !idSet.contains(item.id)).toList();
+
+        final currentTotal =
+            current.totalNotifications ?? current.data!.length;
+        final currentUnread = current.unreadCount ?? 0;
+
+        state = AsyncValue.data(
+          GetNotificationListModel(
+            success: current.success,
+            message: response.message ?? current.message,
+            unreadCount:
+                (currentUnread - unreadDeletedCount).clamp(0, 999999),
+            totalNotifications:
+                (currentTotal - ids.length).clamp(0, 999999),
+            currentPage: current.currentPage,
+            totalPages: current.totalPages,
+            data: updatedList,
+          ),
+        );
+      }
+    }
+    return response;
+  }
+
+  Future<DeleteNotificationResModel> deleteAllNotifications() async {
+    final service = ref.read(authServiceProvider);
+    final response = await service.deleteAllNotificationsData();
+
+    if (response.success == true) {
+      final current = state.value;
+      state = AsyncValue.data(
+        GetNotificationListModel(
+          success: current?.success ?? true,
+          message: response.message ?? 'All notifications deleted successfully',
+          unreadCount: 0,
+          totalNotifications: 0,
+          currentPage: 1,
+          totalPages: 1,
+          data: [],
+        ),
+      );
+    }
+    return response;
   }
 }
 

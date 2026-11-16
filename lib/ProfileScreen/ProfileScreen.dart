@@ -396,15 +396,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _isGoogleAvatar = false;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isHindi
-                    ? 'फ़ोटो सफलतापूर्वक चुनी गई!'
-                    : 'Photo selected successfully!',
-              ),
-              backgroundColor: const Color(0xFF4CAF50),
-            ),
+          showSuccessSnackBar(
+            _isHindi
+                ? 'फ़ोटो सफलतापूर्वक चुनी गई!'
+                : 'Photo selected successfully!',
+            context,
           );
         }
       }
@@ -533,14 +529,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80';
                       _isGoogleAvatar = false;
                     });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          _isHindi
-                              ? 'डिवाइस से फोटो अपलोड हो गई!'
-                              : 'Photo uploaded from device!',
-                        ),
-                      ),
+                    showSuccessSnackBar(
+                      _isHindi
+                          ? 'डिवाइस से फोटो अपलोड हो गई!'
+                          : 'Photo uploaded from device!',
+                      context,
                     );
                   },
                 ),
@@ -836,26 +829,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   });
                   _validateForm();
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _isHindi
-                            ? 'मोबाइल नंबर सफलतापूर्वक सत्यापित हुआ!'
-                            : 'Mobile number verified successfully!',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
+                  showSuccessSnackBar(
+                    _isHindi
+                        ? 'मोबाइल नंबर सफलतापूर्वक सत्यापित हुआ!'
+                        : 'Mobile number verified successfully!',
+                    context,
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        _isHindi
-                            ? 'कृपया वैध 4-अंकों का OTP दर्ज करें।'
-                            : 'Please enter a valid 4-digit OTP.',
-                      ),
-                      backgroundColor: Colors.redAccent,
-                    ),
+                  showErrorSnackBar(
+                    _isHindi
+                        ? 'कृपया वैध 4-अंकों का OTP दर्ज करें।'
+                        : 'Please enter a valid 4-digit OTP.',
+                    context,
                   );
                 }
               },

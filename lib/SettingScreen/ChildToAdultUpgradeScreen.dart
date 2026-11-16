@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class ChildToAdultUpgradeScreen extends ConsumerStatefulWidget {
   final bool isHindi;
@@ -117,31 +118,21 @@ class _ChildToAdultUpgradeScreenState
     if (!_formKey.currentState!.validate()) return;
 
     if (_calculatedAge < 18) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'बालिग प्रमाणीकरण के लिए आपकी आयु 18 वर्ष या उससे अधिक होनी चाहिए।'
-                : 'You must be at least 18 years of age to upgrade to an adult account.',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.redAccent.shade700,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'बालिग प्रमाणीकरण के लिए आपकी आयु 18 वर्ष या उससे अधिक होनी चाहिए।'
+            : 'You must be at least 18 years of age to upgrade to an adult account.',
+        context,
       );
       return;
     }
 
     if (!_agreedToDeclaration) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'कृपया आगे बढ़ने से पहले स्व-घोषणा (Self-declaration) स्वीकार करें।'
-                : 'Please check the self-declaration box to confirm your legal consent.',
-            style: GoogleFonts.outfit(color: Colors.white),
-          ),
-          backgroundColor: Colors.orangeAccent.shade700,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'कृपया आगे बढ़ने से पहले स्व-घोषणा (Self-declaration) स्वीकार करें।'
+            : 'Please check the self-declaration box to confirm your legal consent.',
+        context,
       );
       return;
     }

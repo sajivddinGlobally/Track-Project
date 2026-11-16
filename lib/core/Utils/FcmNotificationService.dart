@@ -708,9 +708,6 @@ class FcmNotificationService {
     } else if (type == 'friend_request' ||
         screen == 'addnetwork' ||
         screen == 'networkingrequest') {
-      // nav.push(
-      //   MaterialPageRoute(builder: (_) => const AddNetworkSearchScreen()),
-      // );
       nav.push(
         MaterialPageRoute(builder: (_) => const NetworkingRequestScreen()),
       );

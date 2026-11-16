@@ -6,11 +6,13 @@ import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
 import 'package:track_loved/core/Utils/AddressText.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:track_loved/core/Data/BodyModel/TriggerSosBodyModel.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../HomeScreen/NotificationScreen.dart';
+import 'LiveLocationMapScreen.dart';
 import 'provider/searchLovedProvider.dart';
 
 class SearchLovedOnesScreen extends ConsumerStatefulWidget {
@@ -25,13 +27,26 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounceTimer;
+  Timer? _autoRefreshTimer;
 
   bool _isHindi = false;
   String _searchQuery = '';
   bool _isSosLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-refresh the list every 15 seconds so moved positions update automatically
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        ref.invalidate(searchLovedProvider);
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
     _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -83,15 +98,11 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
     if (lat == null || lng == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
-                  : 'Location coordinates not available',
-              style: TextStyle(fontSize: 13.sp),
-            ),
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
+              : 'Location coordinates not available',
+          context,
         );
       }
       return;
@@ -109,13 +120,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
     void showMapError() {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
-              style: TextStyle(fontSize: 13.sp),
-            ),
-          ),
+        showErrorSnackBar(
+          _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
+          context,
         );
       }
     }
@@ -222,32 +229,11 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       _isSosLoading = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? 'आपातकालीन एसओएस भेजा जा रहा है...'
-                    : 'Sending Emergency SOS alert...',
-                style: TextStyle(fontSize: 13.5.sp),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.red.shade700,
-        duration: const Duration(seconds: 4),
-      ),
+    showErrorSnackBar(
+      _isHindi
+          ? 'आपातकालीन एसओएस भेजा जा रहा है...'
+          : 'Sending Emergency SOS alert...',
+      context,
     );
 
     try {
@@ -265,17 +251,11 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
       if (position == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'सटीक स्थान प्राप्त नहीं हो सका। कृपया जीपीएस चालू करें।'
-                  : 'Could not fetch current location. Please turn on GPS.',
-              style: TextStyle(fontSize: 13.5.sp),
-            ),
-            backgroundColor: Colors.red.shade700,
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'सटीक स्थान प्राप्त नहीं हो सका। कृपया जीपीएस चालू करें।'
+              : 'Could not fetch current location. Please turn on GPS.',
+          context,
         );
         return;
       }
@@ -290,49 +270,31 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       final response = await ref.read(authServiceProvider).triggerSosData(body);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       if (response.success == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response.message ??
-                  (_isHindi
-                      ? 'आपातकालीन एसओएस अलर्ट सफलतापूर्वक भेजा गया!'
-                      : 'Emergency SOS alert triggered successfully!'),
-              style: TextStyle(fontSize: 13.5.sp, fontWeight: FontWeight.bold),
-            ),
-            backgroundColor: const Color(0xFF0B4F4A),
-            duration: const Duration(seconds: 4),
-          ),
+        showSuccessSnackBar(
+          response.message ??
+              (_isHindi
+                  ? 'आपातकालीन एसओएस अलर्ट सफलतापूर्वक भेजा गया!'
+                  : 'Emergency SOS alert triggered successfully!'),
+          context,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              response.message ??
-                  (_isHindi
-                      ? 'एसओएस भेजने में विफल रहा।'
-                      : 'Failed to trigger SOS alert.'),
-              style: TextStyle(fontSize: 13.5.sp),
-            ),
-            backgroundColor: Colors.red.shade700,
-          ),
+        showErrorSnackBar(
+          response.message ??
+              (_isHindi
+                  ? 'एसओएस भेजने में विफल रहा।'
+                  : 'Failed to trigger SOS alert.'),
+          context,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'त्रुटि: ${e.toString()}'
-                : 'Failed to trigger SOS: ${e.toString()}',
-            style: TextStyle(fontSize: 13.5.sp),
-          ),
-          backgroundColor: Colors.red.shade700,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'त्रुटि: ${e.toString()}'
+            : 'Failed to trigger SOS: ${e.toString()}',
+        context,
       );
     } finally {
       if (mounted) {
@@ -541,13 +503,56 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                           borderRadius: BorderRadius.circular(24.r),
                         ),
                       ),
-                      icon: Icon(Icons.map, color: Colors.white, size: 20.sp),
+                      icon: Icon(Icons.radar, color: Colors.white, size: 20.sp),
                       label: Text(
                         _isHindi
-                            ? 'मानचित्र पर स्थान देखें'
-                            : 'View Location on Map',
+                            ? 'लाइव ट्रैकिंग मैप देखें'
+                            : 'View Live Tracking Map',
                         style: TextStyle(
                           color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5.sp,
+                        ),
+                      ),
+                      onPressed: !canViewMap
+                          ? null
+                          : () {
+                              _viewLocationOnGoogleMap(user);
+                              Navigator.pop(context);
+                              ref.invalidate(searchLovedProvider);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LiveLocationMapScreen(
+                                    user: user,
+                                    isHindi: _isHindi,
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46.h,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0B4F4A),
+                        side: const BorderSide(
+                          color: Color(0xFF0B4F4A),
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24.r),
+                        ),
+                      ),
+                      icon: Icon(Icons.map, size: 19.sp),
+                      label: Text(
+                        _isHindi
+                            ? 'गूगल मैप्स में खोलें'
+                            : 'Open in Google Maps',
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13.5.sp,
                         ),
@@ -852,13 +857,13 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
         : (_isHindi ? 'स्थान उपलब्ध नहीं' : 'Location not available');
     // Server says whether this friend currently lets us see their location.
     final isActive = user.access != false;
+    final canViewMap = isActive && hasCoordinates;
     final statusColor = isActive
         ? const Color(0xFF2E7D32)
         : const Color(0xFFC62828);
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16.r),
@@ -871,111 +876,151 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 24.r,
-            backgroundColor:
-                (user.profileImage != null && user.profileImage!.isNotEmpty)
-                ? Colors.transparent
-                : _getAvatarColor(name),
-            backgroundImage:
-                (user.profileImage != null && user.profileImage!.isNotEmpty)
-                ? NetworkImage(user.profileImage!)
-                : null,
-            child: (user.profileImage == null || user.profileImage!.isEmpty)
-                ? Text(
-                    _getInitials(name),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp,
-                    ),
-                  )
-                : null,
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16.r),
+          onTap: () {
+            if (canViewMap) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      LiveLocationMapScreen(user: user, isHindi: _isHindi),
+                ),
+              );
+            } else {
+              _showLocationDetails(user);
+            }
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            child: Row(
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                CircleAvatar(
+                  radius: 24.r,
+                  backgroundColor:
+                      (user.profileImage != null &&
+                          user.profileImage!.isNotEmpty)
+                      ? Colors.transparent
+                      : _getAvatarColor(name),
+                  backgroundImage:
+                      (user.profileImage != null &&
+                          user.profileImage!.isNotEmpty)
+                      ? NetworkImage(user.profileImage!)
+                      : null,
+                  child:
+                      (user.profileImage == null || user.profileImage!.isEmpty)
+                      ? Text(
+                          _getInitials(name),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15.sp,
+                          ),
+                        )
+                      : null,
                 ),
-                SizedBox(height: 3.h),
-                AddressText(
-                  latitude: lat,
-                  longitude: lng,
-                  isHindi: _isHindi,
-                  unavailableText: locationText,
-                  maxLines: 2,
-                  style: TextStyle(
-                    fontSize: 12.5.sp,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: 4.h),
-                Row(
-                  children: [
-                    Icon(Icons.circle, size: 8.sp, color: statusColor),
-                    SizedBox(width: 6.w),
-                    Expanded(
-                      child: Text(
-                        isActive
-                            ? (_isHindi
-                                  ? 'स्थान सक्रिय (लाइव)'
-                                  : 'Location Active (Live)')
-                            : (_isHindi
-                                  ? 'स्थान निष्क्रिय'
-                                  : 'Location Inactive'),
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
                         style: TextStyle(
-                          fontSize: 11.5.sp,
-                          fontWeight: FontWeight.w500,
-                          color: statusColor,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 3.h),
+                      AddressText(
+                        latitude: lat,
+                        longitude: lng,
+                        isHindi: _isHindi,
+                        unavailableText: locationText,
+                        maxLines: 2,
+                        style: TextStyle(
+                          fontSize: 12.5.sp,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Row(
+                        children: [
+                          Icon(Icons.circle, size: 8.sp, color: statusColor),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              isActive
+                                  ? (_isHindi
+                                        ? 'स्थान सक्रिय (लाइव)'
+                                        : 'Location Active (Live)')
+                                  : (_isHindi
+                                        ? 'स्थान निष्क्रिय'
+                                        : 'Location Inactive'),
+                              style: TextStyle(
+                                fontSize: 11.5.sp,
+                                fontWeight: FontWeight.w500,
+                                color: statusColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.location_on,
+                    color: const Color(0xFF0B4F4A),
+                    size: 24.sp,
+                  ),
+                  onPressed: () => _showLocationDetails(user),
                 ),
               ],
             ),
           ),
-          IconButton(
-            icon: Icon(
-              Icons.location_on,
-              color: const Color(0xFF0B4F4A),
-              size: 24.sp,
-            ),
-            onPressed: () => _showLocationDetails(user),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+// import 'dart:async';
 // import 'package:flutter/material.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:track_loved/CustomScreen/CustomScreen.dart';
-// import 'package:track_loved/DrawerScreen/LiveLocationMapScreen.dart';
 // import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 // import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
 // import 'package:track_loved/core/Utils/AddressText.dart';
 // import 'package:geolocator/geolocator.dart';
 // import 'package:track_loved/core/Data/BodyModel/TriggerSosBodyModel.dart';
 // import 'package:url_launcher/url_launcher.dart';
+
+// import '../HomeScreen/NotificationScreen.dart';
+// import 'provider/searchLovedProvider.dart';
 
 // class SearchLovedOnesScreen extends ConsumerStatefulWidget {
 //   const SearchLovedOnesScreen({super.key});
@@ -988,73 +1033,22 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 // class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 //   final TextEditingController _searchController = TextEditingController();
+//   Timer? _debounceTimer;
 
 //   bool _isHindi = false;
-//   bool _isLoading = true;
-//   String? _errorMessage;
 //   String _searchQuery = '';
 //   bool _isSosLoading = false;
 
-//   List<LocationSharingUser> _users = [];
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       _fetchLocationSharing();
-//     });
-//   }
-
 //   @override
 //   void dispose() {
+//     _debounceTimer?.cancel();
 //     _searchController.dispose();
 //     super.dispose();
 //   }
 
-//   Future<void> _fetchLocationSharing({bool isRefresh = false}) async {
-//     if (!isRefresh) {
-//       setState(() {
-//         _isLoading = true;
-//         _errorMessage = null;
-//       });
-//     }
-
-//     try {
-//       final authService = ref.read(authServiceProvider);
-//       final response = await authService.getLocationSharingReceived(_searchQuery);
-
-//       if (!mounted) return;
-
-//       final fetchedUsers = response.data?.users ?? [];
-
-//       setState(() {
-//         _users = List<LocationSharingUser>.from(fetchedUsers);
-//         _isLoading = false;
-//         _errorMessage = null;
-//       });
-//     } catch (e) {
-//       if (!mounted) return;
-//       setState(() {
-//         _isLoading = false;
-//         if (_users.isEmpty) {
-//           _errorMessage = e.toString();
-//         }
-//       });
-//     }
-//   }
-
 //   Future<void> _handleRefresh() async {
-//     await _fetchLocationSharing(isRefresh: true);
-//   }
-
-//   // Static client-side search filtering
-//   List<LocationSharingUser> get _filteredLovedOnes {
-//     final query = _searchQuery.trim().toLowerCase();
-//     if (query.isEmpty) return _users;
-//     return _users.where((u) {
-//       final name = (u.name ?? '').toLowerCase();
-//       return name.contains(query);
-//     }).toList();
+//     ref.invalidate(searchLovedProvider);
+//     await ref.read(searchLovedProvider(_searchQuery).future);
 //   }
 
 //   String _getInitials(String name) {
@@ -1091,49 +1085,82 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //     return '$dateStr $timeStr';
 //   }
 
-//   Future<void> _openMapWithCoordinates(double? lat, double? lng) async {
-//     if (lat == null || lng == null) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text(
-//             _isHindi
-//                 ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
-//                 : 'Location coordinates not available',
-//             style: TextStyle(fontSize: 13.sp),
-//           ),
-//         ),
-//       );
-//       return;
-//     }
+//   void _viewLocationOnGoogleMap(LocationSharingUser user) {
+//     final lat = user.latitude;
+//     final lng = user.longitude;
+//     final targetId = user.userId;
 
-//     final uri = Uri.parse(
-//       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
-//     );
-//     try {
-//       if (await canLaunchUrl(uri)) {
-//         await launchUrl(uri, mode: LaunchMode.externalApplication);
-//       } else {
-//         if (mounted) {
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             SnackBar(
-//               content: Text(
-//                 _isHindi ? 'मानचित्र नहीं खोला जा सका' : 'Could not launch map',
-//                 style: TextStyle(fontSize: 13.sp),
-//               ),
-//             ),
-//           );
-//         }
-//       }
-//     } catch (_) {
+//     if (lat == null || lng == null) {
 //       if (mounted) {
 //         ScaffoldMessenger.of(context).showSnackBar(
 //           SnackBar(
 //             content: Text(
-//               _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening map',
+//               _isHindi
+//                   ? 'स्थान निर्देशांक उपलब्ध नहीं हैं'
+//                   : 'Location coordinates not available',
 //               style: TextStyle(fontSize: 13.sp),
 //             ),
 //           ),
 //         );
+//       }
+//       return;
+//     }
+
+//     // 1. Immediately launch Google Maps in Directions Route Overview mode (shows route options + Start button)
+//     // Old link (kept as comment as requested):
+//     // final oldUri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+//     final dirUri = Uri.parse(
+//       'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+//     );
+//     final searchUri = Uri.parse(
+//       'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+//     );
+
+//     void showMapError() {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(
+//               _isHindi ? 'त्रुटि उत्पन्न हुई' : 'Error opening Google Maps',
+//               style: TextStyle(fontSize: 13.sp),
+//             ),
+//           ),
+//         );
+//       }
+//     }
+
+//     Future<bool> tryLaunch(Uri u) async {
+//       try {
+//         return await launchUrl(u, mode: LaunchMode.externalApplication);
+//       } catch (_) {
+//         return false;
+//       }
+//     }
+
+//     void openMapDirections() async {
+//       final dirSuccess = await tryLaunch(dirUri);
+//       if (!dirSuccess) {
+//         final searchSuccess = await tryLaunch(searchUri);
+//         if (!searchSuccess) {
+//           showMapError();
+//         }
+//       }
+//     }
+
+//     openMapDirections();
+
+//     // 2. Send location-view notification in background asynchronously without blocking navigation
+//     if (targetId != null && targetId.isNotEmpty) {
+//       try {
+//         final authService = ref.read(authServiceProvider);
+//         authService
+//             .sendNotificationByIdData(id: targetId)
+//             .then((_) {})
+//             .catchError((e) {
+//               debugPrint('[LocationView] Error sending view notification: $e');
+//             });
+//       } catch (e) {
+//         debugPrint('[LocationView] Error dispatching view notification: $e');
 //       }
 //     }
 //   }
@@ -1237,8 +1264,8 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //       try {
 //         position = await Geolocator.getCurrentPosition(
 //           locationSettings: const LocationSettings(
-//             accuracy: LocationAccuracy.high,
-//             timeLimit: Duration(seconds: 6),
+//             accuracy: LocationAccuracy.bestForNavigation,
+//             timeLimit: Duration(seconds: 8),
 //           ),
 //         );
 //       } catch (_) {
@@ -1332,7 +1359,8 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //     final lat = user.latitude;
 //     final lng = user.longitude;
 //     final hasCoordinates = lat != null && lng != null;
-//     final canViewMap = user.access != false && hasCoordinates;
+//     final isActive = user.access != false;
+//     final canViewMap = isActive && hasCoordinates;
 //     final coordinatesText = hasCoordinates
 //         ? 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}'
 //         : (_isHindi ? 'स्थान उपलब्ध नहीं' : 'Location not available');
@@ -1473,14 +1501,39 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                           ),
 //                           SizedBox(height: 6.h),
 //                         ],
-//                         Text(
-//                           _isHindi
-//                               ? 'अंतिम अपडेट: ${_formatDateTime(user.updatedAt)}'
-//                               : 'Last updated: ${_formatDateTime(user.updatedAt)}',
-//                           style: TextStyle(
-//                             color: Colors.black54,
-//                             fontSize: 12.5.sp,
-//                           ),
+//                         Row(
+//                           children: [
+//                             Icon(
+//                               Icons.circle,
+//                               size: 8.sp,
+//                               color: isActive
+//                                   ? const Color(0xFF2E7D32)
+//                                   : const Color(0xFFC62828),
+//                             ),
+//                             SizedBox(width: 6.w),
+//                             Expanded(
+//                               child: Text(
+//                                 isActive
+//                                     ? (_isHindi
+//                                           ? 'स्थान सक्रिय (लाइव)'
+//                                           : 'Location Active (Live)')
+//                                     : (user.updatedAt != null
+//                                           ? (_isHindi
+//                                                 ? 'स्थान निष्क्रिय (अंतिम अपडेट: ${_formatDateTime(user.updatedAt)})'
+//                                                 : 'Location Inactive (Last updated: ${_formatDateTime(user.updatedAt)})')
+//                                           : (_isHindi
+//                                                 ? 'स्थान निष्क्रिय'
+//                                                 : 'Location Inactive')),
+//                                 style: TextStyle(
+//                                   color: isActive
+//                                       ? const Color(0xFF2E7D32)
+//                                       : const Color(0xFFC62828),
+//                                   fontSize: 12.sp,
+//                                   fontWeight: FontWeight.w600,
+//                                 ),
+//                               ),
+//                             ),
+//                           ],
 //                         ),
 //                       ],
 //                     ),
@@ -1510,22 +1563,10 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                       ),
 //                       onPressed: !canViewMap
 //                           ? null
-//                           : () async {
-//                               final screenContext = this.context;
+//                           : () {
+//                               _viewLocationOnGoogleMap(user);
 //                               Navigator.pop(context);
-//                               await Navigator.push(
-//                                 screenContext,
-//                                 MaterialPageRoute(
-//                                   builder: (_) => LiveLocationMapScreen(
-//                                     user: user,
-//                                     isHindi: _isHindi,
-//                                   ),
-//                                 ),
-//                               );
-//                               // Back from the map (e.g. sharing was turned off):
-//                               // reload the list from the API.
-//                               if (mounted)
-//                                 _fetchLocationSharing(isRefresh: true);
+//                               ref.invalidate(searchLovedProvider);
 //                             },
 //                     ),
 //                   ),
@@ -1541,7 +1582,7 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
 //   @override
 //   Widget build(BuildContext context) {
-//     final filteredLovedOnes = _filteredLovedOnes;
+//     final searchLovedState = ref.watch(searchLovedProvider(_searchQuery));
 
 //     return Scaffold(
 //       backgroundColor: const Color(0xFF002E29),
@@ -1584,7 +1625,12 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //             _isHindi = value;
 //           });
 //         },
-//         onNotificationPressed: () {},
+//         onNotificationPressed: () {
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(builder: (context) => NotificationScreen()),
+//           );
+//         },
 //       ),
 //       body: SafeArea(
 //         child: Center(
@@ -1611,7 +1657,15 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                 TextField(
 //                   controller: _searchController,
 //                   onChanged: (val) {
-//                     setState(() => _searchQuery = val);
+//                     _debounceTimer?.cancel();
+//                     _debounceTimer = Timer(
+//                       const Duration(milliseconds: 300),
+//                       () {
+//                         if (mounted) {
+//                           setState(() => _searchQuery = val.trim());
+//                         }
+//                       },
+//                     );
 //                   },
 //                   style: TextStyle(fontSize: 17.sp, color: Colors.black87),
 //                   decoration: InputDecoration(
@@ -1633,7 +1687,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                       color: Colors.black45,
 //                       size: 20.sp,
 //                     ),
-//                     suffixIcon: _searchQuery.isNotEmpty
+//                     suffixIcon:
+//                         _searchQuery.isNotEmpty ||
+//                             _searchController.text.isNotEmpty
 //                         ? IconButton(
 //                             icon: Icon(
 //                               Icons.clear,
@@ -1641,8 +1697,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                               color: Colors.black45,
 //                             ),
 //                             onPressed: () {
+//                               _debounceTimer?.cancel();
+//                               _searchController.clear();
 //                               setState(() {
-//                                 _searchController.clear();
 //                                 _searchQuery = '';
 //                               });
 //                             },
@@ -1664,98 +1721,125 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //                 ),
 //                 SizedBox(height: 14.h),
 //                 Expanded(
-//                   child: _isLoading
-//                       ? const Center(
-//                           child: CircularProgressIndicator(color: Colors.white),
-//                         )
-//                       : _errorMessage != null && _users.isEmpty
-//                       ? Center(
-//                           child: Padding(
-//                             padding: EdgeInsets.all(20.w),
-//                             child: Column(
-//                               mainAxisAlignment: MainAxisAlignment.center,
-//                               children: [
-//                                 Icon(
-//                                   Icons.error_outline,
-//                                   size: 48.sp,
-//                                   color: Colors.white60,
-//                                 ),
-//                                 SizedBox(height: 12.h),
-//                                 Text(
-//                                   _errorMessage != null
-//                                       ? _errorMessage!
-//                                       : (_isHindi
-//                                             ? 'कुछ गलत हो गया। कृपया फिर से प्रयास करें।'
-//                                             : 'Something went wrong. Please try again.'),
-//                                   style: TextStyle(
-//                                     color: Colors.white70,
-//                                     fontSize: 14.sp,
-//                                   ),
-//                                   textAlign: TextAlign.center,
-//                                 ),
-//                                 SizedBox(height: 16.h),
-//                                 ElevatedButton(
-//                                   style: ElevatedButton.styleFrom(
-//                                     backgroundColor: const Color(0xFF0B4F4A),
-//                                     shape: RoundedRectangleBorder(
-//                                       borderRadius: BorderRadius.circular(8.r),
-//                                     ),
-//                                   ),
-//                                   onPressed: () => _fetchLocationSharing(),
-//                                   child: Text(
-//                                     _isHindi ? 'पुनः प्रयास करें' : 'Retry',
-//                                     style: TextStyle(
-//                                       color: Colors.white,
-//                                       fontSize: 14.sp,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         )
-//                       : filteredLovedOnes.isEmpty
-//                       ? Center(
-//                           child: Padding(
-//                             padding: EdgeInsets.all(20.w),
-//                             child: Column(
-//                               mainAxisAlignment: MainAxisAlignment.center,
-//                               children: [
-//                                 Icon(
-//                                   Icons.person_search_outlined,
-//                                   size: 54.sp,
-//                                   color: Colors.white38,
-//                                 ),
-//                                 SizedBox(height: 12.h),
-//                                 Text(
-//                                   _isHindi
-//                                       ? 'कोई प्रियजन नहीं मिला'
-//                                       : 'No loved ones found',
-//                                   style: TextStyle(
-//                                     color: Colors.white70,
-//                                     fontSize: 14.sp,
-//                                   ),
-//                                   textAlign: TextAlign.center,
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         )
-//                       : RefreshIndicator(
+//                   child: searchLovedState.when(
+//                     data: (response) {
+//                       final users = response.data?.users ?? [];
+//                       final query = _searchQuery.trim().toLowerCase();
+//                       final filteredLovedOnes = query.isEmpty
+//                           ? users
+//                           : users.where((u) {
+//                               final name = (u.name ?? '').toLowerCase();
+//                               return name.contains(query);
+//                             }).toList();
+
+//                       if (filteredLovedOnes.isEmpty) {
+//                         return RefreshIndicator(
 //                           color: Colors.white,
 //                           backgroundColor: const Color(0xFF0B4F4A),
 //                           onRefresh: _handleRefresh,
-//                           child: ListView.builder(
-//                             physics: const AlwaysScrollableScrollPhysics(),
-//                             padding: EdgeInsets.only(bottom: 80.h),
-//                             itemCount: filteredLovedOnes.length,
-//                             itemBuilder: (context, index) {
-//                               return _buildLovedOneCard(
-//                                 filteredLovedOnes[index],
-//                               );
-//                             },
+//                           child: LayoutBuilder(
+//                             builder: (context, constraints) =>
+//                                 SingleChildScrollView(
+//                                   physics:
+//                                       const AlwaysScrollableScrollPhysics(),
+//                                   child: ConstrainedBox(
+//                                     constraints: BoxConstraints(
+//                                       minHeight: constraints.maxHeight,
+//                                     ),
+//                                     child: Center(
+//                                       child: Padding(
+//                                         padding: EdgeInsets.all(20.w),
+//                                         child: Column(
+//                                           mainAxisAlignment:
+//                                               MainAxisAlignment.center,
+//                                           children: [
+//                                             Icon(
+//                                               Icons.person_search_outlined,
+//                                               size: 54.sp,
+//                                               color: Colors.white38,
+//                                             ),
+//                                             SizedBox(height: 12.h),
+//                                             Text(
+//                                               _isHindi
+//                                                   ? 'कोई प्रियजन नहीं मिला'
+//                                                   : 'No loved ones found',
+//                                               style: TextStyle(
+//                                                 color: Colors.white70,
+//                                                 fontSize: 14.sp,
+//                                               ),
+//                                               textAlign: TextAlign.center,
+//                                             ),
+//                                           ],
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ),
 //                           ),
+//                         );
+//                       }
+
+//                       return RefreshIndicator(
+//                         color: Colors.white,
+//                         backgroundColor: const Color(0xFF0B4F4A),
+//                         onRefresh: _handleRefresh,
+//                         child: ListView.builder(
+//                           physics: const AlwaysScrollableScrollPhysics(),
+//                           padding: EdgeInsets.only(bottom: 80.h),
+//                           itemCount: filteredLovedOnes.length,
+//                           itemBuilder: (context, index) {
+//                             return _buildLovedOneCard(filteredLovedOnes[index]);
+//                           },
 //                         ),
+//                       );
+//                     },
+//                     loading: () => const Center(
+//                       child: CircularProgressIndicator(color: Colors.white),
+//                     ),
+//                     error: (error, stackTrace) => Center(
+//                       child: Padding(
+//                         padding: EdgeInsets.all(20.w),
+//                         child: Column(
+//                           mainAxisAlignment: MainAxisAlignment.center,
+//                           children: [
+//                             Icon(
+//                               Icons.error_outline,
+//                               size: 48.sp,
+//                               color: Colors.white60,
+//                             ),
+//                             SizedBox(height: 12.h),
+//                             Text(
+//                               error.toString(),
+//                               style: TextStyle(
+//                                 color: Colors.white70,
+//                                 fontSize: 14.sp,
+//                               ),
+//                               textAlign: TextAlign.center,
+//                             ),
+//                             SizedBox(height: 16.h),
+//                             ElevatedButton(
+//                               style: ElevatedButton.styleFrom(
+//                                 backgroundColor: const Color(0xFF0B4F4A),
+//                                 shape: RoundedRectangleBorder(
+//                                   borderRadius: BorderRadius.circular(8.r),
+//                                 ),
+//                               ),
+//                               onPressed: () {
+//                                 ref.invalidate(searchLovedProvider);
+//                               },
+//                               child: Text(
+//                                 _isHindi ? 'पुनः प्रयास करें' : 'Retry',
+//                                 style: TextStyle(
+//                                   color: Colors.white,
+//                                   fontSize: 14.sp,
+//                                 ),
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                     ),
+//                   ),
 //                 ),
 //               ],
 //             ),
@@ -1889,3 +1973,5 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 //     );
 //   }
 // }
+
+

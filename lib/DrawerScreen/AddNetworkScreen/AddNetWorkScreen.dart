@@ -161,15 +161,11 @@ class _AddNetworkSearchScreenState
             setLoading(false);
           });
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'संपर्क मैच करने के लिए अनुमति आवश्यक है।'
-                  : 'Contact permission is required to match contacts.',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'संपर्क मैच करने के लिए अनुमति आवश्यक है।'
+              : 'Contact permission is required to match contacts.',
+          context,
         );
         return;
       }
@@ -230,15 +226,11 @@ class _AddNetworkSearchScreenState
             setLoading(false);
           });
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'डिवाइस पर कोई मान्य संपर्क नंबर नहीं मिला।'
-                  : 'No valid contact numbers found on device.',
-            ),
-            backgroundColor: Colors.orange.shade800,
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'डिवाइस पर कोई मान्य संपर्क नंबर नहीं मिला।'
+              : 'No valid contact numbers found on device.',
+          context,
         );
         return;
       }
@@ -308,49 +300,18 @@ class _AddNetworkSearchScreenState
       if (!mounted) return;
       if (matchedUsers.isNotEmpty || inviteList.isNotEmpty) {
         final totalFound = matchedUsers.length + inviteList.length;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Text(
-                    _isHindi
-                        ? '$totalFound संपर्क लोड किए गए!'
-                        : '$totalFound contacts synced on Track Loved!',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF0B4F4A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            duration: const Duration(seconds: 4),
-          ),
+        showSuccessSnackBar(
+          _isHindi
+              ? '$totalFound संपर्क लोड किए गए!'
+              : '$totalFound contacts synced on Track Loved!',
+          context,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isHindi
-                  ? 'कोई संपर्क Track Loved पर नहीं मिला'
-                  : 'No contacts matched on Track Loved',
-              style: TextStyle(fontSize: 13.sp),
-            ),
-            backgroundColor: Colors.orange.shade800,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            duration: const Duration(seconds: 3),
-          ),
+        showErrorSnackBar(
+          _isHindi
+              ? 'कोई संपर्क Track Loved पर नहीं मिला'
+              : 'No contacts matched on Track Loved',
+          context,
         );
       }
     } catch (e) {
@@ -360,15 +321,11 @@ class _AddNetworkSearchScreenState
           setLoading(false);
         });
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'संपर्क मैच करने में त्रुटि: $e'
-                : 'Failed to match contacts: $e',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'संपर्क मैच करने में त्रुटि: $e'
+            : 'Failed to match contacts: $e',
+        context,
       );
     }
   }
@@ -381,15 +338,11 @@ class _AddNetworkSearchScreenState
   }) async {
     final cleanPhone = _normalizePhone(phone);
     if (cleanPhone.length != 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'
-                : 'Please enter a valid 10-digit mobile number.',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'कृपया 10 अंकों का मान्य मोबाइल नंबर दर्ज करें।'
+            : 'Please enter a valid 10-digit mobile number.',
+        context,
       );
       return;
     }
@@ -505,60 +458,18 @@ class _AddNetworkSearchScreenState
             (found.user?.name != null && found.user!.name!.isNotEmpty)
             ? found.user!.name
             : (found.contactName ?? name.trim());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Text(
-                    _isHindi
-                        ? '$displayName Track Loved पर मिल गए!'
-                        : '$displayName matched on Track Loved!',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF0B4F4A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            duration: const Duration(seconds: 4),
-          ),
+        showSuccessSnackBar(
+          _isHindi
+              ? '$displayName Track Loved पर मिल गए!'
+              : '$displayName matched on Track Loved!',
+          context,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.person_add_alt_1, color: Colors.white),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Text(
-                    _isHindi
-                        ? '$name को संपर्क सूची में सफलतापूर्वक जोड़ा गया!'
-                        : '$name added to contact list successfully!',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF0B4F4A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            duration: const Duration(seconds: 4),
-          ),
+        showSuccessSnackBar(
+          _isHindi
+              ? '$name को संपर्क सूची में सफलतापूर्वक जोड़ा गया!'
+              : '$name added to contact list successfully!',
+          context,
         );
       }
     } catch (e) {
@@ -566,15 +477,11 @@ class _AddNetworkSearchScreenState
       setModalState(() {
         setLoading(false);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isHindi
-                ? 'संपर्क जोड़ने में त्रुटि: $e'
-                : 'Failed to add contact: $e',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      showErrorSnackBar(
+        _isHindi
+            ? 'संपर्क जोड़ने में त्रुटि: $e'
+            : 'Failed to add contact: $e',
+        context,
       );
     }
   }

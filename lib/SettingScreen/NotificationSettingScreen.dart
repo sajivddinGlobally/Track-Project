@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 class NotificationSettingScreen extends ConsumerStatefulWidget {
   final bool isHindi;
@@ -147,31 +148,9 @@ class _NotificationSettingScreenState
         log('Error playing tone preview: $e');
       }
     }
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.volume_up_rounded,
-              color: Color(0xFFD4AF37),
-              size: 18,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              _isHindi ? 'प्ले हो रहा है: $toneName' : 'Playing: $toneName',
-              style: GoogleFonts.outfit(color: Colors.white, fontSize: 13.sp),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0F3D38),
-        duration: const Duration(milliseconds: 1400),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
-      ),
+    showSuccessSnackBar(
+      _isHindi ? 'प्ले हो रहा है: $toneName' : 'Playing: $toneName',
+      context,
     );
   }
 

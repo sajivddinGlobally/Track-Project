@@ -9,6 +9,7 @@ import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetLawContentResModel.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:track_loved/core/Utils/showMessage.dart';
 
 import 'NetworkRequestScreen/Provider/getLowProvider.dart';
 
@@ -117,14 +118,11 @@ class LegalMediaRedirectHelper {
   }) async {
     if (urlString == null || urlString.trim().isEmpty) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isHindi
-                  ? 'कोई लिंक उपलब्ध नहीं है'
-                  : 'No URL available for this item',
-            ),
-          ),
+        showErrorSnackBar(
+          isHindi
+              ? 'कोई लिंक उपलब्ध नहीं है'
+              : 'No URL available for this item',
+          context,
         );
       }
       return;
@@ -578,17 +576,13 @@ class LegalMediaRedirectHelper {
         );
       } else {
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Could not open link')));
+          showErrorSnackBar('Could not open link', context);
         }
       }
     } catch (e) {
       log('Error launching legal media: $e');
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        showErrorSnackBar('Error: $e', context);
       }
     }
   }
@@ -1042,14 +1036,11 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
                                     ? Hive.box('userdata')
                                     : null;
                                 box?.put('should_show_youtube_redirect', true);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      _isHindi
-                                          ? 'बाहरी वीडियो सुरक्षा चेतावनी पुनः सक्रिय कर दी गई है।'
-                                          : 'External video warnings have been re-enabled for your safety.',
-                                    ),
-                                  ),
+                                showSuccessSnackBar(
+                                  _isHindi
+                                      ? 'बाहरी वीडियो सुरक्षा चेतावनी पुनः सक्रिय कर दी गई है।'
+                                      : 'External video warnings have been re-enabled for your safety.',
+                                  context,
                                 );
                               },
                             ),
@@ -1456,14 +1447,11 @@ class _ActDetailBottomSheetState extends ConsumerState<ActDetailBottomSheet> {
   Future<void> _launchPdfUrl(String? urlString) async {
     if (urlString == null || urlString.trim().isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.isHindi
-                  ? 'पीडीएफ लिंक उपलब्ध नहीं है'
-                  : 'No PDF URL available',
-            ),
-          ),
+        showErrorSnackBar(
+          widget.isHindi
+              ? 'पीडीएफ लिंक उपलब्ध नहीं है'
+              : 'No PDF URL available',
+          context,
         );
       }
       return;
@@ -1474,9 +1462,7 @@ class _ActDetailBottomSheetState extends ConsumerState<ActDetailBottomSheet> {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Could not open PDF')));
+          showErrorSnackBar('Could not open PDF', context);
         }
       }
     } catch (e) {

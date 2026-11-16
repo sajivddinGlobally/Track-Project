@@ -19,6 +19,8 @@ import 'package:track_loved/core/Data/ResponseModel/RegisterResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/ResetPasswordResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/LocationSharingReceivedResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/getNotificationListModel.dart';
+import 'package:track_loved/core/Data/BodyModel/DeleteNotificationsBodyModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/DeleteNotificationResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/updateJobPostResModel.dart';
 import 'package:track_loved/core/Network/ApiStateNetwork.dart';
 import '../Data/BodyModel/MatchContactsBodyModel.dart';
@@ -882,6 +884,41 @@ class Authservice {
   Future<dynamic> readAllNotificationsData() async {
     try {
       final response = await api.readAllNotifications();
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DeleteNotificationResModel> deleteSingleNotificationData({
+    required String notificationId,
+  }) async {
+    try {
+      final response = await api.deleteSingleNotification(notificationId);
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DeleteNotificationResModel> deleteSelectedNotificationsData({
+    required List<String> notificationIds,
+  }) async {
+    try {
+      final response = await api.deleteNotifications(
+        DeleteNotificationsBodyModel(notificationIds: notificationIds),
+      );
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DeleteNotificationResModel> deleteAllNotificationsData() async {
+    try {
+      final response = await api.deleteNotifications(
+        DeleteNotificationsBodyModel(deleteAll: true),
+      );
       return response;
     } catch (e) {
       rethrow;
