@@ -366,9 +366,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             response.data?.user?.isProfileComplete,
                           );
                           await box.put("email", response.data?.user?.email);
-                          final effectiveRole =
-                              response.data?.user?.role ??
-                              (widget.isChild ? 'child' : 'user');
+                          final effectiveRole = response.data?.user?.role;
                           await box.put("role", effectiveRole);
 
                           final effectivePhone =

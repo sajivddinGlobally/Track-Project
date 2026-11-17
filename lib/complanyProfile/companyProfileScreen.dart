@@ -270,35 +270,35 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         _isLoading = true;
       });
 
+      String? formattedWebsite;
+      final rawWebsite = _websiteController.text.trim();
+      if (rawWebsite.isNotEmpty) {
+        formattedWebsite =
+            (rawWebsite.startsWith('http://') ||
+                rawWebsite.startsWith('https://'))
+            ? rawWebsite
+            : 'https://$rawWebsite';
+      }
+
+      final body = BusinessProfileBodyModel(
+        registeredCompanyName: _companyNameController.text.trim(),
+        companyType: _selectedCompanyType,
+        companyEmail: _emailController.text.trim(),
+        companyPhoneNumber: _phoneController.text.trim(),
+        gstNumber: _gstController.text.trim().toUpperCase(),
+        companyPanNumber: _panController.text.trim().toUpperCase(),
+        registeredCorporateAddress: _addressController.text.trim(),
+        city: _cityController.text.trim(),
+        state: _selectedState,
+        pincode: _pincodeController.text.trim(),
+        officialWebsite: formattedWebsite,
+        purposeLimitation: _agreePurposeLimitation,
+        locationTrackingBlindness: _agreeSurveillanceProhibition,
+        applicantErasureMandate: _agreeDataErasure,
+        noEmploymentRelationship: _agreeNoEmploymentContract,
+      );
+
       try {
-        String? formattedWebsite;
-        final rawWebsite = _websiteController.text.trim();
-        if (rawWebsite.isNotEmpty) {
-          formattedWebsite =
-              (rawWebsite.startsWith('http://') ||
-                  rawWebsite.startsWith('https://'))
-              ? rawWebsite
-              : 'https://$rawWebsite';
-        }
-
-        final body = BusinessProfileBodyModel(
-          registeredCompanyName: _companyNameController.text.trim(),
-          companyType: _selectedCompanyType,
-          companyEmail: _emailController.text.trim(),
-          companyPhoneNumber: _phoneController.text.trim(),
-          gstNumber: _gstController.text.trim().toUpperCase(),
-          companyPanNumber: _panController.text.trim().toUpperCase(),
-          registeredCorporateAddress: _addressController.text.trim(),
-          city: _cityController.text.trim(),
-          state: _selectedState,
-          pincode: _pincodeController.text.trim(),
-          officialWebsite: formattedWebsite,
-          purposeLimitation: _agreePurposeLimitation,
-          locationTrackingBlindness: _agreeSurveillanceProhibition,
-          applicantErasureMandate: _agreeDataErasure,
-          noEmploymentRelationship: _agreeNoEmploymentContract,
-        );
-
         final authService = ref.read(authServiceProvider);
         final isEditMode = _isEditMode;
 
@@ -334,10 +334,26 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
           response = await authService.saveBusinessProfileData(body);
         }
 
-        // Check if payment is pending: directly start payment flow without intermediate dialog
-        if (response.isPaymentPending == true) {
+        // Check if payment is required / pending: directly start payment flow without intermediate dialog
+        final bool needsPayment =
+            response.isPaymentPending == true ||
+            response.requiresPayment == true ||
+            (response.isCompanyPaymentCompleted == false &&
+                (response.message?.toLowerCase().contains('payment') ==
+                    true)) ||
+            (response.success == false &&
+                (response.message?.toLowerCase().contains(
+                          'payment before submitting',
+                        ) ==
+                        true ||
+                    response.message?.toLowerCase().contains(
+                          'complete the company profile payment',
+                        ) ==
+                        true));
+
+        if (needsPayment) {
           _pendingProfileBody = body;
-          _startCompanyProfilePayment();
+          await _startCompanyProfilePayment();
           return;
         }
 
@@ -354,6 +370,31 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         }
 
         await _handleSuccessfulSubmission(response.message, isEditMode);
+      } on DioException catch (dioErr) {
+        if (!mounted) return;
+        final resData = dioErr.response?.data;
+        final statusCode = dioErr.response?.statusCode;
+        final bool isPaymentRequired =
+            statusCode == 402 ||
+            (resData is Map &&
+                (resData['requiresPayment'] == true ||
+                    resData['isPaymentPending'] == true ||
+                    resData['isCompanyPaymentCompleted'] == false ||
+                    (resData['message']?.toString().toLowerCase().contains(
+                          'payment',
+                        ) ==
+                        true)));
+
+        if (isPaymentRequired) {
+          _pendingProfileBody = body;
+          await _startCompanyProfilePayment();
+          return;
+        }
+
+        final msg =
+            (resData is Map ? resData['message']?.toString() : null) ??
+            dioErr.message;
+        showErrorSnackBar(msg ?? 'Failed to submit profile', context);
       } catch (e) {
         if (!mounted) return;
         log(e.toString());
@@ -377,14 +418,14 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
 
       // Step 2: POST /api/v1/payment/create-order
       final orderRes = await authService.createPaymentOrder(
-        amount: 2500,
+        amount: 250,
         planName: "Company Profile",
       );
 
       final orderData = orderRes.order ?? orderRes.data;
       final orderId = orderData?.id;
       final orderKey = orderData?.key;
-      final num orderAmount = orderData?.amount ?? 25000;
+      final num orderAmount = orderData?.amount ?? 250;
 
       if (orderId == null || orderId.isEmpty) {
         throw Exception(orderRes.message ?? 'Failed to generate order ID');
@@ -488,12 +529,25 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
 
         // Step 5: Dobara POST /api/v1/business/profile submit karo
         if (_pendingProfileBody != null) {
-          final res = await authService.saveBusinessProfileData(
-            _pendingProfileBody!,
-          );
+          final res = _isEditMode
+              ? await authService.updateBusinessProfileData(
+                  _pendingProfileBody!,
+                )
+              : await authService.saveBusinessProfileData(_pendingProfileBody!);
+          if (res.success == false) {
+            setState(() {
+              _isLoading = false;
+            });
+            if (!mounted) return;
+            showErrorSnackBar(
+              res.message ?? 'Failed to submit profile after payment',
+              context,
+            );
+            return;
+          }
           await _handleSuccessfulSubmission(
             res.message ?? 'Business profile submitted for admin approval.',
-            false,
+            _isEditMode,
           );
         } else {
           setState(() {
@@ -509,7 +563,6 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         setState(() {
           _isLoading = false;
         });
-        // showErrorSnackBar('Payment verification failed: $e', context);
       }
     }
   }
@@ -1449,11 +1502,11 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
                                         child: Text(
                                           _isHindi
                                               ? (_isEditMode
-                                                    ? 'कॉर्पोरेट साख अपडेट करें और सहेजें'
-                                                    : 'कॉर्पोरेट साख की पुष्टि करें और कार्यक्षेत्र सक्रिय करें')
+                                                    ? 'साख अपडेट करें और सहेजें'
+                                                    : '₹250 भुगतान और सत्यापन के लिए सबमिट करें')
                                               : (_isEditMode
-                                                    ? 'UPDATE CREDENTIALS & WORKSPACE'
-                                                    : 'CONFIRM CORPORATE CREDENTIALS & ACTIVATE WORKSPACE'),
+                                                    ? 'SAVE & UPDATE CREDENTIALS'
+                                                    : 'PAY ₹250 & SUBMIT FOR VERIFICATION'),
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             color: const Color(0xFF072420),

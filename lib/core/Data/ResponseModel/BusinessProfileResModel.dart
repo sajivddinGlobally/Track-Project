@@ -11,12 +11,16 @@ String businessProfileResModelToJson(BusinessProfileResModel data) => json.encod
 class BusinessProfileResModel {
     bool? success;
     bool? isPaymentPending;
+    bool? requiresPayment;
+    bool? isCompanyPaymentCompleted;
     String? message;
     Data? data;
 
     BusinessProfileResModel({
         this.success,
         this.isPaymentPending,
+        this.requiresPayment,
+        this.isCompanyPaymentCompleted,
         this.message,
         this.data,
     });
@@ -31,10 +35,22 @@ class BusinessProfileResModel {
                 msg = first["message"].toString();
             }
         }
+
+        final bool requiresPay = json["requiresPayment"] == true ||
+            json["isPaymentPending"] == true ||
+            json["data"]?["requiresPayment"] == true ||
+            json["data"]?["isPaymentPending"] == true ||
+            (json["isCompanyPaymentCompleted"] == false &&
+                (msg?.toLowerCase().contains("payment") == true));
+
+        final bool paymentCompleted = json["isCompanyPaymentCompleted"] == true ||
+            json["data"]?["isCompanyPaymentCompleted"] == true;
+
         return BusinessProfileResModel(
             success: json["success"],
-            isPaymentPending: json["isPaymentPending"] == true ||
-                json["data"]?["isPaymentPending"] == true,
+            isPaymentPending: requiresPay,
+            requiresPayment: requiresPay,
+            isCompanyPaymentCompleted: paymentCompleted,
             message: msg,
             data: json["data"] == null ? null : Data.fromJson(json["data"]),
         );
@@ -43,6 +59,8 @@ class BusinessProfileResModel {
     Map<String, dynamic> toJson() => {
         "success": success,
         "isPaymentPending": isPaymentPending,
+        "requiresPayment": requiresPayment,
+        "isCompanyPaymentCompleted": isCompanyPaymentCompleted,
         "message": message,
         "data": data?.toJson(),
     };

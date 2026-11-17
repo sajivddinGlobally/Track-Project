@@ -592,14 +592,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             sound: true,
                                           );
                                       // ignore: deprecated_member_use
-                                      final token = await FirebaseMessaging
+                                      final fcmToken = await FirebaseMessaging
                                           .instance
                                           .getToken();
-                                      if (token != null && token.isNotEmpty) {
+                                      if (fcmToken != null &&
+                                          fcmToken.isNotEmpty) {
                                         final box = Hive.isBoxOpen("userdata")
                                             ? Hive.box("userdata")
                                             : await Hive.openBox("userdata");
-                                        await box.put('fcm_token', token);
+                                        await box.put('fcm_token', fcmToken);
                                       }
                                     } catch (e) {
                                       log(
