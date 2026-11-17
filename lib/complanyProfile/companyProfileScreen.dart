@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,6 +10,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/PostJobOpprtunities.dart';
 import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/BusinessProfileBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/BusinessProfileResModel.dart';
@@ -332,20 +334,10 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
           response = await authService.saveBusinessProfileData(body);
         }
 
-        // Check if payment is pending
+        // Check if payment is pending: directly start payment flow without intermediate dialog
         if (response.isPaymentPending == true) {
           _pendingProfileBody = body;
-          setState(() {
-            _isLoading = false;
-          });
-          if (!mounted) return;
-          _showPaymentRequiredDialog(
-            message:
-                response.message ??
-                (_isHindi
-                    ? 'कृपया अपनी प्रोफ़ाइल सबमिट करने से पहले कंपनी प्रोफ़ाइल भुगतान पूरा करें।'
-                    : 'Complete the company profile payment before submitting your profile.'),
-          );
+          _startCompanyProfilePayment();
           return;
         }
 
@@ -375,121 +367,6 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
     }
   }
 
-  void _showPaymentRequiredDialog({required String message}) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF072420),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.payment, color: const Color(0xFFD4AF37), size: 24.sp),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                _isHindi ? 'भुगतान आवश्यक' : 'Payment Required',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message,
-              style: TextStyle(
-                fontSize: 13.5.sp,
-                color: Colors.white70,
-                height: 1.4,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0A302A),
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(
-                  color: const Color(0xFFC5A038).withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _isHindi
-                        ? 'कंपनी प्रोफ़ाइल शुल्क:'
-                        : 'Company Profile Fee:',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '₹499',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      color: const Color(0xFFD4AF37),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              _isHindi ? 'रद्द करें' : 'Cancel',
-              style: const TextStyle(color: Colors.white60),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
-              ),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                _startCompanyProfilePayment();
-              },
-              child: Text(
-                _isHindi ? '₹250 का भुगतान करें' : 'Pay ₹250 via Razorpay',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _startCompanyProfilePayment() async {
     setState(() {
       _isLoading = true;
@@ -507,7 +384,7 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
       final orderData = orderRes.order ?? orderRes.data;
       final orderId = orderData?.id;
       final orderKey = orderData?.key;
-      final num orderAmount = orderData?.amount ?? 49900;
+      final num orderAmount = orderData?.amount ?? 25000;
 
       if (orderId == null || orderId.isEmpty) {
         throw Exception(orderRes.message ?? 'Failed to generate order ID');
@@ -609,14 +486,6 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         await box.put('isCompanyPaymentCompleted', true);
         await box.put('isPaymentPending', false);
 
-        if (mounted) {
-          showSuccessSnackBar(
-            verifyRes.message ??
-                'Payment verified successfully! Submitting profile...',
-            context,
-          );
-        }
-
         // Step 5: Dobara POST /api/v1/business/profile submit karo
         if (_pendingProfileBody != null) {
           final res = await authService.saveBusinessProfileData(
@@ -666,102 +535,29 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
     ref.invalidate(getBussinessProfileProvider);
 
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF072420),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.check_circle,
-              color: const Color(0xFFD4AF37),
-              size: 24.sp,
-            ),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? (isEditMode
-                          ? 'प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!'
-                          : 'प्रशासक अनुमोदन के लिए सबमिट किया गया!')
-                    : (isEditMode
-                          ? 'Profile Updated Successfully!'
-                          : 'Submitted for Admin Approval!'),
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          serverMessage ??
-              (_isHindi
-                  ? (isEditMode
-                        ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
-                        : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण व्यवस्थापक के अनुमोदन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
-                  : (isEditMode
-                        ? 'Your company profile details have been successfully updated.'
-                        : 'Business profile submitted for admin approval.')),
-          style: TextStyle(
-            fontSize: 13.5.sp,
-            color: Colors.white70,
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
-              ),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-              onPressed: () {
-                Navigator.pop(ctx);
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context, true);
-                } else {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PostJobOpportunitiesScreen(),
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                isEditMode
-                    ? (_isHindi ? 'पूर्ण' : 'Done')
-                    : (_isHindi
-                          ? 'सत्यापन स्थिति देखें'
-                          : 'View Verification Status'),
-                style: TextStyle(
-                  color: const Color(0xFF072420),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+
+    showSuccessSnackBar(
+      serverMessage ??
+          (_isHindi
+              ? (isEditMode
+                    ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
+                    : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण व्यवस्थापक के अनुमोदन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
+              : (isEditMode
+                    ? 'Your company profile details have been successfully updated.'
+                    : 'Business profile submitted for admin approval.')),
+      context,
     );
+
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, true);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PostJobOpportunitiesScreen(),
+        ),
+      );
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -801,7 +597,12 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
             _isHindi = value;
           });
         },
-        onNotificationPressed: () {},
+        onNotificationPressed: () {
+          Navigator.push(
+            context,
+            CupertinoPageRoute(builder: (context) => NotificationScreen()),
+          );
+        },
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

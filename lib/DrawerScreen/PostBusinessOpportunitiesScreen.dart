@@ -12,6 +12,8 @@ import 'package:track_loved/core/Data/ResponseModel/CreateBusinessOpportunityRes
 import 'package:track_loved/core/Data/ResponseModel/GetMyBusinessOpportunitiesResModel.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
+import '../HomeScreen/NotificationScreen.dart';
+
 class PostBusinessOpportunitiesScreen extends ConsumerStatefulWidget {
   final MyBusinessOpportunityItem? editOpportunity;
   final bool initialHindi;
@@ -421,7 +423,12 @@ class PostBusinessOpportunitiesScreenState
           isHindi: _isHindi,
           notificationCount: 2,
           onLanguageChanged: (val) => setState(() => _isHindi = val),
-          onNotificationPressed: () {},
+          onNotificationPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => NotificationScreen()),
+            );
+          },
         ),
         body: const Center(
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
@@ -523,7 +530,12 @@ class PostBusinessOpportunitiesScreenState
             _isHindi = value;
           });
         },
-        onNotificationPressed: () {},
+        onNotificationPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => NotificationScreen()),
+          );
+        },
       ),
       body: Center(
         child: Padding(

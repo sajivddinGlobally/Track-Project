@@ -38,7 +38,7 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
   void initState() {
     super.initState();
     // Auto-refresh the list every 15 seconds so moved positions update automatically
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (mounted) {
         ref.invalidate(searchLovedProvider);
       }

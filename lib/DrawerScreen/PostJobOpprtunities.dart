@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/ManageMyPostingsScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/complanyProfile/CompanyPendingVerificationView.dart';
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -359,7 +360,12 @@ class _PostJobOpportunitiesScreenState
           isHindi: _isHindi,
           notificationCount: 2,
           onLanguageChanged: (val) => setState(() => _isHindi = val),
-          onNotificationPressed: () {},
+          onNotificationPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => NotificationScreen()),
+            );
+          },
         ),
         body: const Center(
           child: CircularProgressIndicator(color: Color(0xFFC5A038)),
@@ -467,7 +473,12 @@ class _PostJobOpportunitiesScreenState
             _isHindi = value;
           });
         },
-        onNotificationPressed: () {},
+        onNotificationPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => NotificationScreen()),
+          );
+        },
       ),
       body: Center(
         child: Padding(
