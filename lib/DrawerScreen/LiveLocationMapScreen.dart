@@ -15,8 +15,8 @@ import 'package:track_loved/core/Utils/AddressText.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// const String kSocketBaseUrl = 'https://api.tracklovedones.com';
-const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
+// const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
+const String kSocketBaseUrl = 'https://api.tracklovedones.com';
 
 class LiveLocationMapScreen extends ConsumerStatefulWidget {
   final LocationSharingUser user;

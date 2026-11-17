@@ -677,8 +677,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           const SizedBox(height: 8),
           Text(
             isExpired
-                ? 'Your 10 mins location sharing has ended. Renew to continue sharing for the next 10 mins, or dismiss to disable.'
-                : 'Extend to continue sharing with your assigned contacts for 10 mins dismiss to turn off sharing for all, or manage manually.',
+                ? 'Your 24 hours location sharing has ended. Renew to continue sharing for the next 24 hours mins, or dismiss to disable.'
+                : 'Extend to continue sharing with your assigned contacts for 24 hours dismiss to turn off sharing for all, or manage manually.',
             style: const TextStyle(
               fontSize: 11.5,
               color: Colors.black87,
@@ -1182,6 +1182,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    var box = Hive.box("userdata");
+    var role = box.get("role");
     final getdashBordData = ref.watch(getDashbordProvider);
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1337,67 +1339,68 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              Container(
-                constraints: const BoxConstraints(minHeight: 58),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                color: const Color(0xFF0B4F4A),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        readOnly: true,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AddNetworkSearchScreen(),
-                            ),
-                          );
-                        },
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                        cursorColor: Colors.white,
-                        decoration: InputDecoration(
-                          hintText: 'Add network...',
-                          hintStyle: const TextStyle(
-                            color: Colors.white70,
+              if (role != "company")
+                Container(
+                  constraints: const BoxConstraints(minHeight: 58),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  color: const Color(0xFF0B4F4A),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          readOnly: true,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddNetworkSearchScreen(),
+                              ),
+                            );
+                          },
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 12,
                           ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: Colors.white70,
-                            size: 18,
+                          cursorColor: Colors.white,
+                          decoration: InputDecoration(
+                            hintText: 'Add network...',
+                            hintStyle: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.white70,
+                              size: 18,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Colors.white),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: const BorderSide(color: Colors.white),
+                            ),
+                            contentPadding: const EdgeInsets.only(bottom: 4),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(color: Colors.white),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: const BorderSide(color: Colors.white),
-                          ),
-                          contentPadding: const EdgeInsets.only(bottom: 4),
                         ),
                       ),
-                    ),
-                    // const SizedBox(width: 12),
-                    // InkWell(
-                    //   onTap: () {},
-                    //   child: const Icon(
-                    //     Icons.tune,
-                    //     color: Colors.white,
-                    //     size: 20,
-                    //   ),
-                    // ),
-                  ],
+                      // const SizedBox(width: 12),
+                      // InkWell(
+                      //   onTap: () {},
+                      //   child: const Icon(
+                      //     Icons.tune,
+                      //     color: Colors.white,
+                      //     size: 20,
+                      //   ),
+                      // ),
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 20),
               getdashBordData.when(
                 data: (dashboardModel) {

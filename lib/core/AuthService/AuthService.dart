@@ -63,6 +63,8 @@ import '../Data/ResponseModel/SubmitGrievanceResModel.dart';
 import '../Data/BodyModel/RequestDataSummaryBodyModel.dart';
 import '../Data/ResponseModel/RequestDataSummaryResModel.dart';
 import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import '../Data/BodyModel/WithdrawApplicationBodyModel.dart';
+import '../Data/ResponseModel/WithdrawApplicationResModel.dart';
 import '../Data/ResponseModel/ApplyJobProfileResModel.dart';
 import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
 import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
@@ -694,6 +696,24 @@ class Authservice {
     try {
       final response = await api.getMyJobApplications();
       return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<WithdrawApplicationResModel> withdrawJobApplicationData(
+    WithdrawApplicationBodyModel body,
+  ) async {
+    try {
+      final response = await api.withdrawJobApplication(body);
+      return response;
+    } on DioException catch (e) {
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        return WithdrawApplicationResModel.fromJson(
+          e.response!.data as Map<String, dynamic>,
+        );
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }

@@ -59,6 +59,8 @@ import '../Data/ResponseModel/SubmitGrievanceResModel.dart';
 import '../Data/BodyModel/RequestDataSummaryBodyModel.dart';
 import '../Data/ResponseModel/RequestDataSummaryResModel.dart';
 import '../Data/ResponseModel/GetMyJobApplicationsResModel.dart';
+import '../Data/BodyModel/WithdrawApplicationBodyModel.dart';
+import '../Data/ResponseModel/WithdrawApplicationResModel.dart';
 import '../Data/BodyModel/DeleteUserAccountBodyModel.dart';
 import '../Data/ResponseModel/SendDeletionOtpResModel.dart';
 import '../Data/ResponseModel/DeleteUserAccountResModel.dart';
@@ -309,6 +311,11 @@ abstract class ApiStateNetwork {
 
   @GET("/api/v1/business/job-applications/me")
   Future<GetMyJobApplicationsResModel> getMyJobApplications();
+
+  @DELETE("/api/v1/business/job-applications")
+  Future<WithdrawApplicationResModel> withdrawJobApplication(
+    @Body() WithdrawApplicationBodyModel body,
+  );
 
   @POST("/api/v1/auth/delete-account/send-otp")
   Future<SendDeletionOtpResModel> sendDeleteAccountOtp();

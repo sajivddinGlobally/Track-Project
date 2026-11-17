@@ -4,8 +4,11 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hive/hive.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/provider/getMyJobApplicationsProvider.dart';
+import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
+import 'package:track_loved/core/Data/BodyModel/WithdrawApplicationBodyModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetMyJobApplicationsResModel.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
@@ -30,6 +33,8 @@ class CandidateApplicationItem {
   final String? applicantName;
   final String? applicantEmail;
   final String? applicantPhone;
+  final String? postId;
+  final String? userId;
 
   CandidateApplicationItem({
     required this.id,
@@ -51,6 +56,8 @@ class CandidateApplicationItem {
     this.applicantName,
     this.applicantEmail,
     this.applicantPhone,
+    this.postId,
+    this.userId,
   });
 }
 
@@ -188,14 +195,24 @@ class _ManageMyApplicationsScreenState
   }
 
   List<CandidateApplicationItem> _mapApplications(
-    List<MyApplicationEntry> items,
-  ) {
+    List<MyApplicationEntry> items, {
+    String? currentUserId,
+  }) {
     final List<CandidateApplicationItem> mapped = [];
+    final fallbackUserId = Hive.isBoxOpen('userdata')
+        ? Hive.box('userdata').get('id')?.toString() ??
+              Hive.box('userdata').get('userId')?.toString()
+        : null;
+    final resolvedUser = (currentUserId != null && currentUserId.isNotEmpty)
+        ? currentUserId
+        : fallbackUserId;
+
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
       final post = item.post;
       final profile = item.applicantProfile;
       final rawId = item.applicationId ?? post?.id ?? 'APP-${i + 101}';
+      final effectivePostId = post?.id ?? item.applicationId;
       final company =
           (post?.ownerName != null && post!.ownerName.trim().isNotEmpty)
           ? post.ownerName
@@ -278,6 +295,8 @@ class _ManageMyApplicationsScreenState
           applicantName: profile?.name,
           applicantEmail: profile?.email,
           applicantPhone: profile?.phone,
+          postId: effectivePostId,
+          userId: resolvedUser,
         ),
       );
     }
@@ -319,123 +338,223 @@ class _ManageMyApplicationsScreenState
   // Execute Granular Right to Erasure for a single application
   // ========================================================================
   void _confirmWithdrawAndErase(CandidateApplicationItem app) {
+    bool isWithdrawing = false;
+
     showDialog(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F3D38),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-          side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.gavel_rounded,
-              color: const Color(0xFFF87171),
-              size: 22.sp,
+      barrierDismissible: !isWithdrawing,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (sbContext, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0F3D38),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+              side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
             ),
-            SizedBox(width: 8.w),
-            Expanded(
-              child: Text(
-                _isHindi
-                    ? 'आवेदन वापस लें एवं डेटा मिटाएं?'
-                    : 'Withdraw Application & Erase Data?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.5.sp,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.gavel_rounded,
+                  color: const Color(0xFFF87171),
+                  size: 22.sp,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    _isHindi
+                        ? 'आवेदन वापस लें एवं डेटा मिटाएं?'
+                        : 'Withdraw Application & Erase Data?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.5.sp,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isHindi
+                      ? 'कंपनी/संस्थान: ${app.companyName}\n${app.isJob ? 'पद' : 'अवसर'}: ${app.position} (${app.referenceCode})'
+                      : 'Organization: ${app.companyName}\n${app.isJob ? 'Position' : 'Opportunity'}: ${app.position} (${app.referenceCode})',
+                  style: TextStyle(
+                    color: const Color(0xFFE6C567),
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Container(
+                  padding: EdgeInsets.all(10.w),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    _isHindi
+                        ? '⚠️ DPDP Act, 2023 (वैधानिक अधिकार): इस पर क्लिक करते ही कंपनी का टोकन तुरंत रद्द (active_share = false) हो जाएगा। कंपनी को सूचित किया जाएगा कि "उम्मीदवार ने सहमति वापस ले ली है। डेटा अब उपलब्ध नहीं है।"'
+                        : '⚠️ DPDP Act, 2023 (Statutory Erasure): Immediately executes token nullification (active_share = false). The company\'s console will display: "This applicant has withdrawn consent. Data is no longer accessible."',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12.5.sp,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isWithdrawing
+                    ? null
+                    : () => Navigator.pop(dialogCtx),
+                child: Text(
+                  _isHindi ? 'रद्द करें' : 'Cancel',
+                  style: TextStyle(
+                    color: isWithdrawing ? Colors.white30 : Colors.white60,
+                    fontSize: 13.5.sp,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _isHindi
-                  ? 'कंपनी/संस्थान: ${app.companyName}\n${app.isJob ? 'पद' : 'अवसर'}: ${app.position} (${app.referenceCode})'
-                  : 'Organization: ${app.companyName}\n${app.isJob ? 'Position' : 'Opportunity'}: ${app.position} (${app.referenceCode})',
-              style: TextStyle(
-                color: const Color(0xFFE6C567),
-                fontSize: 13.5.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 12.h),
-            Container(
-              padding: EdgeInsets.all(10.w),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8.r),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                _isHindi
-                    ? '⚠️ DPDP Act, 2023 (वैधानिक अधिकार): इस पर क्लिक करते ही कंपनी का टोकन तुरंत रद्द (active_share = false) हो जाएगा। कंपनी को सूचित किया जाएगा कि "उम्मीदवार ने सहमति वापस ले ली है। डेटा अब उपलब्ध नहीं है।"'
-                    : '⚠️ DPDP Act, 2023 (Statutory Erasure): Immediately executes token nullification (active_share = false). The company\'s console will display: "This applicant has withdrawn consent. Data is no longer accessible."',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.5.sp,
-                  height: 1.35,
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(
-              _isHindi ? 'रद्द करें' : 'Cancel',
-              style: TextStyle(color: Colors.white60, fontSize: 13.5.sp),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-            ),
-            onPressed: () {
-              Navigator.pop(dialogCtx);
+                onPressed: isWithdrawing
+                    ? null
+                    : () async {
+                        final resolvedUserId =
+                            app.userId ??
+                            (Hive.isBoxOpen('userdata')
+                                ? Hive.box('userdata').get('id')?.toString() ??
+                                      Hive.box(
+                                        'userdata',
+                                      ).get('userId')?.toString()
+                                : null);
+                        final resolvedPostId = app.postId ?? app.id;
 
-              // 1. Token Nullification & Status Change
-              setState(() {
-                _withdrawnApplicationIds.add(app.id);
-                app.activeShare = false;
-                app.isWithdrawn = true;
-                app.status = _isHindi
-                    ? 'सहमति वापस ली गई (डेटा मिटाया गया)'
-                    : 'Consent Withdrawn (Data Erased)';
-              });
+                        if (resolvedUserId == null || resolvedUserId.isEmpty) {
+                          showErrorSnackBar(
+                            _isHindi
+                                ? 'उपयोगकर्ता पहचान (User ID) नहीं मिली।'
+                                : 'User ID not found. Please log in again.',
+                            context,
+                          );
+                          return;
+                        }
 
-              // 2. Immutable Record Retention Ledger Event
-              _logComplianceLedgerEvent(
-                referenceId: app.referenceCode,
-                companyId: app.companyName,
-                revocationType: 'Granular Right to Erasure Execution',
-              );
+                        if (resolvedPostId.isEmpty) {
+                          showErrorSnackBar(
+                            _isHindi
+                                ? 'पोस्ट पहचान (Post ID) नहीं मिली।'
+                                : 'Post ID not found.',
+                            context,
+                          );
+                          return;
+                        }
 
-              showSuccessSnackBar(
-                _isHindi
-                    ? '✅ टोकन रद्द किया गया! कंपनी के पास से आपकी फ़ाइलें और संपर्क तुरंत ब्लॉक कर दिए गए हैं।'
-                    : '✅ Token Nullified! Employer access to your resume & contact has been permanently erased.',
-                context,
-              );
-            },
-            child: Text(
-              _isHindi ? 'हाँ, डेटा मिटाएं' : 'Confirm & Erase',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 13.5.sp,
+                        setDialogState(() {
+                          isWithdrawing = true;
+                        });
+
+                        try {
+                          final authService = ref.read(authServiceProvider);
+                          final body = WithdrawApplicationBodyModel(
+                            userId: resolvedUserId,
+                            postId: resolvedPostId,
+                          );
+
+                          final res = await authService
+                              .withdrawJobApplicationData(body);
+
+                          if (dialogCtx.mounted) {
+                            Navigator.pop(dialogCtx);
+                          }
+
+                          if (res.success == true) {
+                            // 1. Token Nullification & Status Change
+                            setState(() {
+                              _withdrawnApplicationIds.add(app.id);
+                              app.activeShare = false;
+                              app.isWithdrawn = true;
+                              app.status = _isHindi
+                                  ? 'सहमति वापस ली गई (डेटा मिटाया गया)'
+                                  : 'Consent Withdrawn (Data Erased)';
+                            });
+
+                            // 2. Immutable Record Retention Ledger Event
+                            _logComplianceLedgerEvent(
+                              referenceId: app.referenceCode,
+                              companyId: app.companyName,
+                              revocationType:
+                                  'Granular Right to Erasure Execution',
+                            );
+
+                            if (mounted) {
+                              showSuccessSnackBar(
+                                res.message ??
+                                    (_isHindi
+                                        ? '✅ आवेदन सफलतापूर्वक वापस लिया गया एवं डेटा मिटा दिया गया।'
+                                        : '✅ Applications withdrawn successfully.'),
+                                context,
+                              );
+                            }
+
+                            // 3. Refresh applications list from server
+                            ref.invalidate(getMyJobApplicationsProvider);
+                          } else {
+                            if (mounted) {
+                              showErrorSnackBar(
+                                res.message ??
+                                    (_isHindi
+                                        ? 'आवेदन वापस लेने में विफल'
+                                        : 'Failed to withdraw application'),
+                                context,
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (dialogCtx.mounted) {
+                            Navigator.pop(dialogCtx);
+                          }
+                          if (mounted) {
+                            showErrorSnackBar('Error: $e', context);
+                          }
+                        }
+                      },
+                child: isWithdrawing
+                    ? SizedBox(
+                        width: 16.w,
+                        height: 16.h,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        _isHindi ? 'हाँ, डेटा मिटाएं' : 'Confirm & Erase',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5.sp,
+                        ),
+                      ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -616,8 +735,14 @@ class _ManageMyApplicationsScreenState
                 ),
               ),
               data: (res) {
-                final jobApps = _mapApplications(res.jobApplications);
-                final bizApps = _mapApplications(res.businessApplications);
+                final jobApps = _mapApplications(
+                  res.jobApplications,
+                  currentUserId: res.data?.userId,
+                );
+                final bizApps = _mapApplications(
+                  res.businessApplications,
+                  currentUserId: res.data?.userId,
+                );
                 final allApps = [...jobApps, ...bizApps];
                 final profile = res.profile;
                 final counts = res.counts;
