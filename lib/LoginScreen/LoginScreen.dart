@@ -209,9 +209,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             response.data?.user?.role == 'adult_pending_consent';
         await box.put("requiresAdultReconsent", requiresAdultReconsent);
 
-        final cachedFcm = box.get("fcm_token")?.toString();
-        if (cachedFcm != null && cachedFcm.isNotEmpty) {
-          FcmNotificationService.syncFcmToken(cachedFcm, authService: service);
+        String? gFcm = box.get("fcm_token")?.toString();
+        if (gFcm == null || gFcm.isEmpty) {
+          try {
+            // ignore: deprecated_member_use
+            gFcm = await FirebaseMessaging.instance.getToken();
+            if (gFcm != null && gFcm.isNotEmpty) {
+              await box.put("fcm_token", gFcm);
+            }
+          } catch (_) {}
+        }
+        if (gFcm != null && gFcm.isNotEmpty) {
+          FcmNotificationService.syncFcmToken(
+            gFcm,
+            authService: service,
+            force: true,
+          );
         }
 
         if (!mounted) return;
@@ -584,6 +597,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     });
 
                                     // Request notification permission and wait for user's decision (Allow or Don't Allow)
+                                    String? loginFcmToken;
                                     try {
                                       await FirebaseMessaging.instance
                                           .requestPermission(
@@ -592,15 +606,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             sound: true,
                                           );
                                       // ignore: deprecated_member_use
-                                      final fcmToken = await FirebaseMessaging
-                                          .instance
-                                          .getToken();
-                                      if (fcmToken != null &&
-                                          fcmToken.isNotEmpty) {
+                                      loginFcmToken = await FirebaseMessaging.instance.getToken();
+                                      if (loginFcmToken != null &&
+                                          loginFcmToken.isNotEmpty) {
                                         final box = Hive.isBoxOpen("userdata")
                                             ? Hive.box("userdata")
                                             : await Hive.openBox("userdata");
-                                        await box.put('fcm_token', fcmToken);
+                                        await box.put('fcm_token', loginFcmToken);
                                       }
                                     } catch (e) {
                                       log(
@@ -683,13 +695,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "requiresAdultReconsent",
                                         requiresAdultReconsent,
                                       );
-                                      final cachedFcm = box
-                                          .get("fcm_token")
-                                          ?.toString();
+                                      final cachedFcm = loginFcmToken ??
+                                          box.get('fcm_token')?.toString();
                                       if (cachedFcm != null &&
                                           cachedFcm.isNotEmpty) {
                                         FcmNotificationService.syncFcmToken(
                                           cachedFcm,
+                                          force: true,
                                           authService: service,
                                         );
                                       }

@@ -2,11 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/ResponseModel/trackFriendModel.dart';
 import 'package:track_loved/DrawerScreen/provider/NetworkLocationPermissionsProvider.dart';
+
+import '../core/Data/BodyModel/TriggerSosBodyModel.dart';
+import '../core/Utils/showMessage.dart';
 
 class NetworkLocationPermissionsScreen extends ConsumerStatefulWidget {
   const NetworkLocationPermissionsScreen({super.key});
@@ -89,6 +93,149 @@ class _NetworkLocationPermissionsScreenState
     return colors[code % colors.length];
   }
 
+  bool _isSosLoading = false;
+
+  void _sendHelpAlertToMembers() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          title: Text(
+            _isHindi ? 'मदद की चेतावनी भेजें' : 'Send Help Alert',
+            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            _isHindi
+                ? 'क्या आप सुनिश्चित हैं कि आप अपने सभी जुड़े हुए सदस्यों को यह संदेश भेजना चाहते हैं कि आपको मदद की आवश्यकता है?'
+                : 'Are you sure you want to notify all connected members that you need help?',
+            style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+          ),
+          actionsPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                _isHindi ? 'रद्द करें' : 'Cancel',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              ),
+              onPressed: _triggerEmergencySos,
+              child: Text(
+                _isHindi ? 'हाँ, भेजें' : 'Yes, Send',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _triggerEmergencySos() async {
+    Navigator.pop(context);
+
+    setState(() {
+      _isSosLoading = true;
+    });
+
+    showErrorSnackBar(
+      _isHindi
+          ? 'आपातकालीन एसओएस भेजा जा रहा है...'
+          : 'Sending Emergency SOS alert...',
+      context,
+    );
+
+    try {
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) {
+        if (!mounted) return;
+        showErrorSnackBar(
+          _isHindi
+              ? 'सटीक स्थान प्राप्त नहीं हो सका। कृपया जीपीएस चालू करें।'
+              : 'Could not fetch current location. Please turn on GPS.',
+          context,
+        );
+        return;
+      }
+
+      final body = TriggerSosBodyModel(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        triggerType: "APP_BUTTON",
+        batteryPercentage: 70,
+      );
+
+      final response = await ref.read(authServiceProvider).triggerSosData(body);
+
+      if (!mounted) return;
+
+      if (response.success == true) {
+        showSuccessSnackBar(
+          response.message ??
+              (_isHindi
+                  ? 'आपातकालीन एसओएस अलर्ट सफलतापूर्वक भेजा गया!'
+                  : 'Emergency SOS alert triggered successfully!'),
+          context,
+        );
+      } else {
+        showErrorSnackBar(
+          response.message ??
+              (_isHindi
+                  ? 'एसओएस भेजने में विफल रहा।'
+                  : 'Failed to trigger SOS alert.'),
+          context,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(
+        _isHindi
+            ? 'त्रुटि: ${e.toString()}'
+            : 'Failed to trigger SOS: ${e.toString()}',
+        context,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSosLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locationState = ref.watch(
@@ -126,6 +273,32 @@ class _NetworkLocationPermissionsScreenState
           );
         },
       ),
+
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isSosLoading ? null : _sendHelpAlertToMembers,
+        backgroundColor: Colors.red.shade700,
+        icon: _isSosLoading
+            ? SizedBox(
+                width: 20.w,
+                height: 20.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(Icons.sos, color: Colors.white, size: 22.sp),
+        label: Text(
+          _isSosLoading
+              ? (_isHindi ? 'भेज रहे हैं...' : 'Sending...')
+              : (_isHindi ? 'मदद चाहिए' : 'Need Help'),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14.sp,
+          ),
+        ),
+      ),
+
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(networkLocationPermissionsProvider);

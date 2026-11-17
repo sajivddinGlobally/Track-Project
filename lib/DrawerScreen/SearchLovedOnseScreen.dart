@@ -606,31 +606,30 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
       drawer: AppDrawer(isHindi: _isHindi),
 
       // Floating Action Button for Help Alert
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isSosLoading ? null : _sendHelpAlertToMembers,
-        backgroundColor: Colors.red.shade700,
-        icon: _isSosLoading
-            ? SizedBox(
-                width: 20.w,
-                height: 20.w,
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Icon(Icons.sos, color: Colors.white, size: 22.sp),
-        label: Text(
-          _isSosLoading
-              ? (_isHindi ? 'भेज रहे हैं...' : 'Sending...')
-              : (_isHindi ? 'मदद चाहिए' : 'Need Help'),
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14.sp,
-          ),
-        ),
-      ),
-
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: _isSosLoading ? null : _sendHelpAlertToMembers,
+      //   backgroundColor: Colors.red.shade700,
+      //   icon: _isSosLoading
+      //       ? SizedBox(
+      //           width: 20.w,
+      //           height: 20.w,
+      //           child: const CircularProgressIndicator(
+      //             strokeWidth: 2,
+      //             color: Colors.white,
+      //           ),
+      //         )
+      //       : Icon(Icons.sos, color: Colors.white, size: 22.sp),
+      //   label: Text(
+      //     _isSosLoading
+      //         ? (_isHindi ? 'भेज रहे हैं...' : 'Sending...')
+      //         : (_isHindi ? 'मदद चाहिए' : 'Need Help'),
+      //     style: TextStyle(
+      //       color: Colors.white,
+      //       fontWeight: FontWeight.bold,
+      //       fontSize: 14.sp,
+      //     ),
+      //   ),
+      // ),
       appBar: AppBarScreen(
         titleEn: 'Track Loved Ones',
         titleHi: 'प्रियजनों की खोज करें',

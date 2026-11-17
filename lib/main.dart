@@ -67,23 +67,7 @@ Future<void> _initFcmNotifications() async {
       log('[FCM] Error requesting notification permissions: $e');
     }
 
-    // Fetch standard FCM Device Token
-    try {
-      // ignore: deprecated_member_use
-      final token = await messaging.getToken();
-      if (token != null && token.isNotEmpty) {
-        log('[FCM] Token acquired:--- $token');
-        final box = Hive.isBoxOpen("userdata")
-            ? Hive.box("userdata")
-            : await Hive.openBox("userdata");
-        await box.put('fcm_token', token);
-        await FcmNotificationService.syncFcmToken(token, force: true);
-      }
-    } catch (e) {
-      log('[FCM] getToken error: $e');
-    }
-
-    // Listen for token rotations
+    // Listen for token rotations (cache locally without syncing to backend on startup)
     // ignore: deprecated_member_use
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       log('[FCM] Token refreshed: $newToken');
@@ -91,7 +75,6 @@ Future<void> _initFcmNotifications() async {
           ? Hive.box("userdata")
           : await Hive.openBox("userdata");
       await box.put('fcm_token', newToken);
-      await FcmNotificationService.syncFcmToken(newToken);
     });
 
     // Handle foreground message presentation & banner
@@ -215,11 +198,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       splitScreenMode: true,
       builder: (context, child) {
         return AnnotatedRegion(
-          value: const SystemUiOverlayStyle(
-            // statusBarColor: Color(0xFFF3F3F3),
-            // statusBarIconBrightness: Brightness.dark,
-            // statusBarBrightness: Brightness.light,
-          ),
+          value: const SystemUiOverlayStyle(),
           child: SafeArea(
             top: false,
             child: Consumer(

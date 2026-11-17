@@ -6,8 +6,8 @@ import '../Data/ResponseModel/ChatHistoryResModel.dart';
 
 class ChatSocketService {
   static const String defaultSocketUrl =
-      // 'https://loveable-backend-5qi0.onrender.com';
-      'https://api.tracklovedones.com';
+      'https://loveable-backend-5qi0.onrender.com';
+  // 'https://api.tracklovedones.com';
 
   io.Socket? _socket;
   final String receiverId;
