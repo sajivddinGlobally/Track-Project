@@ -80,6 +80,10 @@ import '../Data/BodyModel/LocationSharingActionBodyModel.dart';
 import '../Data/ResponseModel/LocationSharingActionResModel.dart';
 import '../Data/BodyModel/DeleteNotificationsBodyModel.dart';
 import '../Data/ResponseModel/DeleteNotificationResModel.dart';
+import '../Data/BodyModel/CreateOrderBodyModel.dart';
+import '../Data/ResponseModel/CreateOrderResModel.dart';
+import '../Data/BodyModel/VerifyPaymentBodyModel.dart';
+import '../Data/ResponseModel/VerifyPaymentResModel.dart';
 
 part 'ApiStateNetwork.g.dart';
 
@@ -378,4 +382,14 @@ abstract class ApiStateNetwork {
 
   @POST("/api/v1/notifications/location-view/{id}")
   Future<SendNotificatonResModel> sendNotificationById(@Path("id") String id);
+
+  @POST("/api/v1/payment/create-order")
+  Future<CreateOrderResModel> createPaymentOrder(
+    @Body() CreateOrderBodyModel body,
+  );
+
+  @POST("/api/v1/payment/verify")
+  Future<VerifyPaymentResModel> verifyPayment(
+    @Body() VerifyPaymentBodyModel body,
+  );
 }

@@ -1,14 +1,17 @@
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/DrawerScreen/PostJobOpprtunities.dart';
 import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
 import 'package:track_loved/core/Data/BodyModel/BusinessProfileBodyModel.dart';
+import 'package:track_loved/core/Data/ResponseModel/BusinessProfileResModel.dart';
 import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
@@ -31,12 +34,17 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
 
-  bool get _isEditMode =>
-      widget.isEdit ||
-      widget.existingData != null ||
-      (ref.read(getBussinessProfileProvider).value?.data?.isNotEmpty == true) ||
-      (Hive.box('userdata').get('isCompanyProfileComplete', defaultValue: false)
-          as bool);
+  bool get _isEditMode {
+    if (widget.isEdit && widget.existingData != null) return true;
+    final profileList = ref.read(getBussinessProfileProvider).value?.data;
+    if (profileList != null &&
+        profileList.isNotEmpty &&
+        profileList.first.id != null &&
+        profileList.first.id!.isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
 
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -68,6 +76,10 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
   bool _agreeSurveillanceProhibition = false;
   bool _agreeDataErasure = false;
   bool _agreeNoEmploymentContract = false;
+
+  late Razorpay _razorpay;
+  String? _currentOrderId;
+  BusinessProfileBodyModel? _pendingProfileBody;
   static const List<String> _indianStates = [
     'Andaman and Nicobar Islands',
     'Andhra Pradesh',
@@ -110,6 +122,8 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _initRazorpay();
+    _gstController.addListener(_autoExtractPanFromGst);
     final box = Hive.box('userdata');
     final profileData = ref.read(getBussinessProfileProvider).value?.data;
     final datum =
@@ -188,6 +202,7 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
 
   @override
   void dispose() {
+    _gstController.removeListener(_autoExtractPanFromGst);
     _companyNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -198,7 +213,30 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
     _stateController.dispose();
     _pincodeController.dispose();
     _websiteController.dispose();
+    _razorpay.clear();
     super.dispose();
+  }
+
+  void _autoExtractPanFromGst() {
+    final gst = _gstController.text.trim().toUpperCase();
+    if (gst.length >= 12) {
+      final possiblePan = gst.substring(2, 12);
+      if (RegExp(r'^[A-Z]{5}\d{4}[A-Z]$').hasMatch(possiblePan)) {
+        if (_panController.text.trim().isEmpty ||
+            !RegExp(
+              r'^[A-Z]{5}\d{4}[A-Z]$',
+            ).hasMatch(_panController.text.trim().toUpperCase())) {
+          _panController.text = possiblePan;
+        }
+      }
+    }
+  }
+
+  void _initRazorpay() {
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
   void _saveProfile() async {
@@ -261,122 +299,69 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
 
         final authService = ref.read(authServiceProvider);
         final isEditMode = _isEditMode;
-        final response = isEditMode
-            ? await authService.updateBusinessProfileData(body)
-            : await authService.saveBusinessProfileData(body);
 
-        // Persist locally in Hive
-        final box = Hive.box('userdata');
-        await box.put('isCompanyProfileComplete', true);
-        await box.put('companyName', _companyNameController.text.trim());
-        await box.put('companyEmail', _emailController.text.trim());
-        await box.put('companyPhone', _phoneController.text.trim());
-        await box.put('companyType', _selectedCompanyType);
-        await box.put('companyGst', _gstController.text.trim().toUpperCase());
-        await box.put('companyPan', _panController.text.trim().toUpperCase());
-        await box.put('companyAddress', _addressController.text.trim());
-        await box.put('companyCity', _cityController.text.trim());
-        await box.put('companyState', _selectedState ?? '');
-        await box.put('companyPincode', _pincodeController.text.trim());
-        await box.put('companyWebsite', _websiteController.text.trim());
-        ref.invalidate(getBussinessProfileProvider);
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF072420),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.r),
-              side: const BorderSide(color: Color(0xFFC5A038), width: 1),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: const Color(0xFFD4AF37),
-                  size: 24.sp,
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Text(
-                    _isHindi
-                        ? (isEditMode
-                              ? 'प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!'
-                              : 'सत्यापन के लिए सबमिट किया गया!')
-                        : (isEditMode
-                              ? 'Profile Updated Successfully!'
-                              : 'Submitted for Verification!'),
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Text(
-              response.message ??
-                  (_isHindi
-                      ? (isEditMode
-                            ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
-                            : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण सत्यापन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
-                      : (isEditMode
-                            ? 'Your company profile details have been successfully updated.'
-                            : 'Your company profile & KYC details have been successfully submitted for verification.')),
-              style: TextStyle(
-                fontSize: 13.5.sp,
-                color: Colors.white70,
-                height: 1.4,
-              ),
-            ),
-            actions: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
-                  ),
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context, true);
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const PostJobOpportunitiesScreen(),
-                        ),
-                      );
-                    }
-                  },
-                  child: Text(
-                    isEditMode
-                        ? (_isHindi ? 'पूर्ण' : 'Done')
-                        : (_isHindi
-                              ? 'सत्यापन स्थिति देखें'
-                              : 'View Verification Status'),
-                    style: TextStyle(
-                      color: const Color(0xFF072420),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        // Step 1: Submit profile POST /api/v1/business/profile
+        BusinessProfileResModel response;
+        if (isEditMode) {
+          try {
+            response = await authService.updateBusinessProfileData(body);
+            // If backend says profile not found, fallback to POST
+            if (response.message?.toLowerCase().contains(
+                      'submit a profile first',
+                    ) ==
+                    true ||
+                response.message?.toLowerCase().contains('not found') == true) {
+              log(
+                '[Profile] 404 on PATCH, falling back to POST /api/v1/business/profile',
+              );
+              response = await authService.saveBusinessProfileData(body);
+            }
+          } on DioException catch (dioErr) {
+            final msg = dioErr.response?.data?['message']?.toString() ?? '';
+            if (dioErr.response?.statusCode == 404 ||
+                msg.toLowerCase().contains('submit a profile first')) {
+              log(
+                '[Profile] DioException 404 on PATCH, falling back to POST /api/v1/business/profile',
+              );
+              response = await authService.saveBusinessProfileData(body);
+            } else {
+              rethrow;
+            }
+          }
+        } else {
+          response = await authService.saveBusinessProfileData(body);
+        }
+
+        // Check if payment is pending
+        if (response.isPaymentPending == true) {
+          _pendingProfileBody = body;
+          setState(() {
+            _isLoading = false;
+          });
+          if (!mounted) return;
+          _showPaymentRequiredDialog(
+            message:
+                response.message ??
+                (_isHindi
+                    ? 'कृपया अपनी प्रोफ़ाइल सबमिट करने से पहले कंपनी प्रोफ़ाइल भुगतान पूरा करें।'
+                    : 'Complete the company profile payment before submitting your profile.'),
+          );
+          return;
+        }
+
+        if (response.success == false) {
+          setState(() {
+            _isLoading = false;
+          });
+          if (!mounted) return;
+          showErrorSnackBar(
+            response.message ?? 'Failed to submit profile',
+            context,
+          );
+          return;
+        }
+
+        await _handleSuccessfulSubmission(response.message, isEditMode);
       } catch (e) {
         if (!mounted) return;
         log(e.toString());
@@ -388,6 +373,414 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
         }
       }
     }
+  }
+
+  void _showPaymentRequiredDialog({required String message}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF072420),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.payment, color: const Color(0xFFD4AF37), size: 24.sp),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                _isHindi ? 'भुगतान आवश्यक' : 'Payment Required',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 13.5.sp,
+                color: Colors.white70,
+                height: 1.4,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A302A),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(
+                  color: const Color(0xFFC5A038).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _isHindi
+                        ? 'कंपनी प्रोफ़ाइल शुल्क:'
+                        : 'Company Profile Fee:',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '₹499',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      color: const Color(0xFFD4AF37),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              _isHindi ? 'रद्द करें' : 'Cancel',
+              style: const TextStyle(color: Colors.white60),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
+              ),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _startCompanyProfilePayment();
+              },
+              child: Text(
+                _isHindi ? '₹250 का भुगतान करें' : 'Pay ₹250 via Razorpay',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startCompanyProfilePayment() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+
+      // Step 2: POST /api/v1/payment/create-order
+      final orderRes = await authService.createPaymentOrder(
+        amount: 2500,
+        planName: "Company Profile",
+      );
+
+      final orderData = orderRes.order ?? orderRes.data;
+      final orderId = orderData?.id;
+      final orderKey = orderData?.key;
+      final num orderAmount = orderData?.amount ?? 49900;
+
+      if (orderId == null || orderId.isEmpty) {
+        throw Exception(orderRes.message ?? 'Failed to generate order ID');
+      }
+
+      _currentOrderId = orderId;
+
+      final effectiveKey =
+          (orderKey != null &&
+              orderKey.isNotEmpty &&
+              !orderKey.contains('mock') &&
+              !orderKey.contains('placeholder'))
+          ? orderKey
+          : 'rzp_test_TwT72AQ3m2g8Kv';
+
+      final int amountInPaise = (orderAmount >= 100)
+          ? orderAmount.toInt()
+          : (orderAmount * 100).toInt();
+
+      final effectiveEmail = _emailController.text.trim().isNotEmpty
+          ? _emailController.text.trim()
+          : (Hive.isBoxOpen('userdata')
+                ? Hive.box('userdata').get('email')?.toString() ?? ''
+                : '');
+      final effectivePhone = _phoneController.text.trim().isNotEmpty
+          ? _phoneController.text.trim()
+          : (Hive.isBoxOpen('userdata')
+                ? Hive.box('userdata').get('phone')?.toString() ?? ''
+                : '');
+
+      final options = {
+        'key': effectiveKey,
+        'amount': amountInPaise,
+        'name': 'Track Loved Ones',
+        'order_id': orderId,
+        'description':
+            'Company Profile (₹${(amountInPaise / 100).toStringAsFixed(0)})',
+        'timeout': 300,
+        'prefill': {
+          if (effectivePhone.isNotEmpty) 'contact': effectivePhone,
+          if (effectiveEmail.isNotEmpty) 'email': effectiveEmail,
+        },
+        'external': {
+          'wallets': ['paytm'],
+        },
+        'theme': {'color': '#0F3D38'},
+      };
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Step 3: Open Razorpay checkout
+      _razorpay.open(options);
+    } catch (e) {
+      log('[Payment] Order creation failed: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    log(
+      '[Payment] Razorpay Success: orderId=${response.orderId}, paymentId=${response.paymentId}',
+    );
+    await _verifyPaymentAndResubmitProfile(
+      orderId: response.orderId ?? _currentOrderId ?? '',
+      paymentId: response.paymentId ?? '',
+      signature: response.signature ?? '',
+    );
+  }
+
+  Future<void> _verifyPaymentAndResubmitProfile({
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+
+      // Step 4: POST /api/v1/payment/verify
+      final verifyRes = await authService.verifyPayment(
+        razorpayOrderId: orderId,
+        razorpayPaymentId: paymentId,
+        razorpaySignature: signature,
+      );
+
+      if (verifyRes.isCompanyPaymentCompleted == true ||
+          verifyRes.success == true) {
+        final box = Hive.box('userdata');
+        await box.put('isCompanyPaymentCompleted', true);
+        await box.put('isPaymentPending', false);
+
+        if (mounted) {
+          showSuccessSnackBar(
+            verifyRes.message ??
+                'Payment verified successfully! Submitting profile...',
+            context,
+          );
+        }
+
+        // Step 5: Dobara POST /api/v1/business/profile submit karo
+        if (_pendingProfileBody != null) {
+          final res = await authService.saveBusinessProfileData(
+            _pendingProfileBody!,
+          );
+          await _handleSuccessfulSubmission(
+            res.message ?? 'Business profile submitted for admin approval.',
+            false,
+          );
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception(verifyRes.message ?? 'Payment verification failed');
+      }
+    } catch (e) {
+      log('[Payment] Verification or resubmission failed: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        // showErrorSnackBar('Payment verification failed: $e', context);
+      }
+    }
+  }
+
+  Future<void> _handleSuccessfulSubmission(
+    String? serverMessage,
+    bool isEditMode,
+  ) async {
+    // Persist locally in Hive
+    final box = Hive.box('userdata');
+    await box.put('isCompanyProfileComplete', true);
+    await box.put('companyName', _companyNameController.text.trim());
+    await box.put('companyEmail', _emailController.text.trim());
+    await box.put('companyPhone', _phoneController.text.trim());
+    await box.put('companyType', _selectedCompanyType);
+    await box.put('companyGst', _gstController.text.trim().toUpperCase());
+    await box.put('companyPan', _panController.text.trim().toUpperCase());
+    await box.put('companyAddress', _addressController.text.trim());
+    await box.put('companyCity', _cityController.text.trim());
+    await box.put('companyState', _selectedState ?? '');
+    await box.put('companyPincode', _pincodeController.text.trim());
+    await box.put('companyWebsite', _websiteController.text.trim());
+    ref.invalidate(getBussinessProfileProvider);
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF072420),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: const BorderSide(color: Color(0xFFC5A038), width: 1),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: const Color(0xFFD4AF37),
+              size: 24.sp,
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                _isHindi
+                    ? (isEditMode
+                          ? 'प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!'
+                          : 'प्रशासक अनुमोदन के लिए सबमिट किया गया!')
+                    : (isEditMode
+                          ? 'Profile Updated Successfully!'
+                          : 'Submitted for Admin Approval!'),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          serverMessage ??
+              (_isHindi
+                  ? (isEditMode
+                        ? 'आपकी कंपनी का प्रोफ़ाइल विवरण सफलतापूर्वक अपडेट कर दिया गया है।'
+                        : 'आपकी कंपनी का प्रोफ़ाइल और KYC विवरण व्यवस्थापक के अनुमोदन के लिए सफलतापूर्वक सबमिट कर दिया गया है।')
+                  : (isEditMode
+                        ? 'Your company profile details have been successfully updated.'
+                        : 'Business profile submitted for admin approval.')),
+          style: TextStyle(
+            fontSize: 13.5.sp,
+            color: Colors.white70,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE6C567), Color(0xFFC5A038)],
+              ),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context, true);
+                } else {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PostJobOpportunitiesScreen(),
+                    ),
+                  );
+                }
+              },
+              child: Text(
+                isEditMode
+                    ? (_isHindi ? 'पूर्ण' : 'Done')
+                    : (_isHindi
+                          ? 'सत्यापन स्थिति देखें'
+                          : 'View Verification Status'),
+                style: TextStyle(
+                  color: const Color(0xFF072420),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    log('[Payment] Razorpay error: ${response.code} - ${response.message}');
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      showErrorSnackBar(
+        _isHindi
+            ? 'भुगतान रद्द या विफल हुआ: ${response.message ?? ''}'
+            : 'Payment cancelled or failed: ${response.message ?? ''}',
+        context,
+      );
+    }
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    log('[Payment] External wallet: ${response.walletName}');
   }
 
   @override
@@ -740,6 +1133,22 @@ class _CompanyProfileScreenState extends ConsumerState<CompanyProfileScreen> {
                                 textCapitalization:
                                     TextCapitalization.characters,
                                 maxLength: 10,
+                                customValidator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return _isHindi
+                                        ? 'पैन नंबर दर्ज करें'
+                                        : 'Enter PAN number';
+                                  }
+                                  final clean = val.trim().toUpperCase();
+                                  if (!RegExp(
+                                    r'^[A-Z]{5}\d{4}[A-Z]$',
+                                  ).hasMatch(clean)) {
+                                    return _isHindi
+                                        ? 'अमान्य पैन (प्रारूप: 5 अक्षर, 4 अंक, 1 अक्षर उदा. ABCDE1234F)'
+                                        : 'Invalid PAN (Format: 5 letters, 4 digits, 1 letter e.g. ABCDE1234F)';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ],

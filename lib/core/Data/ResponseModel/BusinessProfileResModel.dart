@@ -10,23 +10,39 @@ String businessProfileResModelToJson(BusinessProfileResModel data) => json.encod
 
 class BusinessProfileResModel {
     bool? success;
+    bool? isPaymentPending;
     String? message;
     Data? data;
 
     BusinessProfileResModel({
         this.success,
+        this.isPaymentPending,
         this.message,
         this.data,
     });
 
-    factory BusinessProfileResModel.fromJson(Map<String, dynamic> json) => BusinessProfileResModel(
-        success: json["success"],
-        message: json["message"],
-        data: json["data"] == null ? null : Data.fromJson(json["data"]),
-    );
+    factory BusinessProfileResModel.fromJson(Map<String, dynamic> json) {
+        String? msg = json["message"];
+        if (json["errors"] != null &&
+            json["errors"] is List &&
+            (json["errors"] as List).isNotEmpty) {
+            final first = (json["errors"] as List).first;
+            if (first is Map && first["message"] != null) {
+                msg = first["message"].toString();
+            }
+        }
+        return BusinessProfileResModel(
+            success: json["success"],
+            isPaymentPending: json["isPaymentPending"] == true ||
+                json["data"]?["isPaymentPending"] == true,
+            message: msg,
+            data: json["data"] == null ? null : Data.fromJson(json["data"]),
+        );
+    }
 
     Map<String, dynamic> toJson() => {
         "success": success,
+        "isPaymentPending": isPaymentPending,
         "message": message,
         "data": data?.toJson(),
     };

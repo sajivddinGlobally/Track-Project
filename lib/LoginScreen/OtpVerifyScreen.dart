@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pinput/pinput.dart';
-import 'package:track_loved/LoginScreen/CompanyPaymentScreen.dart';
 import 'package:track_loved/LoginScreen/WaitingParentApprovalScreen.dart';
 import 'package:track_loved/LoginScreen/registerConsentScreen.dart';
 import 'package:track_loved/core/AuthService/AuthServiceProvider.dart';
@@ -391,11 +390,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                             await box.put("isParentConsentApproved", true);
                           }
 
-                          final requiresPayment =
-                              response.data?.requiresPayment == true ||
-                              response.requiresPayment == true;
-                          await box.put("isPaymentPending", requiresPayment);
-
                           // Sync FCM token to backend upon registration / login
                           final cachedFcm = box.get("fcm_token")?.toString();
                           if (cachedFcm != null && cachedFcm.isNotEmpty) {
@@ -407,24 +401,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
 
                           if (context.mounted) {
                             isNavigating = true;
-
-                            // 1. If Company Subscription Payment Required: navigate directly to Payment Screen
-                            if (requiresPayment) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CompanyPaymentScreen(
-                                    token: response.data?.token,
-                                    email: response.data?.user?.email ??
-                                        widget.email,
-                                    phone: effectivePhone,
-                                    companyName: response.data?.user?.name,
-                                  ),
-                                ),
-                                (route) => false,
-                              );
-                              return;
-                            }
 
                             if (isChildRole) {
                               Navigator.pushAndRemoveUntil(

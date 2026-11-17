@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -517,7 +518,26 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                       onPressed: !canViewMap
                           ? null
                           : () {
-                              _viewLocationOnGoogleMap(user);
+                              final targetId = user.userId;
+                              if (targetId != null && targetId.isNotEmpty) {
+                                try {
+                                  final authService = ref.read(
+                                    authServiceProvider,
+                                  );
+                                  authService
+                                      .sendNotificationByIdData(id: targetId)
+                                      .then((_) {})
+                                      .catchError((e) {
+                                        log(
+                                          '[LocationView] Error sending view notification: $e',
+                                        );
+                                      });
+                                } catch (e) {
+                                  log(
+                                    '[LocationView] Error dispatching view notification: $e',
+                                  );
+                                }
+                              }
                               Navigator.pop(context);
                               ref.invalidate(searchLovedProvider);
                               Navigator.push(

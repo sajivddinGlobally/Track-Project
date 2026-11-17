@@ -1256,7 +1256,6 @@ class _ManageMyApplicationsScreenState
             ),
           ],
           SizedBox(height: 8.h),
-
           // Metadata Container
           Container(
             padding: EdgeInsets.all(8.w),

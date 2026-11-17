@@ -54,12 +54,14 @@ class OrderData {
   final num? amount;
   final String? key;
   final String? currency;
+  final String? planName;
 
   OrderData({
     this.id,
     this.amount,
     this.key,
     this.currency,
+    this.planName,
   });
 
   factory OrderData.fromJson(Map<String, dynamic> json) => OrderData(
@@ -69,6 +71,7 @@ class OrderData {
             json["razorpay_key"]?.toString() ??
             json["key_id"]?.toString(),
         currency: json["currency"]?.toString() ?? "INR",
+        planName: json["planName"]?.toString(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -76,6 +79,7 @@ class OrderData {
         "amount": amount,
         "key": key,
         "currency": currency,
+        "planName": planName,
       };
 }
 

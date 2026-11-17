@@ -78,7 +78,6 @@ import '../Data/BodyModel/UpdateUserLocationBodyModel.dart';
 import '../Data/BodyModel/UpdateFcmTokenBodyModel.dart';
 import '../Data/ResponseModel/FriendLocationSharingStatusResModel.dart';
 import '../Data/ResponseModel/FriendLocationResModel.dart';
-import 'package:hive/hive.dart';
 import '../Data/BodyModel/CreateOrderBodyModel.dart';
 import '../Data/ResponseModel/CreateOrderResModel.dart';
 import '../Data/BodyModel/GoogleSignInBodyModel.dart';
@@ -469,6 +468,12 @@ class Authservice {
     try {
       final response = await api.saveBusinessProfile(body);
       return response;
+    } on DioException catch (e) {
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        return BusinessProfileResModel.fromJson(
+            e.response!.data as Map<String, dynamic>);
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }
@@ -480,6 +485,12 @@ class Authservice {
     try {
       final response = await api.updateBusinessProfile(body);
       return response;
+    } on DioException catch (e) {
+      if (e.response?.data != null && e.response!.data is Map<String, dynamic>) {
+        return BusinessProfileResModel.fromJson(
+            e.response!.data as Map<String, dynamic>);
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }
@@ -776,40 +787,34 @@ class Authservice {
   }
 
   Future<CreateOrderResModel> createPaymentOrder({
-    num amount = 1,
-    String planName = "Company Subscription",
+    num amount = 49900,
+    String planName = "Company Profile",
     String? token,
   }) async {
     try {
       final body = CreateOrderBodyModel(amount: amount, planName: planName);
-      final client = dio ?? Dio();
-      final effectiveToken =
-          token ??
-          (Hive.isBoxOpen("userdata")
-              ? Hive.box("userdata").get("token")
-              : null);
-
-      final baseUrl = client.options.baseUrl.isNotEmpty
-          ? client.options.baseUrl
-          : "https://api.tracklovedones.com";
-
-      final response = await client.post(
-        "$baseUrl/api/v1/payment/create-order",
-        data: body.toJson(),
-        options: Options(
-          headers: {
-            "Content-Type": "application/json",
-            if (effectiveToken != null && effectiveToken.toString().isNotEmpty)
-              "Authorization": "Bearer $effectiveToken",
-          },
-        ),
-      );
-
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        return CreateOrderResModel.fromJson(data);
+      if (token != null && token.isNotEmpty) {
+        final client = dio ?? Dio();
+        final baseUrl = client.options.baseUrl.isNotEmpty
+            ? client.options.baseUrl
+            : "https://api.tracklovedones.com";
+        final response = await client.post(
+          "$baseUrl/api/v1/payment/create-order",
+          data: body.toJson(),
+          options: Options(
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+          ),
+        );
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          return CreateOrderResModel.fromJson(data);
+        }
+        return CreateOrderResModel.fromJson({});
       }
-      return CreateOrderResModel.fromJson({});
+      return await api.createPaymentOrder(body);
     } catch (e) {
       rethrow;
     }
@@ -827,34 +832,28 @@ class Authservice {
         razorpayPaymentId: razorpayPaymentId,
         razorpaySignature: razorpaySignature,
       );
-      final client = dio ?? Dio();
-      final effectiveToken =
-          token ??
-          (Hive.isBoxOpen("userdata")
-              ? Hive.box("userdata").get("token")
-              : null);
-
-      final baseUrl = client.options.baseUrl.isNotEmpty
-          ? client.options.baseUrl
-          : "https://api.tracklovedones.com";
-
-      final response = await client.post(
-        "$baseUrl/api/v1/payment/verify",
-        data: body.toJson(),
-        options: Options(
-          headers: {
-            "Content-Type": "application/json",
-            if (effectiveToken != null && effectiveToken.toString().isNotEmpty)
-              "Authorization": "Bearer $effectiveToken",
-          },
-        ),
-      );
-
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        return VerifyPaymentResModel.fromJson(data);
+      if (token != null && token.isNotEmpty) {
+        final client = dio ?? Dio();
+        final baseUrl = client.options.baseUrl.isNotEmpty
+            ? client.options.baseUrl
+            : "https://api.tracklovedones.com";
+        final response = await client.post(
+          "$baseUrl/api/v1/payment/verify",
+          data: body.toJson(),
+          options: Options(
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $token",
+            },
+          ),
+        );
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          return VerifyPaymentResModel.fromJson(data);
+        }
+        return VerifyPaymentResModel.fromJson({});
       }
-      return VerifyPaymentResModel.fromJson({});
+      return await api.verifyPayment(body);
     } catch (e) {
       rethrow;
     }

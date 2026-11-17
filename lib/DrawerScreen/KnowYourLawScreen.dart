@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
 import 'package:track_loved/CustomScreen/CustomScreen.dart';
 import 'package:track_loved/core/Data/ResponseModel/GetLawContentResModel.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,68 +13,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 
 import 'NetworkRequestScreen/Provider/getLowProvider.dart';
-
-class LegalSectionDetail {
-  final String sectionTitle;
-  final String explanation;
-  final String youtubeVideoUrl;
-
-  LegalSectionDetail({
-    required this.sectionTitle,
-    required this.explanation,
-    required this.youtubeVideoUrl,
-  });
-}
-
-class LandmarkCaseDetail {
-  final String caseName;
-  final String summary;
-  final String youtubeVideoUrl;
-
-  LandmarkCaseDetail({
-    required this.caseName,
-    required this.summary,
-    required this.youtubeVideoUrl,
-  });
-}
-
-class LegalActDetail {
-  final String actName;
-  final String jurisdiction; // 'Central' or 'State'
-  final String englishPdfUrl;
-  final String hindiPdfUrl;
-  final String referenceVideoUrl;
-  final List<LegalSectionDetail> sections;
-  final List<LandmarkCaseDetail> landmarkCases;
-
-  LegalActDetail({
-    required this.actName,
-    required this.jurisdiction,
-    required this.englishPdfUrl,
-    required this.hindiPdfUrl,
-    this.referenceVideoUrl = '',
-    required this.sections,
-    required this.landmarkCases,
-  });
-}
-
-class LegalTopic {
-  final String titleEn;
-  final String titleHi;
-  final String description;
-  final IconData icon;
-  final String youtubeUrl;
-  final List<LegalActDetail> acts;
-
-  LegalTopic({
-    required this.titleEn,
-    required this.titleHi,
-    required this.description,
-    required this.icon,
-    required this.youtubeUrl,
-    required this.acts,
-  });
-}
 
 /// ---------------------------------------------------------------------------
 /// DPDP ACT (2023) COMPLIANT MEDIA REDIRECT & MINOR PROTECTION HELPER
@@ -405,13 +344,14 @@ class LegalMediaRedirectHelper {
                                     fontSize: 11.5.sp,
                                     color: Colors.black87,
                                     fontWeight: FontWeight.w500,
-                                  ), 
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       SizedBox(height: 14.h),
+
                       // Action Buttons
                       Row(
                         children: [
@@ -588,6 +528,9 @@ class LegalMediaRedirectHelper {
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// MAIN LEGAL AWARENESS APP (DIRECT ADMIN-UPLOADED CONTENT)
+/// ---------------------------------------------------------------------------
 class LegalAwarenessApp extends ConsumerStatefulWidget {
   const LegalAwarenessApp({super.key});
 
@@ -598,260 +541,151 @@ class LegalAwarenessApp extends ConsumerStatefulWidget {
 class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
   bool _isHindi = false;
   String _searchQuery = '';
-  String _selectedJurisdictionFilter = 'All'; // 'All', 'Central', 'State'
+  String _selectedSection =
+      'All'; // 'All', 'Section A', 'Section B', 'Section C'
+  String _selectedState =
+      'All'; // 'All', 'Central', 'Delhi', 'Uttar Pradesh', etc.
+  String _selectedType = 'All'; // 'All', 'pdf', 'video'
   bool _isDisclaimerExpanded = false;
 
-  /// CORE INDIAN LEGAL DOMAINS & SYLLABUS (Sections A, B, C)
-  List<LegalTopic> getTopics() {
-    return [
-      LegalTopic(
-        titleEn: '🏛️ SECTION A: CONSTITUTIONAL & CIVIL RIGHTS',
-        titleHi: '🏛️ खंड क: संवैधानिक एवं नागरिक अधिकार',
-        description:
-            'Foundational laws of the Republic of India: Fundamental Rights, Constitutional Remedies, and Data Sovereignty under DPDP Act, 2023.',
-        icon: Icons.account_balance,
-        youtubeUrl: 'https://www.youtube.com/watch?v=ConstitutionIntro',
-        acts: [
-          LegalActDetail(
-            actName: 'The Constitution of India, 1950',
-            jurisdiction: 'Central',
-            englishPdfUrl: 'https://legislative.gov.in/constitution-of-india/',
-            hindiPdfUrl: 'https://legislative.gov.in/constitution-of-india/',
-            referenceVideoUrl:
-                'https://www.youtube.com/watch?v=ConstitutionModule',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle: 'Article 19: Freedom of Speech & Expression',
-                explanation:
-                    'Guarantees six basic democratic freedoms including speech, assembly, and trade, subject to reasonable restrictions.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=Art19Speech',
-              ),
-              LegalSectionDetail(
-                sectionTitle:
-                    'Article 21: Protection of Life & Personal Liberty',
-                explanation:
-                    'No person shall be deprived of life or liberty except according to procedure established by law.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=Art21Liberty',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Article 32: Right to Constitutional Remedies',
-                explanation:
-                    'Heart and soul of the Constitution: guarantees direct approach to the Supreme Court for enforcement of fundamental rights.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=Art32Remedies',
-              ),
-            ],
-            landmarkCases: [
-              LandmarkCaseDetail(
-                caseName: 'Kesavananda Bharati v. State of Kerala (1973)',
-                summary:
-                    'Thirteen-judge bench established the Basic Structure Doctrine: Parliament cannot alter the basic framework of the Constitution.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=KesavanandaCase',
-              ),
-            ],
-          ),
-          LegalActDetail(
-            actName: 'Digital Personal Data Protection (DPDP) Act, 2023',
-            jurisdiction: 'Central',
-            englishPdfUrl:
-                'https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf',
-            hindiPdfUrl:
-                'https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf',
-            referenceVideoUrl: 'https://www.youtube.com/watch?v=DPDPAwareness',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle: 'Section 6: Notice & Unambiguous Consent',
-                explanation:
-                    'Mandates clear itemized notice and explicit consent prior to processing personal data.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=DPDPASection6',
-              ),
-              LegalSectionDetail(
-                sectionTitle:
-                    'Section 9: Processing of Personal Data of Children',
-                explanation:
-                    'Requires verifiable parental consent and strictly bans behavioral tracking, targeted advertisements, or surveillance on minors.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=DPDPASection9',
-              ),
-            ],
-            landmarkCases: [
-              LandmarkCaseDetail(
-                caseName: 'Justice K.S. Puttaswamy v. Union of India (2017)',
-                summary:
-                    'Nine-judge bench unanimously recognized the Right to Privacy as an intrinsic part of the Right to Life under Article 21.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=PuttaswamyCase',
-              ),
-            ],
-          ),
-        ],
-      ),
-      LegalTopic(
-        titleEn: '⚖️ SECTION B: NATIONAL CRIMINAL & SECURITY CODES',
-        titleHi: '⚖️ खंड ख: राष्ट्रीय आपराधिक एवं सुरक्षा संहिताएँ',
-        description:
-            'Public safety laws, police procedures under Bharatiya Nyaya Sanhita (BNS), cybercrime, and intermediary system protections.',
-        icon: Icons.gavel,
-        youtubeUrl: 'https://www.youtube.com/watch?v=BNSOverview',
-        acts: [
-          LegalActDetail(
-            actName: 'Bharatiya Nyaya Sanhita (BNS), 2023',
-            jurisdiction: 'Central',
-            englishPdfUrl:
-                'https://www.mha.gov.in/sites/default/files/250882_english_01042024.pdf',
-            hindiPdfUrl:
-                'https://www.mha.gov.in/sites/default/files/250882_hindi_ubah_01042024.pdf',
-            referenceVideoUrl: 'https://www.youtube.com/watch?v=BNSModule',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle: 'Section 35: General Exceptions',
-                explanation:
-                    'Acts done in good faith or under mistake of fact without criminal intent.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=BNSSection35',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Section 103: Punishment for Murder',
-                explanation:
-                    'Prescribes death sentence or imprisonment for life along with fine.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=BNSSection103',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Section 115: Voluntarily Causing Hurt',
-                explanation:
-                    'Punishment for intentionally or knowingly causing bodily pain, disease, or infirmity.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=BNSSection115',
-              ),
-            ],
-            landmarkCases: [
-              LandmarkCaseDetail(
-                caseName: 'D.K. Basu v. State of West Bengal (1997)',
-                summary:
-                    'Mandatory procedural guidelines for police during arrests, detentions, and interrogation memos.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=DKBasuCase',
-              ),
-            ],
-          ),
-          LegalActDetail(
-            actName: 'Information Technology (IT) Act, 2000',
-            jurisdiction: 'Central',
-            englishPdfUrl:
-                'https://www.meity.gov.in/content/information-technology-act-2000',
-            hindiPdfUrl:
-                'https://www.meity.gov.in/content/information-technology-act-2000',
-            referenceVideoUrl: 'https://www.youtube.com/watch?v=ITActOverview',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle:
-                    'Section 43A: Compensation for Failure to Protect Data',
-                explanation:
-                    'Liability of body corporate for negligence in implementing reasonable security practices.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct43A',
-              ),
-              LegalSectionDetail(
-                sectionTitle:
-                    'Section 66D: Punishment for Cheating by Personation',
-                explanation:
-                    'Penalizes online impersonation, phishing, and scamming using computer resources.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct66D',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Section 79: Intermediary Safe Harbor Exemption',
-                explanation:
-                    'Statutory immunity for network intermediaries that act as neutral conduits without initiating transmissions.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct79',
-              ),
-            ],
-            landmarkCases: [
-              LandmarkCaseDetail(
-                caseName: 'Shreya Singhal v. Union of India (2015)',
-                summary:
-                    'Struck down arbitrary censorship provision (Section 66A) and upheld statutory safe harbor for intermediaries.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=ShreyaSinghalCase',
-              ),
-            ],
-          ),
-        ],
-      ),
-      LegalTopic(
-        titleEn: '💼 SECTION C: COMMERCE, LABOR, & FACILITATION CODES',
-        titleHi: '💼 खंड ग: वाणिज्य, श्रम एवं सुविधा संहिताएँ',
-        description:
-            'Electronic contracts, safe-harbor transactions, non-employment protections, and wage regulations for gig ecosystems.',
-        icon: Icons.business_center,
-        youtubeUrl: 'https://www.youtube.com/watch?v=CommercialCodes',
-        acts: [
-          LegalActDetail(
-            actName: 'The Indian Contract Act, 1872',
-            jurisdiction: 'Central',
-            englishPdfUrl:
-                'https://legislative.gov.in/sites/default/files/A1872-09.pdf',
-            hindiPdfUrl:
-                'https://legislative.gov.in/sites/default/files/A1872-09.pdf',
-            referenceVideoUrl:
-                'https://www.youtube.com/watch?v=ContractActModule',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle: 'Section 10: What Agreements are Contracts',
-                explanation:
-                    'Agreements made by free consent of competent parties for lawful consideration and object.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=ContractSec10',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Section 23: Lawful Consideration and Object',
-                explanation:
-                    'Defines when consideration is forbidden by law, fraudulent, or opposed to public policy.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=ContractSec23',
-              ),
-            ],
-            landmarkCases: [
-              LandmarkCaseDetail(
-                caseName: 'Carlill v. Carbolic Smoke Ball Co. (1893)',
-                summary:
-                    'Foundational decision affirming unilateral contracts and binding offers made to the general public.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=CarlillCase',
-              ),
-            ],
-          ),
-          LegalActDetail(
-            actName: 'Code on Wages & Industrial Relations',
-            jurisdiction: 'Central',
-            englishPdfUrl: 'https://labour.gov.in/wage-code-2019',
-            hindiPdfUrl: 'https://labour.gov.in/wage-code-2019',
-            referenceVideoUrl: 'https://www.youtube.com/watch?v=WageCodeModule',
-            sections: [
-              LegalSectionDetail(
-                sectionTitle: 'Section 6: Fixation of Minimum Wages',
-                explanation:
-                    'Sets statutory floor wage benchmarks and working hour protections across states.',
-                youtubeVideoUrl: 'https://www.youtube.com/watch?v=WageSec6',
-              ),
-              LegalSectionDetail(
-                sectionTitle: 'Intermediary Non-Employment Protections',
-                explanation:
-                    'Distinguishes technological facilitation platforms from employer-employee master-servant relationships.',
-                youtubeVideoUrl:
-                    'https://www.youtube.com/watch?v=IntermediaryLabor',
-              ),
-            ],
-            landmarkCases: [],
-          ),
-        ],
-      ),
-    ];
+  final List<String> _stateOptions = [
+    'All',
+    'Central',
+    'Delhi',
+    'Uttar Pradesh',
+    'Maharashtra',
+    'Bihar',
+    'Rajasthan',
+    'Madhya Pradesh',
+    'Haryana',
+    'Punjab',
+    'Karnataka',
+  ];
+
+  final List<Map<String, String>> _sectionOptions = [
+    {
+      'key': 'All',
+      'labelEn': 'All Sections',
+      'labelHi': 'सभी खंड',
+      'icon': '📚',
+    },
+    {
+      'key': 'Section A',
+      'labelEn': 'Section A: Constitutional',
+      'labelHi': 'खंड क: संवैधानिक',
+      'icon': '🏛️',
+    },
+    {
+      'key': 'Section B',
+      'labelEn': 'Section B: Criminal & Security',
+      'labelHi': 'खंड ख: आपराधिक व सुरक्षा',
+      'icon': '⚖️',
+    },
+    {
+      'key': 'Section C',
+      'labelEn': 'Section C: Commerce & Labor',
+      'labelHi': 'खंड ग: वाणिज्य व श्रम',
+      'icon': '💼',
+    },
+  ];
+
+  Future<void> _openPdfUrl(String? urlString) async {
+    if (urlString == null || urlString.trim().isEmpty) {
+      if (mounted) {
+        showErrorSnackBar(
+          _isHindi ? 'कोई पीडीएफ लिंक उपलब्ध नहीं है' : 'No PDF URL available',
+          context,
+        );
+      }
+      return;
+    }
+    try {
+      final uri = Uri.parse(urlString.trim());
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          showErrorSnackBar(
+            _isHindi
+                ? 'पीडीएफ खोलने में असमर्थ'
+                : 'Could not open PDF document',
+            context,
+          );
+        }
+      }
+    } catch (e) {
+      log('Error opening PDF: $e');
+      if (mounted) {
+        showErrorSnackBar('Error: $e', context);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch API provider to ensure cached/fresh data is ready
-    ref.watch(getLawProvider);
-    final topics = getTopics();
+    final lawAsync = ref.watch(getLawProvider);
+    final List<LawContentItem> allItems = lawAsync.value?.data ?? [];
+
+    // Filter dynamic admin uploads based on user selections
+    final filteredItems = allItems.where((item) {
+      // 1. Section Filter (matching Section A, Section B, Section C from Admin)
+      if (_selectedSection != 'All') {
+        final sec = '${item.section ?? ''} ${item.category ?? ''}'
+            .toLowerCase();
+        if (!sec.contains(_selectedSection.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // 2. State Filter (Central, Delhi, Rajasthan, etc.)
+      if (_selectedState != 'All') {
+        final itemState = (item.state ?? 'Central').trim().toLowerCase();
+        if (itemState != _selectedState.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 3. Media Type Filter (PDF vs Video)
+      if (_selectedType == 'pdf') {
+        final isPdf =
+            (item.type?.toLowerCase() == 'pdf') ||
+            (item.url != null && item.url!.toLowerCase().contains('.pdf')) ||
+            (item.url != null && item.url!.contains('/raw/upload/'));
+        if (!isPdf) return false;
+      } else if (_selectedType == 'video') {
+        final isVid =
+            (item.type?.toLowerCase() == 'video') ||
+            (item.url != null &&
+                (item.url!.contains('youtu.be') ||
+                    item.url!.contains('youtube.com')));
+        if (!isVid) return false;
+      }
+
+      // 4. Search Filter
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final t = (item.title ?? '').toLowerCase();
+        final m = (item.lawModule ?? '').toLowerCase();
+        final s = (item.section ?? '').toLowerCase();
+        final st = (item.state ?? '').toLowerCase();
+        final d = (item.description ?? '').toLowerCase();
+        if (!t.contains(q) &&
+            !m.contains(q) &&
+            !s.contains(q) &&
+            !st.contains(q) &&
+            !d.contains(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    final hasActiveFilters =
+        _selectedSection != 'All' ||
+        _selectedState != 'All' ||
+        _selectedType != 'All' ||
+        _searchQuery.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFF002E29),
@@ -874,7 +708,7 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
             // MANDATORY NATIONAL LEGAL EDUCATION PORTAL HEADER & DISCLAIMER
             // -------------------------------------------------------------
             Container(
-              margin: EdgeInsets.only(bottom: 12.h),
+              margin: EdgeInsets.only(bottom: 10.h),
               padding: EdgeInsets.all(12.w),
               decoration: BoxDecoration(
                 color: const Color(0xFF0F3D38),
@@ -920,8 +754,8 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
                   SizedBox(height: 2.h),
                   Text(
                     _isHindi
-                        ? '[स्थिर शैक्षिक संदर्भ एवं जन-जागरूकता केंद्र]'
-                        : '[Static Educational Reference & Awareness Hub]',
+                        ? '[कानूनी जागरूकता एवं अध्ययन सामग्री केंद्र]'
+                        : '[Legal Awareness & Resource Hub]',
                     style: TextStyle(
                       color: const Color(0xFFD4AF37),
                       fontWeight: FontWeight.w600,
@@ -1053,83 +887,207 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
               ),
             ),
 
-            // Filter and Search Row
+            // -------------------------------------------------------------
+            // SECTION SYLLABUS FILTER CHIPS (Section A, B, C matching Admin)
+            // -------------------------------------------------------------
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _sectionOptions.map((sec) {
+                  final isSelected = _selectedSection == sec['key'];
+                  return Padding(
+                    padding: EdgeInsets.only(right: 6.w, bottom: 6.h),
+                    child: FilterChip(
+                      label: Text(
+                        '${sec['icon']} ${_isHindi ? sec['labelHi'] : sec['labelEn']}',
+                      ),
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFF002E29)
+                            : Colors.white,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        fontSize: 11.sp,
+                      ),
+                      selected: isSelected,
+                      selectedColor: const Color(0xFFD4AF37),
+                      backgroundColor: const Color(0xFF0F3D38),
+                      side: BorderSide(
+                        color: isSelected
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.r),
+                      ),
+                      showCheckmark: false,
+                      onSelected: (val) {
+                        setState(() {
+                          _selectedSection = sec['key']!;
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // -------------------------------------------------------------
+            // SEARCH & DROPDOWN FILTERS (State & Media Type)
+            // -------------------------------------------------------------
             Row(
               children: [
+                // Search Input
                 Expanded(
-                  flex: 2,
-                  child: TextField(
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val.toLowerCase();
-                      });
-                    },
-                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: _isHindi
-                          ? 'अधिनियम या धाराएं खोजें...'
-                          : 'Search Acts or Sections...',
-                      hintStyle: TextStyle(
-                        color: Colors.black45,
-                        fontSize: 13.sp,
+                  flex: 3,
+                  child: SizedBox(
+                    height: 38.h,
+                    child: TextField(
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim();
+                        });
+                      },
+                      style: TextStyle(
+                        fontSize: 12.5.sp,
+                        color: Colors.black87,
                       ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.black45,
-                        size: 18.sp,
-                      ),
-                      prefixIconConstraints: BoxConstraints(
-                        minWidth: 30.w,
-                        minHeight: 30.h,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 9.h,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24.r),
-                        borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24.r),
-                        borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: _isHindi
+                            ? 'खोजें (शीर्षक, एक्ट)...'
+                            : 'Search title, act...',
+                        hintStyle: TextStyle(
+                          color: Colors.black45,
+                          fontSize: 11.5.sp,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Colors.black45,
+                          size: 16.sp,
+                        ),
+                        prefixIconConstraints: BoxConstraints(
+                          minWidth: 28.w,
+                          minHeight: 28.h,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 6.h,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18.r),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD0E1F9),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18.r),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF0F4C81),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: 6.w),
+                // State Dropdown
                 Expanded(
-                  flex: 1,
+                  flex: 2,
                   child: Container(
-                    height: 42.h,
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    height: 38.h,
+                    padding: EdgeInsets.symmetric(horizontal: 6.w),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24.r),
+                      borderRadius: BorderRadius.circular(18.r),
                       border: Border.all(color: const Color(0xFFD0E1F9)),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _selectedJurisdictionFilter,
+                        value: _selectedState,
                         isExpanded: true,
-                        items: ['All', 'Central', 'State']
-                            .map(
-                              (val) => DropdownMenuItem(
-                                value: val,
-                                child: Text(
-                                  val,
-                                  style: TextStyle(fontSize: 12.5.sp),
-                                ),
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          color: const Color(0xFF0F4C81),
+                          size: 18.sp,
+                        ),
+                        items: _stateOptions.map((st) {
+                          return DropdownMenuItem(
+                            value: st,
+                            child: Text(
+                              st == 'All'
+                                  ? (_isHindi ? 'सभी राज्य' : 'All States')
+                                  : st,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: Colors.black87,
                               ),
-                            )
-                            .toList(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
                         onChanged: (val) {
                           if (val != null) {
                             setState(() {
-                              _selectedJurisdictionFilter = val;
+                              _selectedState = val;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 6.w),
+                // Type Dropdown (All, PDF, Video)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 38.h,
+                    padding: EdgeInsets.symmetric(horizontal: 6.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18.r),
+                      border: Border.all(color: const Color(0xFFD0E1F9)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedType,
+                        isExpanded: true,
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          color: const Color(0xFF0F4C81),
+                          size: 18.sp,
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'All',
+                            child: Text(
+                              _isHindi ? 'सभी प्रकार' : 'All Types',
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'pdf',
+                            child: Text(
+                              _isHindi ? '📄 PDFs' : '📄 PDFs',
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'video',
+                            child: Text(
+                              _isHindi ? '🎬 Videos' : '🎬 Videos',
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedType = val;
                             });
                           }
                         },
@@ -1139,282 +1097,165 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
                 ),
               ],
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 6.h),
 
-            // Syllabus Topics & Acts List
-            Expanded(
-              child: ListView.builder(
-                itemCount: topics.length,
-                itemBuilder: (context, index) {
-                  final topic = topics[index];
-
-                  final filteredActs = topic.acts.where((act) {
-                    final matchesJurisdiction =
-                        _selectedJurisdictionFilter == 'All' ||
-                        act.jurisdiction.toLowerCase() ==
-                            _selectedJurisdictionFilter.toLowerCase();
-
-                    final matchesSearch =
-                        act.actName.toLowerCase().contains(_searchQuery) ||
-                        act.sections.any(
-                          (sec) =>
-                              sec.sectionTitle.toLowerCase().contains(
-                                _searchQuery,
-                              ) ||
-                              sec.explanation.toLowerCase().contains(
-                                _searchQuery,
-                              ),
-                        );
-
-                    return matchesJurisdiction && matchesSearch;
-                  }).toList();
-
-                  if (filteredActs.isEmpty && _searchQuery.isNotEmpty) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return Card(
-                    color: Colors.white,
-                    surfaceTintColor: Colors.white,
-                    elevation: 2,
-                    margin: EdgeInsets.only(bottom: 14.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
+            // -------------------------------------------------------------
+            // COUNT & RESET FILTERS BAR
+            // -------------------------------------------------------------
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isHindi
+                      ? '${filteredItems.length} अध्ययन सामग्री उपलब्ध (कुल: ${allItems.length})'
+                      : 'Showing ${filteredItems.length} of ${allItems.length} legal materials',
+                  style: TextStyle(
+                    color: const Color(0xFFD4AF37),
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hasActiveFilters)
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedSection = 'All';
+                        _selectedState = 'All';
+                        _selectedType = 'All';
+                        _searchQuery = '';
+                      });
+                    },
+                    child: Text(
+                      _isHindi ? 'फ़िल्टर रीसेट करें ↺' : 'Reset Filters ↺',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.all(14.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+              ],
+            ),
+            SizedBox(height: 8.h),
+
+            // -------------------------------------------------------------
+            // DYNAMIC LIST (REFRESH INDICATOR + CLEAN CARDS)
+            // -------------------------------------------------------------
+            Expanded(
+              child: RefreshIndicator(
+                color: const Color(0xFFD4AF37),
+                backgroundColor: const Color(0xFF0F3D38),
+                onRefresh: () async {
+                  ref.invalidate(getLawProvider);
+                },
+                child: lawAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+                  ),
+                  error: (err, stack) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.amber,
+                          size: 36.sp,
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          _isHindi
+                              ? 'डेटा लोड करने में त्रुटि'
+                              : 'Failed to load legal materials',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.sp,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD4AF37),
+                            foregroundColor: const Color(0xFF002E29),
+                          ),
+                          onPressed: () => ref.invalidate(getLawProvider),
+                          child: Text(_isHindi ? 'पुनः प्रयास करें' : 'Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (_) {
+                    if (filteredItems.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 18.r,
-                                backgroundColor: const Color(0xFFE0ECF8),
-                                child: Icon(
-                                  topic.icon,
-                                  color: const Color(0xFF0F4C81),
-                                  size: 18.sp,
+                          SizedBox(height: 50.h),
+                          Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.folder_open,
+                                  size: 48.sp,
+                                  color: Colors.white38,
                                 ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _isHindi ? topic.titleHi : topic.titleEn,
-                                      style: TextStyle(
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF0F3D38),
-                                      ),
-                                    ),
-                                    if (!_isHindi)
-                                      Text(
-                                        topic.titleHi,
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          color: Colors.black54,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            topic.description,
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              color: Colors.black87,
-                              height: 1.3,
-                            ),
-                          ),
-                          SizedBox(height: 10.h),
-
-                          Text(
-                            _isHindi
-                                ? 'लागू अधिनियम (विस्तृत धाराओं के लिए टैप करें):'
-                                : 'Applicable Acts (Tap for Section Explanations):',
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF0F4C81),
-                            ),
-                          ),
-                          SizedBox(height: 6.h),
-
-                          ...filteredActs.map(
-                            (act) => Container(
-                              margin: EdgeInsets.only(bottom: 8.h),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(8.r),
-                                border: Border.all(
-                                  color: const Color(0xFFD0E1F9),
-                                ),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8.r),
-                                onTap: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (context) => ActDetailBottomSheet(
-                                      act: act,
-                                      isHindi: _isHindi,
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: EdgeInsets.all(10.w),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    act.actName,
-                                                    style: TextStyle(
-                                                      fontSize: 13.sp,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: const Color(
-                                                        0xFF0F4C81,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 6.w),
-                                                Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 6.w,
-                                                    vertical: 2.h,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        act.jurisdiction ==
-                                                            'Central'
-                                                        ? const Color(
-                                                            0xFF0F4C81,
-                                                          )
-                                                        : const Color(
-                                                            0xFF1B4332,
-                                                          ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4.r,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    act.jurisdiction,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 10.sp,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(height: 6.h),
-                                            // Reference Module Button
-                                            InkWell(
-                                              onTap: () {
-                                                LegalMediaRedirectHelper.launchLegalMedia(
-                                                  context: context,
-                                                  urlString:
-                                                      act
-                                                          .referenceVideoUrl
-                                                          .isNotEmpty
-                                                      ? act.referenceVideoUrl
-                                                      : topic.youtubeUrl,
-                                                  isHindi: _isHindi,
-                                                );
-                                              },
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 8.w,
-                                                  vertical: 4.h,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFFFDE8E8,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        6.r,
-                                                      ),
-                                                  border: Border.all(
-                                                    color: const Color(
-                                                      0xFFF87171,
-                                                    ),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.play_circle_fill,
-                                                      size: 14.sp,
-                                                      color: const Color(
-                                                        0xFFDC2626,
-                                                      ),
-                                                    ),
-                                                    SizedBox(width: 4.w),
-                                                    Text(
-                                                      _isHindi
-                                                          ? '📺 संदर्भ मॉड्यूल देखें'
-                                                          : '📺 View Reference Module',
-                                                      style: TextStyle(
-                                                        color: const Color(
-                                                          0xFFB91C1C,
-                                                        ),
-                                                        fontSize: 10.5.sp,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Padding(
-                                        padding: EdgeInsets.only(top: 8.h),
-                                        child: Icon(
-                                          Icons.arrow_forward_ios,
-                                          size: 14.sp,
-                                          color: const Color(0xFF0F4C81),
-                                        ),
-                                      ),
-                                    ],
+                                SizedBox(height: 10.h),
+                                Text(
+                                  _isHindi
+                                      ? 'कोई अध्ययन सामग्री नहीं मिली'
+                                      : 'No Legal Materials Found',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                              ),
+                                SizedBox(height: 6.h),
+                                Text(
+                                  _isHindi
+                                      ? 'कृपया अन्य फ़िल्टर या खोज शब्द आज़माएँ।'
+                                      : 'Try adjusting your Section, State, or Type filter.',
+                                  style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 11.5.sp,
+                                  ),
+                                ),
+                                SizedBox(height: 14.h),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD4AF37),
+                                    foregroundColor: const Color(0xFF002E29),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedSection = 'All';
+                                      _selectedState = 'All';
+                                      _selectedType = 'All';
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  child: Text(
+                                    _isHindi
+                                        ? 'सभी फ़िल्टर साफ़ करें'
+                                        : 'Clear All Filters',
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  );
-                },
+                      );
+                    }
+
+                    return ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: filteredItems.length,
+                      itemBuilder: (context, index) {
+                        final item = filteredItems[index];
+                        return _buildLawItemCard(item);
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -1422,481 +1263,271 @@ class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
       ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Bottom Sheet displaying PDFs, Sections with individual YouTube links, and Case laws with videos
-// ---------------------------------------------------------------------------
-class ActDetailBottomSheet extends ConsumerStatefulWidget {
-  final LegalActDetail act;
-  final bool isHindi;
-  const ActDetailBottomSheet({
-    super.key,
-    required this.act,
-    this.isHindi = false,
-  });
+  /// Clean, readable Card for each uploaded PDF / Video
+  Widget _buildLawItemCard(LawContentItem item) {
+    final isPdf =
+        (item.type?.toLowerCase() == 'pdf') ||
+        (item.url != null && item.url!.toLowerCase().contains('.pdf')) ||
+        (item.url != null && item.url!.contains('/raw/upload/'));
 
-  @override
-  ConsumerState<ActDetailBottomSheet> createState() =>
-      _ActDetailBottomSheetState();
-}
+    final title = item.title?.trim().isNotEmpty == true
+        ? item.title!.trim()
+        : (_isHindi ? 'अनाम दस्तावेज़' : 'Untitled Document');
 
-class _ActDetailBottomSheetState extends ConsumerState<ActDetailBottomSheet> {
-  String _sectionSearchQuery = '';
+    final module = item.lawModule?.trim().isNotEmpty == true
+        ? item.lawModule!.trim()
+        : '';
 
-  Future<void> _launchPdfUrl(String? urlString) async {
-    if (urlString == null || urlString.trim().isEmpty) {
-      if (mounted) {
-        showErrorSnackBar(
-          widget.isHindi
-              ? 'पीडीएफ लिंक उपलब्ध नहीं है'
-              : 'No PDF URL available',
-          context,
-        );
-      }
-      return;
-    }
-    try {
-      final uri = Uri.parse(urlString.trim());
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          showErrorSnackBar('Could not open PDF', context);
-        }
-      }
-    } catch (e) {
-      log('Error opening PDF: $e');
-    }
-  }
+    final sectionName = item.section?.trim().isNotEmpty == true
+        ? item.section!.trim()
+        : (item.category?.trim().isNotEmpty == true
+              ? item.category!.trim()
+              : '');
 
-  @override
-  Widget build(BuildContext context) {
-    final lawAsync = ref.watch(getLawProvider);
-    final List<LawContentItem> allItems = lawAsync.value?.data ?? [];
+    final stateName = item.state?.trim().isNotEmpty == true
+        ? item.state!.trim()
+        : 'Central';
 
-    final isCentral = widget.act.jurisdiction.toLowerCase() == 'central';
-
-    // Filter API items by jurisdiction (Central vs State)
-    final jurisdictionItems = allItems.where((item) {
-      final itemState = (item.state ?? 'central').trim().toLowerCase();
-      if (isCentral) {
-        return itemState == 'central';
-      } else {
-        return itemState != 'central';
-      }
-    }).toList();
-
-    // Separate PDFs from API
-    final apiPdfItems = jurisdictionItems.where((i) {
-      final isPdfType = i.type?.toLowerCase() == 'pdf';
-      final hasPdfUrl = i.url != null && i.url!.toLowerCase().contains('.pdf');
-      final isCloudinaryRaw = i.url != null && i.url!.contains('/raw/upload/');
-      return isPdfType || hasPdfUrl || isCloudinaryRaw;
-    }).toList();
-
-    // Separate Videos from API
-    final apiVideoItems = jurisdictionItems.where((i) {
-      final isVideoType = i.type?.toLowerCase() == 'video';
-      final isYoutube =
-          i.url != null &&
-          (i.url!.contains('youtu.be') || i.url!.contains('youtube.com'));
-      return isVideoType || isYoutube;
-    }).toList();
-
-    // Search filter for API videos
-    final filteredApiVideos = apiVideoItems.where((item) {
-      if (_sectionSearchQuery.isEmpty) return true;
-      final q = _sectionSearchQuery.toLowerCase();
-      final titleMatch = item.title?.toLowerCase().contains(q) ?? false;
-      final moduleMatch = item.lawModule?.toLowerCase().contains(q) ?? false;
-      final secMatch = item.section?.toLowerCase().contains(q) ?? false;
-      final catMatch = item.category?.toLowerCase().contains(q) ?? false;
-      final descMatch = item.description?.toLowerCase().contains(q) ?? false;
-      return titleMatch || moduleMatch || secMatch || catMatch || descMatch;
-    }).toList();
-
-    // Fallback mock sections filter
-    final filteredSections = widget.act.sections
-        .where(
-          (sec) =>
-              sec.sectionTitle.toLowerCase().contains(_sectionSearchQuery) ||
-              sec.explanation.toLowerCase().contains(_sectionSearchQuery),
-        )
-        .toList();
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
+    return Card(
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 2,
+      margin: EdgeInsets.only(bottom: 12.h),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        side: BorderSide(
+          color: isPdf ? const Color(0xFFFCA5A5) : const Color(0xFF93C5FD),
+          width: 1.2,
+        ),
       ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-      ),
-      padding: EdgeInsets.all(18.w),
-      child: SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Center(
-              child: Container(
-                width: 40.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
-            SizedBox(height: 14.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Badges row: Media Type Badge + State Badge + Section Badge
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 4.h,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    widget.act.actName,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0F4C81),
-                    ),
+                // Type Badge
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: isPdf
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF0F4C81),
+                    borderRadius: BorderRadius.circular(6.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPdf ? Icons.picture_as_pdf : Icons.play_circle_fill,
+                        color: Colors.white,
+                        size: 13.sp,
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        isPdf
+                            ? (_isHindi ? 'केस स्टडी PDF' : 'Case Study PDF')
+                            : (_isHindi ? 'कानूनी वीडियो' : 'Legal Video'),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
+                // State Badge
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                   decoration: BoxDecoration(
-                    color: widget.act.jurisdiction == 'Central'
-                        ? const Color(0xFF0F4C81)
+                    color: stateName.toLowerCase() == 'central'
+                        ? const Color(0xFF0F3D38)
                         : const Color(0xFF1B4332),
                     borderRadius: BorderRadius.circular(6.r),
                   ),
-                  child: Text(
-                    widget.act.jurisdiction,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.location_on, color: Colors.white, size: 11.sp),
+                      SizedBox(width: 2.w),
+                      Text(
+                        stateName,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10.5.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
+                // Section Tag
+                if (sectionName.isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 3.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: Text(
+                      sectionName.length > 32
+                          ? '${sectionName.substring(0, 32)}...'
+                          : sectionName,
+                      style: TextStyle(
+                        color: const Color(0xFF334155),
+                        fontSize: 10.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
-            ),
-            SizedBox(height: 14.h),
-            Text(
-              widget.isHindi
-                  ? 'आधिकारिक अधिनियम पीडीएफ डाउनलोड करें'
-                  : 'Download Official Act PDF',
-              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8.h),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                      backgroundColor: const Color(0xFF0F4C81),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.picture_as_pdf,
-                      color: Colors.white,
-                      size: 16.sp,
-                    ),
-                    label: Text(
-                      'English PDF',
-                      style: TextStyle(color: Colors.white, fontSize: 11.5.sp),
-                    ),
-                    onPressed: () {
-                      final url = apiPdfItems.isNotEmpty
-                          ? apiPdfItems.first.url
-                          : widget.act.englishPdfUrl;
-                      _launchPdfUrl(url);
-                    },
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                      backgroundColor: const Color(0xFF1B4332),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.picture_as_pdf,
-                      color: Colors.white,
-                      size: 16.sp,
-                    ),
-                    label: Text(
-                      'हिंदी पीडीएफ',
-                      style: TextStyle(color: Colors.white, fontSize: 11.5.sp),
-                    ),
-                    onPressed: () {
-                      final url = apiPdfItems.length > 1
-                          ? apiPdfItems[1].url
-                          : (apiPdfItems.isNotEmpty
-                                ? apiPdfItems.first.url
-                                : widget.act.hindiPdfUrl);
-                      _launchPdfUrl(url);
-                    },
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16.h),
 
-            // Section Filter Search Bar Inside Bottom Sheet
-            TextField(
-              onChanged: (val) {
-                setState(() {
-                  _sectionSearchQuery = val.toLowerCase();
-                });
-              },
-              style: TextStyle(fontSize: 13.sp, color: Colors.black87),
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: widget.isHindi
-                    ? 'धाराएं खोजें (उदा. Section 103)...'
-                    : 'Filter sections (e.g. Section 103)...',
-                hintStyle: TextStyle(fontSize: 12.sp, color: Colors.black45),
-                prefixIcon: Icon(
-                  Icons.filter_list,
-                  color: const Color(0xFF0F4C81),
-                  size: 18.sp,
-                ),
-                prefixIconConstraints: BoxConstraints(
-                  minWidth: 32.w,
-                  minHeight: 32.h,
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  vertical: 8.h,
-                  horizontal: 12.w,
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF0F4F8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: const BorderSide(color: Color(0xFF0F4C81)),
-                ),
-              ),
-            ),
-            SizedBox(height: 14.h),
+            // Title
             Text(
-              widget.isHindi
-                  ? 'प्रमुख धाराएं एवं वीडियो व्याख्याएं'
-                  : 'Key Sections & Video Explanations',
+              title,
               style: TextStyle(
-                fontSize: 13.5.sp,
+                fontSize: 14.5.sp,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF0F4C81),
+                color: const Color(0xFF0F3D38),
+                height: 1.25,
               ),
             ),
-            SizedBox(height: 6.h),
+            SizedBox(height: 4.h),
 
-            // Loading / Dynamic List from API
-            if (lawAsync.isLoading)
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20.h),
-                  child: const CircularProgressIndicator(
-                    color: Color(0xFF0F4C81),
+            // Law Module / Act
+            if (module.isNotEmpty) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: 2.h),
+                    child: Icon(
+                      Icons.menu_book,
+                      size: 13.sp,
+                      color: const Color(0xFF0F4C81),
+                    ),
                   ),
-                ),
-              )
-            else if (filteredApiVideos.isNotEmpty)
-              ...filteredApiVideos.map((item) {
-                final title =
-                    (item.lawModule != null &&
-                        item.lawModule!.trim().isNotEmpty)
-                    ? item.lawModule!.trim()
-                    : ((item.title != null && item.title!.trim().isNotEmpty)
-                          ? item.title!.trim()
-                          : 'Legal Video Explanation');
-
-                final subtitleParts = [
-                  if (item.section != null && item.section!.trim().isNotEmpty)
-                    item.section!.trim(),
-                  if (item.category != null && item.category!.trim().isNotEmpty)
-                    item.category!.trim(),
-                ];
-                final subtitle = subtitleParts.isNotEmpty
-                    ? subtitleParts.join(' • ')
-                    : (item.description ?? '');
-
-                return Card(
-                  elevation: 1,
-                  margin: EdgeInsets.only(bottom: 8.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    title: Text(
-                      title,
+                  SizedBox(width: 5.w),
+                  Expanded(
+                    child: Text(
+                      module,
                       style: TextStyle(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F4C81),
+                        height: 1.2,
                       ),
                     ),
-                    subtitle: subtitle.isNotEmpty
-                        ? Text(
-                            subtitle,
-                            style: TextStyle(
-                              fontSize: 11.5.sp,
-                              color: Colors.black54,
-                            ),
-                          )
-                        : null,
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.play_circle_fill,
-                        color: Color(0xFFCC0000),
-                        size: 28,
+                  ),
+                ],
+              ),
+              SizedBox(height: 4.h),
+            ],
+
+            // Description (if present)
+            if (item.description != null &&
+                item.description!.trim().isNotEmpty) ...[
+              Text(
+                item.description!.trim(),
+                style: TextStyle(
+                  fontSize: 11.5.sp,
+                  color: Colors.black87,
+                  height: 1.3,
+                ),
+              ),
+              SizedBox(height: 6.h),
+            ],
+
+            // Published Date
+            if (item.createdAt != null) ...[
+              Text(
+                _isHindi
+                    ? 'अपलोड: ${DateFormat('dd MMM yyyy, hh:mm a').format(item.createdAt!.toLocal())}'
+                    : 'Uploaded: ${DateFormat('dd MMM yyyy, hh:mm a').format(item.createdAt!.toLocal())}',
+                style: TextStyle(fontSize: 10.5.sp, color: Colors.black45),
+              ),
+              SizedBox(height: 8.h),
+            ],
+
+            Divider(height: 12.h, color: Colors.grey.shade200),
+
+            // Direct Action Button
+            SizedBox(
+              width: double.infinity,
+              height: 38.h,
+              child: isPdf
+                  ? ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
                       ),
-                      tooltip: 'Watch Section Video',
+                      icon: Icon(
+                        Icons.picture_as_pdf,
+                        color: Colors.white,
+                        size: 16.sp,
+                      ),
+                      label: Text(
+                        _isHindi
+                            ? '📄 केस स्टडी PDF खोलें'
+                            : '📄 View Case Study PDF',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () => _openPdfUrl(item.url),
+                    )
+                  : ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F4C81),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
+                      icon: Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                        size: 18.sp,
+                      ),
+                      label: Text(
+                        _isHindi
+                            ? '🎬 कानूनी वीडियो देखें'
+                            : '🎬 Watch Explainer Video',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       onPressed: () =>
                           LegalMediaRedirectHelper.launchLegalMedia(
                             context: context,
                             urlString: item.url,
-                            isHindi: widget.isHindi,
+                            isHindi: _isHindi,
                           ),
                     ),
-                  ),
-                );
-              })
-            else
-              // Fallback to mock sections if API list is empty or matches none
-              ...filteredSections.map(
-                (sec) => Card(
-                  elevation: 1,
-                  margin: EdgeInsets.only(bottom: 8.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    title: Text(
-                      sec.sectionTitle,
-                      style: TextStyle(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                      sec.explanation,
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.play_circle_fill,
-                        color: Color(0xFFCC0000),
-                        size: 28,
-                      ),
-                      tooltip: 'Watch Section Video',
-                      onPressed: () =>
-                          LegalMediaRedirectHelper.launchLegalMedia(
-                            context: context,
-                            urlString: sec.youtubeVideoUrl,
-                            isHindi: widget.isHindi,
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-
-            if (widget.act.landmarkCases.isNotEmpty) ...[
-              SizedBox(height: 14.h),
-              Text(
-                widget.isHindi
-                    ? 'ऐतिहासिक फैसले एवं वीडियो व्याख्याएं'
-                    : 'Landmark Cases & Video Explanations',
-                style: TextStyle(
-                  fontSize: 13.5.sp,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF0F4C81),
-                ),
-              ),
-              SizedBox(height: 6.h),
-              ...widget.act.landmarkCases.map(
-                (c) => Card(
-                  elevation: 1,
-                  margin: EdgeInsets.only(bottom: 8.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: ListTile(
-                    dense: true,
-                    title: Text(
-                      c.caseName,
-                      style: TextStyle(
-                        fontSize: 12.5.sp,
-                        fontWeight: FontWeight.bold,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    subtitle: Text(
-                      c.summary,
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(
-                        Icons.play_circle_fill,
-                        color: Color(0xFFCC0000),
-                        size: 28,
-                      ),
-                      tooltip: 'Watch Case Video',
-                      onPressed: () =>
-                          LegalMediaRedirectHelper.launchLegalMedia(
-                            context: context,
-                            urlString: c.youtubeVideoUrl,
-                            isHindi: widget.isHindi,
-                          ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            SizedBox(height: 18.h),
-            SizedBox(
-              width: double.infinity,
-              height: 42.h,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF0F4C81)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                ),
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  widget.isHindi ? 'बंद करें' : 'Close',
-                  style: TextStyle(
-                    color: const Color(0xFF0F4C81),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13.5.sp,
-                  ),
-                ),
-              ),
             ),
           ],
         ),
@@ -2253,9 +1884,6 @@ class _ChildSandboxVideoPlayerScreenState
   }
 
   void _initController() {
-    // Check if the videoId is a valid 11-character YouTube video ID.
-    // If it's a dummy placeholder string (e.g. 'ConstitutionIntro'), use a verified
-    // public domain educational video ID (Sansad TV - Indian Constitution) to prevent Error 153.
     final effectiveVideoId =
         (widget.videoId.length == 11 &&
             !widget.videoId.contains(RegExp(r'[^a-zA-Z0-9_-]')))
@@ -2375,7 +2003,6 @@ class _ChildSandboxVideoPlayerScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // Standard 16:9 Aspect Ratio Video Player Container
             Container(
               color: Colors.black,
               width: double.infinity,
@@ -2394,7 +2021,6 @@ class _ChildSandboxVideoPlayerScreenState
                 ),
               ),
             ),
-            // Information Section below the 16:9 player
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(16.w),
@@ -2463,3 +2089,2479 @@ class _ChildSandboxVideoPlayerScreenState
     );
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+// import 'dart:convert';
+// import 'dart:developer';
+
+// import 'package:flutter/material.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:flutter_screenutil/flutter_screenutil.dart';
+// import 'package:hive/hive.dart';
+// import 'package:track_loved/CustomScreen/CustomScreen.dart';
+// import 'package:track_loved/core/Data/ResponseModel/GetLawContentResModel.dart';
+// import 'package:url_launcher/url_launcher.dart';
+// import 'package:webview_flutter/webview_flutter.dart';
+// import 'package:track_loved/core/Utils/showMessage.dart';
+
+// import 'NetworkRequestScreen/Provider/getLowProvider.dart';
+
+// class LegalSectionDetail {
+//   final String sectionTitle;
+//   final String explanation;
+//   final String youtubeVideoUrl;
+
+//   LegalSectionDetail({
+//     required this.sectionTitle,
+//     required this.explanation,
+//     required this.youtubeVideoUrl,
+//   });
+// }
+
+// class LandmarkCaseDetail {
+//   final String caseName;
+//   final String summary;
+//   final String youtubeVideoUrl;
+
+//   LandmarkCaseDetail({
+//     required this.caseName,
+//     required this.summary,
+//     required this.youtubeVideoUrl,
+//   });
+// }
+
+// class LegalActDetail {
+//   final String actName;
+//   final String jurisdiction; // 'Central' or 'State'
+//   final String englishPdfUrl;
+//   final String hindiPdfUrl;
+//   final String referenceVideoUrl;
+//   final List<LegalSectionDetail> sections;
+//   final List<LandmarkCaseDetail> landmarkCases;
+
+//   LegalActDetail({
+//     required this.actName,
+//     required this.jurisdiction,
+//     required this.englishPdfUrl,
+//     required this.hindiPdfUrl,
+//     this.referenceVideoUrl = '',
+//     required this.sections,
+//     required this.landmarkCases,
+//   });
+// }
+
+// class LegalTopic {
+//   final String titleEn;
+//   final String titleHi;
+//   final String description;
+//   final IconData icon;
+//   final String youtubeUrl;
+//   final List<LegalActDetail> acts;
+
+//   LegalTopic({
+//     required this.titleEn,
+//     required this.titleHi,
+//     required this.description,
+//     required this.icon,
+//     required this.youtubeUrl,
+//     required this.acts,
+//   });
+// }
+
+// /// ---------------------------------------------------------------------------
+// /// DPDP ACT (2023) COMPLIANT MEDIA REDIRECT & MINOR PROTECTION HELPER
+// /// ---------------------------------------------------------------------------
+// class LegalMediaRedirectHelper {
+//   /// Extracts the YouTube video ID from various YouTube URL formats.
+//   static String? extractYouTubeVideoId(String url) {
+//     final cleanUrl = url.trim();
+//     if (cleanUrl.isEmpty) return null;
+//     try {
+//       final uri = Uri.parse(cleanUrl);
+//       if (uri.host.contains('youtu.be')) {
+//         return uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+//       }
+//       if (uri.host.contains('youtube.com') ||
+//           uri.host.contains('youtube-nocookie.com')) {
+//         if (uri.pathSegments.contains('watch')) {
+//           return uri.queryParameters['v'];
+//         }
+//         if (uri.pathSegments.contains('embed')) {
+//           final index = uri.pathSegments.indexOf('embed');
+//           if (index + 1 < uri.pathSegments.length) {
+//             return uri.pathSegments[index + 1];
+//           }
+//         }
+//         if (uri.pathSegments.contains('shorts')) {
+//           final index = uri.pathSegments.indexOf('shorts');
+//           if (index + 1 < uri.pathSegments.length) {
+//             return uri.pathSegments[index + 1];
+//           }
+//         }
+//       }
+//     } catch (_) {}
+//     return null;
+//   }
+
+//   /// Launch media respecting DPDP Act, Section 9 child privacy & explicit consent redirect modal.
+//   static Future<void> launchLegalMedia({
+//     required BuildContext context,
+//     required String? urlString,
+//     required bool isHindi,
+//   }) async {
+//     if (urlString == null || urlString.trim().isEmpty) {
+//       if (context.mounted) {
+//         showErrorSnackBar(
+//           isHindi
+//               ? 'कोई लिंक उपलब्ध नहीं है'
+//               : 'No URL available for this item',
+//           context,
+//         );
+//       }
+//       return;
+//     }
+
+//     final box = Hive.isBoxOpen('userdata') ? Hive.box('userdata') : null;
+//     final role = box?.get('role')?.toString().toLowerCase() ?? 'user';
+//     final isMinor = role == 'child';
+//     final shouldShowRedirect =
+//         box?.get('should_show_youtube_redirect', defaultValue: true) as bool? ??
+//         true;
+
+//     final isVideoOrYoutube =
+//         urlString.contains('youtube.com') ||
+//         urlString.contains('youtu.be') ||
+//         urlString.contains('youtube-nocookie.com');
+
+//     // If it's a PDF or general doc, launch without YouTube modal
+//     if (!isVideoOrYoutube) {
+//       _executeUrlLaunch(context, urlString, isMinor: false);
+//       return;
+//     }
+
+//     // If user has checked "Don't show this warning again" and is not a minor, launch directly
+//     if (!shouldShowRedirect && !isMinor) {
+//       _executeUrlLaunch(context, urlString, isMinor: false);
+//       return;
+//     }
+
+//     // Show DPDP Compliant Redirect Warning Modal
+//     if (!context.mounted) return;
+//     await showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder: (dialogCtx) {
+//         bool dontShowAgain = false;
+//         return StatefulBuilder(
+//           builder: (context, setModalState) {
+//             return Dialog(
+//               backgroundColor: Colors.white,
+//               surfaceTintColor: Colors.white,
+//               shape: RoundedRectangleBorder(
+//                 borderRadius: BorderRadius.circular(16.r),
+//               ),
+//               insetPadding: EdgeInsets.symmetric(
+//                 horizontal: 16.w,
+//                 vertical: 20.h,
+//               ),
+//               child: ConstrainedBox(
+//                 constraints: BoxConstraints(
+//                   maxHeight: MediaQuery.of(context).size.height * 0.88,
+//                 ),
+//                 child: SingleChildScrollView(
+//                   padding: EdgeInsets.all(16.w),
+//                   child: Column(
+//                     mainAxisSize: MainAxisSize.min,
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       // Header Badge & Title
+//                       Row(
+//                         children: [
+//                           Container(
+//                             padding: EdgeInsets.all(8.w),
+//                             decoration: BoxDecoration(
+//                               color: const Color(
+//                                 0xFF002E29,
+//                               ).withValues(alpha: 0.1),
+//                               borderRadius: BorderRadius.circular(10.r),
+//                             ),
+//                             child: Icon(
+//                               Icons.public,
+//                               color: const Color(0xFF0F3D38),
+//                               size: 24.sp,
+//                             ),
+//                           ),
+//                           SizedBox(width: 10.w),
+//                           Expanded(
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 Text(
+//                                   isHindi
+//                                       ? 'ट्रैक लव्ड वन्स से प्रस्थान'
+//                                       : 'LEAVING TRACK LOVED ONES',
+//                                   style: TextStyle(
+//                                     fontSize: 15.sp,
+//                                     fontWeight: FontWeight.bold,
+//                                     color: const Color(0xFF0F3D38),
+//                                     letterSpacing: 0.5,
+//                                   ),
+//                                 ),
+//                                 Text(
+//                                   isHindi
+//                                       ? 'बाहरी कानूनी शिक्षा रीडायरेक्ट'
+//                                       : 'External Legal Education Redirect',
+//                                   style: TextStyle(
+//                                     fontSize: 11.5.sp,
+//                                     fontWeight: FontWeight.w600,
+//                                     color: Colors.black54,
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                       SizedBox(height: 12.h),
+
+//                       // Notice Intro
+//                       Container(
+//                         padding: EdgeInsets.all(10.w),
+//                         decoration: BoxDecoration(
+//                           color: const Color(0xFFFFF8E1),
+//                           borderRadius: BorderRadius.circular(8.r),
+//                           border: Border.all(color: const Color(0xFFFFD54F)),
+//                         ),
+//                         child: Row(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             Icon(
+//                               Icons.warning_amber_rounded,
+//                               color: const Color(0xFFE65100),
+//                               size: 18.sp,
+//                             ),
+//                             SizedBox(width: 8.w),
+//                             Expanded(
+//                               child: Text(
+//                                 isHindi
+//                                     ? 'आप अब एक बाहरी मंच पर स्थानांतरित हो रहे हैं। Track Loved Ones App आपको YouTube पर एक स्वतंत्र शैक्षिक चैनल पर रीडायरेक्ट कर रहा है।'
+//                                     : 'You are now transferring to an external platform. Track Loved Ones App is redirecting you to an independent educational channel on YouTube.',
+//                                 style: TextStyle(
+//                                   fontSize: 11.5.sp,
+//                                   color: const Color(0xFF5D4037),
+//                                   height: 1.35,
+//                                   fontWeight: FontWeight.w500,
+//                                 ),
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                       SizedBox(height: 12.h),
+
+//                       // Privacy & Compliance Verification Box
+//                       Container(
+//                         padding: EdgeInsets.all(12.w),
+//                         decoration: BoxDecoration(
+//                           color: const Color(0xFFF0FDF4),
+//                           borderRadius: BorderRadius.circular(10.r),
+//                           border: Border.all(color: const Color(0xFF86EFAC)),
+//                         ),
+//                         child: Column(
+//                           crossAxisAlignment: CrossAxisAlignment.start,
+//                           children: [
+//                             Row(
+//                               children: [
+//                                 Icon(
+//                                   Icons.shield_outlined,
+//                                   color: const Color(0xFF166534),
+//                                   size: 18.sp,
+//                                 ),
+//                                 SizedBox(width: 6.w),
+//                                 Text(
+//                                   isHindi
+//                                       ? 'गोपनीयता एवं अनुपालन सत्यापन'
+//                                       : 'PRIVACY & COMPLIANCE VERIFICATION',
+//                                   style: TextStyle(
+//                                     fontSize: 11.sp,
+//                                     fontWeight: FontWeight.bold,
+//                                     color: const Color(0xFF166534),
+//                                     letterSpacing: 0.3,
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                             SizedBox(height: 8.h),
+//                             _buildBulletItem(
+//                               isHindi
+//                                   ? 'Track Loved Ones App आपकी प्रोफ़ाइल, संपर्क, इतिहास या लाइव GPS ट्रैकिंग डेटा YouTube या किसी बाहरी होस्ट के साथ साझा नहीं करता है।'
+//                                   : 'Track Loved Ones App does NOT share your user profile, phone book contacts, historical logs, or live GPS tracking data with YouTube or any external hosts.',
+//                             ),
+//                             SizedBox(height: 6.h),
+//                             _buildBulletItem(
+//                               isHindi
+//                                   ? 'यह शैक्षिक वीडियो संसाधन कानूनी सलाह या औपचारिक वकालत का गठन नहीं करता है।'
+//                                   : 'This educational video resource does not constitute legal advice or formal advocacy.',
+//                             ),
+//                             SizedBox(height: 6.h),
+//                             _buildBulletItem(
+//                               isHindi
+//                                   ? 'प्लेबैक के दौरान दिखने वाले विज्ञापन पूरी तरह से YouTube द्वारा अपनी स्वतंत्र नीतियों के तहत संचालित होते हैं।'
+//                                   : 'Any video ads or monetization models active during playback are run entirely by YouTube under its own independent policies.',
+//                             ),
+//                             if (isMinor) ...[
+//                               SizedBox(height: 6.h),
+//                               Container(
+//                                 padding: EdgeInsets.all(8.w),
+//                                 decoration: BoxDecoration(
+//                                   color: Colors.white,
+//                                   borderRadius: BorderRadius.circular(6.r),
+//                                   border: Border.all(
+//                                     color: const Color(0xFF166534),
+//                                   ),
+//                                 ),
+//                                 child: Row(
+//                                   children: [
+//                                     Icon(
+//                                       Icons.child_care,
+//                                       color: const Color(0xFF166534),
+//                                       size: 16.sp,
+//                                     ),
+//                                     SizedBox(width: 6.w),
+//                                     Expanded(
+//                                       child: Text(
+//                                         isHindi
+//                                             ? 'बाल सुरक्षा (DPDP धारा 9): नो-कुकी सैंडबॉक्स सक्रिय है। कोई लक्षित विज्ञापन या ट्रैकिंग की अनुमति नहीं है।'
+//                                             : 'Minor Safety (DPDP Sec 9): No-cookie sandbox active. Commercial tracking & targeted profiling strictly prevented.',
+//                                         style: TextStyle(
+//                                           fontSize: 10.5.sp,
+//                                           fontWeight: FontWeight.w600,
+//                                           color: const Color(0xFF166534),
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   ],
+//                                 ),
+//                               ),
+//                             ],
+//                           ],
+//                         ),
+//                       ),
+//                       SizedBox(height: 12.h),
+
+//                       // Question prompt
+//                       Text(
+//                         isHindi
+//                             ? 'क्या आप बाहरी वीडियो पर आगे बढ़ना चाहते हैं?'
+//                             : 'Do you wish to proceed to the external video?',
+//                         style: TextStyle(
+//                           fontSize: 12.sp,
+//                           fontWeight: FontWeight.bold,
+//                           color: Colors.black87,
+//                         ),
+//                       ),
+//                       SizedBox(height: 8.h),
+
+//                       // Don't show again checkbox (for adults)
+//                       if (!isMinor)
+//                         InkWell(
+//                           onTap: () {
+//                             setModalState(() {
+//                               dontShowAgain = !dontShowAgain;
+//                             });
+//                           },
+//                           child: Row(
+//                             children: [
+//                               SizedBox(
+//                                 width: 22.w,
+//                                 height: 22.w,
+//                                 child: Checkbox(
+//                                   value: dontShowAgain,
+//                                   activeColor: const Color(0xFF0F3D38),
+//                                   shape: RoundedRectangleBorder(
+//                                     borderRadius: BorderRadius.circular(4.r),
+//                                   ),
+//                                   onChanged: (val) {
+//                                     setModalState(() {
+//                                       dontShowAgain = val ?? false;
+//                                     });
+//                                   },
+//                                 ),
+//                               ),
+//                               SizedBox(width: 8.w),
+//                               Expanded(
+//                                 child: Text(
+//                                   isHindi
+//                                       ? 'वीडियो लिंक के लिए यह चेतावनी दोबारा न दिखाएं।'
+//                                       : "Don't show this warning again for video links.",
+//                                   style: TextStyle(
+//                                     fontSize: 11.5.sp,
+//                                     color: Colors.black87,
+//                                     fontWeight: FontWeight.w500,
+//                                   ), 
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       SizedBox(height: 14.h),
+//                       // Action Buttons
+//                       Row(
+//                         children: [
+//                           Expanded(
+//                             child: OutlinedButton(
+//                               style: OutlinedButton.styleFrom(
+//                                 padding: EdgeInsets.symmetric(vertical: 10.h),
+//                                 side: const BorderSide(
+//                                   color: Color(0xFFDC2626),
+//                                 ),
+//                                 shape: RoundedRectangleBorder(
+//                                   borderRadius: BorderRadius.circular(8.r),
+//                                 ),
+//                               ),
+//                               onPressed: () => Navigator.pop(dialogCtx),
+//                               child: Text(
+//                                 isHindi ? '🛑 रद्द करें' : '🛑 CANCEL & STAY',
+//                                 textAlign: TextAlign.center,
+//                                 style: TextStyle(
+//                                   color: const Color(0xFFDC2626),
+//                                   fontWeight: FontWeight.bold,
+//                                   fontSize: 11.sp,
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                           SizedBox(width: 10.w),
+//                           Expanded(
+//                             child: ElevatedButton(
+//                               style: ElevatedButton.styleFrom(
+//                                 padding: EdgeInsets.symmetric(vertical: 10.h),
+//                                 backgroundColor: const Color(0xFF15803D),
+//                                 shape: RoundedRectangleBorder(
+//                                   borderRadius: BorderRadius.circular(8.r),
+//                                 ),
+//                               ),
+//                               onPressed: () {
+//                                 if (dontShowAgain && box != null && !isMinor) {
+//                                   box.put(
+//                                     'should_show_youtube_redirect',
+//                                     false,
+//                                   );
+//                                 }
+//                                 Navigator.pop(dialogCtx);
+//                                 _executeUrlLaunch(
+//                                   context,
+//                                   urlString,
+//                                   isMinor: isMinor,
+//                                 );
+//                               },
+//                               child: Text(
+//                                 isHindi ? '🟢 आगे बढ़ें' : '🟢 CONTINUE',
+//                                 textAlign: TextAlign.center,
+//                                 style: TextStyle(
+//                                   color: Colors.white,
+//                                   fontWeight: FontWeight.bold,
+//                                   fontSize: 11.sp,
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+
+//   static Widget _buildBulletItem(String text) {
+//     return Row(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Padding(
+//           padding: EdgeInsets.only(top: 4.h, right: 6.w),
+//           child: Icon(Icons.circle, size: 5.sp, color: const Color(0xFF166534)),
+//         ),
+//         Expanded(
+//           child: Text(
+//             text,
+//             style: TextStyle(
+//               fontSize: 11.sp,
+//               color: const Color(0xFF14532D),
+//               height: 1.35,
+//             ),
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   static Future<void> _executeUrlLaunch(
+//     BuildContext context,
+//     String rawUrl, {
+//     required bool isMinor,
+//   }) async {
+//     try {
+//       String finalUrl = rawUrl.trim();
+//       final videoId = extractYouTubeVideoId(finalUrl);
+
+//       // Section 9 DPDP compliance routing for Minor Profile
+//       if (isMinor) {
+//         final complianceLedger = {
+//           "compliance_ledger_event": "LEGAL_PORTAL_MEDIA_ACCESS",
+//           "schema_version": "TLO-DPDPA-MEDIA-V1.4",
+//           "timestamp_iso8601": DateTime.now().toUtc().toIso8601String(),
+//           "user_context": {
+//             "user_id": Hive.isBoxOpen('userdata')
+//                 ? (Hive.box('userdata').get('id') ??
+//                       Hive.box('userdata').get('userId') ??
+//                       'USR-MINOR-PROFILE')
+//                 : 'USR-MINOR-PROFILE',
+//             "is_minor_profile": true,
+//             "parental_consent_token_verified": Hive.isBoxOpen('userdata')
+//                 ? (Hive.box('userdata').get('isParentConsentApproved') == true
+//                       ? "VPC-VERIFIED-PARENTAL-CONSENT"
+//                       : "VPC-DPDPA-COMPLIANT")
+//                 : "VPC-DPDPA-COMPLIANT",
+//           },
+//           "routing_execution": {
+//             "external_youtube_intent_blocked": true,
+//             "in_app_sandbox_player_activated": true,
+//             "domain_restricted_to_nocookie_embed": true,
+//             "monetization_trackers_scrubbed": true,
+//           },
+//           "legal_status":
+//               "Strict compliance with Section 9 child ad bans maintained. Third-party commercial profiling successfully prevented.",
+//         };
+//         log("COMPLIANCE LEDGER EVENT: ${jsonEncode(complianceLedger)}");
+
+//         if (videoId != null && context.mounted) {
+//           // Open dedicated In-App Sandbox Player without external ads, comments, or suggestions
+//           Navigator.push(
+//             context,
+//             MaterialPageRoute(
+//               builder: (_) => ChildSandboxVideoPlayerScreen(
+//                 videoId: videoId,
+//                 title: 'Legal Awareness Module',
+//               ),
+//             ),
+//           );
+//           return;
+//         }
+//       }
+
+//       final uri = Uri.parse(finalUrl);
+//       if (await canLaunchUrl(uri)) {
+//         await launchUrl(
+//           uri,
+//           mode: isMinor
+//               ? LaunchMode.inAppWebView
+//               : LaunchMode.externalApplication,
+//           webViewConfiguration: const WebViewConfiguration(
+//             enableJavaScript: true,
+//             enableDomStorage: true,
+//           ),
+//         );
+//       } else {
+//         if (context.mounted) {
+//           showErrorSnackBar('Could not open link', context);
+//         }
+//       }
+//     } catch (e) {
+//       log('Error launching legal media: $e');
+//       if (context.mounted) {
+//         showErrorSnackBar('Error: $e', context);
+//       }
+//     }
+//   }
+// }
+
+// class LegalAwarenessApp extends ConsumerStatefulWidget {
+//   const LegalAwarenessApp({super.key});
+
+//   @override
+//   ConsumerState<LegalAwarenessApp> createState() => _LegalAwarenessAppState();
+// }
+
+// class _LegalAwarenessAppState extends ConsumerState<LegalAwarenessApp> {
+//   bool _isHindi = false;
+//   String _searchQuery = '';
+//   String _selectedJurisdictionFilter = 'All'; // 'All', 'Central', 'State'
+//   bool _isDisclaimerExpanded = false;
+
+//   /// CORE INDIAN LEGAL DOMAINS & SYLLABUS (Sections A, B, C)
+//   List<LegalTopic> getTopics() {
+//     return [
+//       LegalTopic(
+//         titleEn: '🏛️ SECTION A: CONSTITUTIONAL & CIVIL RIGHTS',
+//         titleHi: '🏛️ खंड क: संवैधानिक एवं नागरिक अधिकार',
+//         description:
+//             'Foundational laws of the Republic of India: Fundamental Rights, Constitutional Remedies, and Data Sovereignty under DPDP Act, 2023.',
+//         icon: Icons.account_balance,
+//         youtubeUrl: 'https://www.youtube.com/watch?v=ConstitutionIntro',
+//         acts: [
+//           LegalActDetail(
+//             actName: 'The Constitution of India, 1950',
+//             jurisdiction: 'Central',
+//             englishPdfUrl: 'https://legislative.gov.in/constitution-of-india/',
+//             hindiPdfUrl: 'https://legislative.gov.in/constitution-of-india/',
+//             referenceVideoUrl:
+//                 'https://www.youtube.com/watch?v=ConstitutionModule',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle: 'Article 19: Freedom of Speech & Expression',
+//                 explanation:
+//                     'Guarantees six basic democratic freedoms including speech, assembly, and trade, subject to reasonable restrictions.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=Art19Speech',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle:
+//                     'Article 21: Protection of Life & Personal Liberty',
+//                 explanation:
+//                     'No person shall be deprived of life or liberty except according to procedure established by law.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=Art21Liberty',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Article 32: Right to Constitutional Remedies',
+//                 explanation:
+//                     'Heart and soul of the Constitution: guarantees direct approach to the Supreme Court for enforcement of fundamental rights.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=Art32Remedies',
+//               ),
+//             ],
+//             landmarkCases: [
+//               LandmarkCaseDetail(
+//                 caseName: 'Kesavananda Bharati v. State of Kerala (1973)',
+//                 summary:
+//                     'Thirteen-judge bench established the Basic Structure Doctrine: Parliament cannot alter the basic framework of the Constitution.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=KesavanandaCase',
+//               ),
+//             ],
+//           ),
+//           LegalActDetail(
+//             actName: 'Digital Personal Data Protection (DPDP) Act, 2023',
+//             jurisdiction: 'Central',
+//             englishPdfUrl:
+//                 'https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf',
+//             hindiPdfUrl:
+//                 'https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf',
+//             referenceVideoUrl: 'https://www.youtube.com/watch?v=DPDPAwareness',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 6: Notice & Unambiguous Consent',
+//                 explanation:
+//                     'Mandates clear itemized notice and explicit consent prior to processing personal data.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=DPDPASection6',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle:
+//                     'Section 9: Processing of Personal Data of Children',
+//                 explanation:
+//                     'Requires verifiable parental consent and strictly bans behavioral tracking, targeted advertisements, or surveillance on minors.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=DPDPASection9',
+//               ),
+//             ],
+//             landmarkCases: [
+//               LandmarkCaseDetail(
+//                 caseName: 'Justice K.S. Puttaswamy v. Union of India (2017)',
+//                 summary:
+//                     'Nine-judge bench unanimously recognized the Right to Privacy as an intrinsic part of the Right to Life under Article 21.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=PuttaswamyCase',
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//       LegalTopic(
+//         titleEn: '⚖️ SECTION B: NATIONAL CRIMINAL & SECURITY CODES',
+//         titleHi: '⚖️ खंड ख: राष्ट्रीय आपराधिक एवं सुरक्षा संहिताएँ',
+//         description:
+//             'Public safety laws, police procedures under Bharatiya Nyaya Sanhita (BNS), cybercrime, and intermediary system protections.',
+//         icon: Icons.gavel,
+//         youtubeUrl: 'https://www.youtube.com/watch?v=BNSOverview',
+//         acts: [
+//           LegalActDetail(
+//             actName: 'Bharatiya Nyaya Sanhita (BNS), 2023',
+//             jurisdiction: 'Central',
+//             englishPdfUrl:
+//                 'https://www.mha.gov.in/sites/default/files/250882_english_01042024.pdf',
+//             hindiPdfUrl:
+//                 'https://www.mha.gov.in/sites/default/files/250882_hindi_ubah_01042024.pdf',
+//             referenceVideoUrl: 'https://www.youtube.com/watch?v=BNSModule',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 35: General Exceptions',
+//                 explanation:
+//                     'Acts done in good faith or under mistake of fact without criminal intent.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=BNSSection35',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 103: Punishment for Murder',
+//                 explanation:
+//                     'Prescribes death sentence or imprisonment for life along with fine.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=BNSSection103',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 115: Voluntarily Causing Hurt',
+//                 explanation:
+//                     'Punishment for intentionally or knowingly causing bodily pain, disease, or infirmity.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=BNSSection115',
+//               ),
+//             ],
+//             landmarkCases: [
+//               LandmarkCaseDetail(
+//                 caseName: 'D.K. Basu v. State of West Bengal (1997)',
+//                 summary:
+//                     'Mandatory procedural guidelines for police during arrests, detentions, and interrogation memos.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=DKBasuCase',
+//               ),
+//             ],
+//           ),
+//           LegalActDetail(
+//             actName: 'Information Technology (IT) Act, 2000',
+//             jurisdiction: 'Central',
+//             englishPdfUrl:
+//                 'https://www.meity.gov.in/content/information-technology-act-2000',
+//             hindiPdfUrl:
+//                 'https://www.meity.gov.in/content/information-technology-act-2000',
+//             referenceVideoUrl: 'https://www.youtube.com/watch?v=ITActOverview',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle:
+//                     'Section 43A: Compensation for Failure to Protect Data',
+//                 explanation:
+//                     'Liability of body corporate for negligence in implementing reasonable security practices.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct43A',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle:
+//                     'Section 66D: Punishment for Cheating by Personation',
+//                 explanation:
+//                     'Penalizes online impersonation, phishing, and scamming using computer resources.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct66D',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 79: Intermediary Safe Harbor Exemption',
+//                 explanation:
+//                     'Statutory immunity for network intermediaries that act as neutral conduits without initiating transmissions.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=ITAct79',
+//               ),
+//             ],
+//             landmarkCases: [
+//               LandmarkCaseDetail(
+//                 caseName: 'Shreya Singhal v. Union of India (2015)',
+//                 summary:
+//                     'Struck down arbitrary censorship provision (Section 66A) and upheld statutory safe harbor for intermediaries.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=ShreyaSinghalCase',
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//       LegalTopic(
+//         titleEn: '💼 SECTION C: COMMERCE, LABOR, & FACILITATION CODES',
+//         titleHi: '💼 खंड ग: वाणिज्य, श्रम एवं सुविधा संहिताएँ',
+//         description:
+//             'Electronic contracts, safe-harbor transactions, non-employment protections, and wage regulations for gig ecosystems.',
+//         icon: Icons.business_center,
+//         youtubeUrl: 'https://www.youtube.com/watch?v=CommercialCodes',
+//         acts: [
+//           LegalActDetail(
+//             actName: 'The Indian Contract Act, 1872',
+//             jurisdiction: 'Central',
+//             englishPdfUrl:
+//                 'https://legislative.gov.in/sites/default/files/A1872-09.pdf',
+//             hindiPdfUrl:
+//                 'https://legislative.gov.in/sites/default/files/A1872-09.pdf',
+//             referenceVideoUrl:
+//                 'https://www.youtube.com/watch?v=ContractActModule',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 10: What Agreements are Contracts',
+//                 explanation:
+//                     'Agreements made by free consent of competent parties for lawful consideration and object.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=ContractSec10',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 23: Lawful Consideration and Object',
+//                 explanation:
+//                     'Defines when consideration is forbidden by law, fraudulent, or opposed to public policy.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=ContractSec23',
+//               ),
+//             ],
+//             landmarkCases: [
+//               LandmarkCaseDetail(
+//                 caseName: 'Carlill v. Carbolic Smoke Ball Co. (1893)',
+//                 summary:
+//                     'Foundational decision affirming unilateral contracts and binding offers made to the general public.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=CarlillCase',
+//               ),
+//             ],
+//           ),
+//           LegalActDetail(
+//             actName: 'Code on Wages & Industrial Relations',
+//             jurisdiction: 'Central',
+//             englishPdfUrl: 'https://labour.gov.in/wage-code-2019',
+//             hindiPdfUrl: 'https://labour.gov.in/wage-code-2019',
+//             referenceVideoUrl: 'https://www.youtube.com/watch?v=WageCodeModule',
+//             sections: [
+//               LegalSectionDetail(
+//                 sectionTitle: 'Section 6: Fixation of Minimum Wages',
+//                 explanation:
+//                     'Sets statutory floor wage benchmarks and working hour protections across states.',
+//                 youtubeVideoUrl: 'https://www.youtube.com/watch?v=WageSec6',
+//               ),
+//               LegalSectionDetail(
+//                 sectionTitle: 'Intermediary Non-Employment Protections',
+//                 explanation:
+//                     'Distinguishes technological facilitation platforms from employer-employee master-servant relationships.',
+//                 youtubeVideoUrl:
+//                     'https://www.youtube.com/watch?v=IntermediaryLabor',
+//               ),
+//             ],
+//             landmarkCases: [],
+//           ),
+//         ],
+//       ),
+//     ];
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     // Watch API provider to ensure cached/fresh data is ready
+//     ref.watch(getLawProvider);
+//     final topics = getTopics();
+
+//     return Scaffold(
+//       backgroundColor: const Color(0xFF002E29),
+//       drawer: AppDrawer(isHindi: _isHindi),
+//       appBar: AppBarScreen(
+//         titleEn: "National Legal Education",
+//         titleHi: "राष्ट्रीय कानूनी शिक्षा",
+//         isHindi: _isHindi,
+//         onLanguageChanged: (value) {
+//           setState(() {
+//             _isHindi = value;
+//           });
+//         },
+//       ),
+//       body: Padding(
+//         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+//         child: Column(
+//           children: [
+//             // -------------------------------------------------------------
+//             // MANDATORY NATIONAL LEGAL EDUCATION PORTAL HEADER & DISCLAIMER
+//             // -------------------------------------------------------------
+//             Container(
+//               margin: EdgeInsets.only(bottom: 12.h),
+//               padding: EdgeInsets.all(12.w),
+//               decoration: BoxDecoration(
+//                 color: const Color(0xFF0F3D38),
+//                 borderRadius: BorderRadius.circular(12.r),
+//                 border: Border.all(
+//                   color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+//                   width: 1.2,
+//                 ),
+//                 boxShadow: [
+//                   BoxShadow(
+//                     color: Colors.black.withValues(alpha: 0.25),
+//                     blurRadius: 6,
+//                     offset: const Offset(0, 3),
+//                   ),
+//                 ],
+//               ),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Row(
+//                     children: [
+//                       Icon(
+//                         Icons.account_balance,
+//                         color: const Color(0xFFD4AF37),
+//                         size: 20.sp,
+//                       ),
+//                       SizedBox(width: 8.w),
+//                       Expanded(
+//                         child: Text(
+//                           _isHindi
+//                               ? 'राष्ट्रीय कानूनी शिक्षा पोर्टल'
+//                               : 'NATIONAL LEGAL EDUCATION PORTAL',
+//                           style: TextStyle(
+//                             color: Colors.white,
+//                             fontWeight: FontWeight.bold,
+//                             fontSize: 14.sp,
+//                             letterSpacing: 0.4,
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   SizedBox(height: 2.h),
+//                   Text(
+//                     _isHindi
+//                         ? '[स्थिर शैक्षिक संदर्भ एवं जन-जागरूकता केंद्र]'
+//                         : '[Static Educational Reference & Awareness Hub]',
+//                     style: TextStyle(
+//                       color: const Color(0xFFD4AF37),
+//                       fontWeight: FontWeight.w600,
+//                       fontSize: 11.5.sp,
+//                     ),
+//                   ),
+//                   SizedBox(height: 4.h),
+//                   Text(
+//                     _isHindi
+//                         ? 'भारत गणराज्य के मूलभूत कानूनों को जानें। सभी मल्टीमीडिया और पाठ्य सामग्री केवल सामान्य जन जागरूकता और सूचना के उद्देश्य से प्रदान की गई है।'
+//                         : 'Explore the foundational laws of the Republic of India. All multimedia and text paths are provided strictly for general public awareness and informational purposes only.',
+//                     style: TextStyle(
+//                       color: Colors.white.withValues(alpha: 0.85),
+//                       fontSize: 11.sp,
+//                       height: 1.3,
+//                     ),
+//                   ),
+//                   SizedBox(height: 8.h),
+
+//                   // Collapsible Mandatory Platform Legal Disclaimer
+//                   Container(
+//                     padding: EdgeInsets.all(8.w),
+//                     decoration: BoxDecoration(
+//                       color: Colors.black.withValues(alpha: 0.25),
+//                       borderRadius: BorderRadius.circular(8.r),
+//                       border: Border.all(
+//                         color: Colors.amber.withValues(alpha: 0.45),
+//                       ),
+//                     ),
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         InkWell(
+//                           onTap: () {
+//                             setState(() {
+//                               _isDisclaimerExpanded = !_isDisclaimerExpanded;
+//                             });
+//                           },
+//                           child: Row(
+//                             children: [
+//                               Icon(
+//                                 Icons.warning_amber_rounded,
+//                                 color: Colors.amber,
+//                                 size: 16.sp,
+//                               ),
+//                               SizedBox(width: 6.w),
+//                               Expanded(
+//                                 child: Text(
+//                                   _isHindi
+//                                       ? '⚠️ अनिवार्य वैधानिक अस्वीकरण (Legal Disclaimer)'
+//                                       : '⚠️ MANDATORY PLATFORM LEGAL DISCLAIMER',
+//                                   style: TextStyle(
+//                                     color: Colors.amber,
+//                                     fontSize: 11.sp,
+//                                     fontWeight: FontWeight.bold,
+//                                   ),
+//                                 ),
+//                               ),
+//                               Icon(
+//                                 _isDisclaimerExpanded
+//                                     ? Icons.expand_less
+//                                     : Icons.expand_more,
+//                                 color: Colors.amber,
+//                                 size: 18.sp,
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                         if (_isDisclaimerExpanded) ...[
+//                           SizedBox(height: 6.h),
+//                           Text(
+//                             _isHindi
+//                                 ? 'Track Loved Ones App केवल एक तकनीकी मध्यस्थ और तटस्थ सूचना मंच के रूप में कार्य करता है। इस पोर्टल में होस्ट की गई कानूनी सामग्री, धारा सारांश और वीडियो लिंक संसाधन औपचारिक कानूनी सलाह, वैधानिक प्रतिनिधित्व या पेशेवर वकालत का गठन नहीं करते हैं।\n\nइस शैक्षिक केंद्र का उपयोग आपके, डेवलपर्स या अवसर पोस्ट करने वाली कंपनियों के बीच कोई वकील-ग्राहक संबंध या रोजगार संबंध स्थापित नहीं करता है। वास्तविक विवादों के लिए किसी योग्य अधिवक्ता से परामर्श लें।'
+//                                 : 'Track Loved Ones App operates strictly as a technological intermediary and neutral information venue. The legal materials, section summaries, and video link resources hosted in this portal do not constitute formal legal advice, statutory representation, or professional advocacy.\n\nYour utilization of this educational center does not establish an attorney-client relationship or any contractual labor/employer-employee ties between you, the application developers, or the opportunity-posting companies. For actionable legal counsel regarding disputes, consult a qualified advocate.',
+//                             style: TextStyle(
+//                               color: Colors.white70,
+//                               fontSize: 10.5.sp,
+//                               height: 1.35,
+//                             ),
+//                           ),
+//                           SizedBox(height: 6.h),
+//                           Align(
+//                             alignment: Alignment.centerRight,
+//                             child: TextButton.icon(
+//                               style: TextButton.styleFrom(
+//                                 padding: EdgeInsets.symmetric(
+//                                   horizontal: 8.w,
+//                                   vertical: 4.h,
+//                                 ),
+//                                 backgroundColor: Colors.white10,
+//                                 shape: RoundedRectangleBorder(
+//                                   borderRadius: BorderRadius.circular(6.r),
+//                                 ),
+//                               ),
+//                               icon: Icon(
+//                                 Icons.restart_alt,
+//                                 size: 14.sp,
+//                                 color: Colors.amberAccent,
+//                               ),
+//                               label: Text(
+//                                 _isHindi
+//                                     ? 'चेतावनी संकेत रीसेट करें'
+//                                     : 'Reset External Link Warnings',
+//                                 style: TextStyle(
+//                                   color: Colors.amberAccent,
+//                                   fontSize: 10.sp,
+//                                   fontWeight: FontWeight.bold,
+//                                 ),
+//                               ),
+//                               onPressed: () {
+//                                 final box = Hive.isBoxOpen('userdata')
+//                                     ? Hive.box('userdata')
+//                                     : null;
+//                                 box?.put('should_show_youtube_redirect', true);
+//                                 showSuccessSnackBar(
+//                                   _isHindi
+//                                       ? 'बाहरी वीडियो सुरक्षा चेतावनी पुनः सक्रिय कर दी गई है।'
+//                                       : 'External video warnings have been re-enabled for your safety.',
+//                                   context,
+//                                 );
+//                               },
+//                             ),
+//                           ),
+//                         ],
+//                       ],
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+
+//             // Filter and Search Row
+//             Row(
+//               children: [
+//                 Expanded(
+//                   flex: 2,
+//                   child: TextField(
+//                     onChanged: (val) {
+//                       setState(() {
+//                         _searchQuery = val.toLowerCase();
+//                       });
+//                     },
+//                     style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                     decoration: InputDecoration(
+//                       isDense: true,
+//                       hintText: _isHindi
+//                           ? 'अधिनियम या धाराएं खोजें...'
+//                           : 'Search Acts or Sections...',
+//                       hintStyle: TextStyle(
+//                         color: Colors.black45,
+//                         fontSize: 13.sp,
+//                       ),
+//                       prefixIcon: Icon(
+//                         Icons.search,
+//                         color: Colors.black45,
+//                         size: 18.sp,
+//                       ),
+//                       prefixIconConstraints: BoxConstraints(
+//                         minWidth: 30.w,
+//                         minHeight: 30.h,
+//                       ),
+//                       contentPadding: EdgeInsets.symmetric(
+//                         horizontal: 12.w,
+//                         vertical: 9.h,
+//                       ),
+//                       filled: true,
+//                       fillColor: Colors.white,
+//                       enabledBorder: OutlineInputBorder(
+//                         borderRadius: BorderRadius.circular(24.r),
+//                         borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
+//                       ),
+//                       focusedBorder: OutlineInputBorder(
+//                         borderRadius: BorderRadius.circular(24.r),
+//                         borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//                 SizedBox(width: 8.w),
+//                 Expanded(
+//                   flex: 1,
+//                   child: Container(
+//                     height: 42.h,
+//                     padding: EdgeInsets.symmetric(horizontal: 8.w),
+//                     decoration: BoxDecoration(
+//                       color: Colors.white,
+//                       borderRadius: BorderRadius.circular(24.r),
+//                       border: Border.all(color: const Color(0xFFD0E1F9)),
+//                     ),
+//                     child: DropdownButtonHideUnderline(
+//                       child: DropdownButton<String>(
+//                         value: _selectedJurisdictionFilter,
+//                         isExpanded: true,
+//                         items: ['All', 'Central', 'State']
+//                             .map(
+//                               (val) => DropdownMenuItem(
+//                                 value: val,
+//                                 child: Text(
+//                                   val,
+//                                   style: TextStyle(fontSize: 12.5.sp),
+//                                 ),
+//                               ),
+//                             )
+//                             .toList(),
+//                         onChanged: (val) {
+//                           if (val != null) {
+//                             setState(() {
+//                               _selectedJurisdictionFilter = val;
+//                             });
+//                           }
+//                         },
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 12.h),
+
+//             // Syllabus Topics & Acts List
+//             Expanded(
+//               child: ListView.builder(
+//                 itemCount: topics.length,
+//                 itemBuilder: (context, index) {
+//                   final topic = topics[index];
+
+//                   final filteredActs = topic.acts.where((act) {
+//                     final matchesJurisdiction =
+//                         _selectedJurisdictionFilter == 'All' ||
+//                         act.jurisdiction.toLowerCase() ==
+//                             _selectedJurisdictionFilter.toLowerCase();
+
+//                     final matchesSearch =
+//                         act.actName.toLowerCase().contains(_searchQuery) ||
+//                         act.sections.any(
+//                           (sec) =>
+//                               sec.sectionTitle.toLowerCase().contains(
+//                                 _searchQuery,
+//                               ) ||
+//                               sec.explanation.toLowerCase().contains(
+//                                 _searchQuery,
+//                               ),
+//                         );
+
+//                     return matchesJurisdiction && matchesSearch;
+//                   }).toList();
+
+//                   if (filteredActs.isEmpty && _searchQuery.isNotEmpty) {
+//                     return const SizedBox.shrink();
+//                   }
+
+//                   return Card(
+//                     color: Colors.white,
+//                     surfaceTintColor: Colors.white,
+//                     elevation: 2,
+//                     margin: EdgeInsets.only(bottom: 14.h),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(12.r),
+//                     ),
+//                     child: Padding(
+//                       padding: EdgeInsets.all(14.w),
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Row(
+//                             children: [
+//                               CircleAvatar(
+//                                 radius: 18.r,
+//                                 backgroundColor: const Color(0xFFE0ECF8),
+//                                 child: Icon(
+//                                   topic.icon,
+//                                   color: const Color(0xFF0F4C81),
+//                                   size: 18.sp,
+//                                 ),
+//                               ),
+//                               SizedBox(width: 10.w),
+//                               Expanded(
+//                                 child: Column(
+//                                   crossAxisAlignment: CrossAxisAlignment.start,
+//                                   children: [
+//                                     Text(
+//                                       _isHindi ? topic.titleHi : topic.titleEn,
+//                                       style: TextStyle(
+//                                         fontSize: 14.sp,
+//                                         fontWeight: FontWeight.bold,
+//                                         color: const Color(0xFF0F3D38),
+//                                       ),
+//                                     ),
+//                                     if (!_isHindi)
+//                                       Text(
+//                                         topic.titleHi,
+//                                         style: TextStyle(
+//                                           fontSize: 12.sp,
+//                                           color: Colors.black54,
+//                                           fontWeight: FontWeight.w500,
+//                                         ),
+//                                       ),
+//                                   ],
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                           SizedBox(height: 8.h),
+//                           Text(
+//                             topic.description,
+//                             style: TextStyle(
+//                               fontSize: 12.5.sp,
+//                               color: Colors.black87,
+//                               height: 1.3,
+//                             ),
+//                           ),
+//                           SizedBox(height: 10.h),
+
+//                           Text(
+//                             _isHindi
+//                                 ? 'लागू अधिनियम (विस्तृत धाराओं के लिए टैप करें):'
+//                                 : 'Applicable Acts (Tap for Section Explanations):',
+//                             style: TextStyle(
+//                               fontSize: 12.5.sp,
+//                               fontWeight: FontWeight.bold,
+//                               color: const Color(0xFF0F4C81),
+//                             ),
+//                           ),
+//                           SizedBox(height: 6.h),
+
+//                           ...filteredActs.map(
+//                             (act) => Container(
+//                               margin: EdgeInsets.only(bottom: 8.h),
+//                               decoration: BoxDecoration(
+//                                 color: const Color(0xFFF8FAFC),
+//                                 borderRadius: BorderRadius.circular(8.r),
+//                                 border: Border.all(
+//                                   color: const Color(0xFFD0E1F9),
+//                                 ),
+//                               ),
+//                               child: InkWell(
+//                                 borderRadius: BorderRadius.circular(8.r),
+//                                 onTap: () {
+//                                   showModalBottomSheet(
+//                                     context: context,
+//                                     isScrollControlled: true,
+//                                     backgroundColor: Colors.transparent,
+//                                     builder: (context) => ActDetailBottomSheet(
+//                                       act: act,
+//                                       isHindi: _isHindi,
+//                                     ),
+//                                   );
+//                                 },
+//                                 child: Padding(
+//                                   padding: EdgeInsets.all(10.w),
+//                                   child: Row(
+//                                     crossAxisAlignment:
+//                                         CrossAxisAlignment.start,
+//                                     children: [
+//                                       Expanded(
+//                                         child: Column(
+//                                           crossAxisAlignment:
+//                                               CrossAxisAlignment.start,
+//                                           children: [
+//                                             Row(
+//                                               children: [
+//                                                 Expanded(
+//                                                   child: Text(
+//                                                     act.actName,
+//                                                     style: TextStyle(
+//                                                       fontSize: 13.sp,
+//                                                       fontWeight:
+//                                                           FontWeight.bold,
+//                                                       color: const Color(
+//                                                         0xFF0F4C81,
+//                                                       ),
+//                                                     ),
+//                                                   ),
+//                                                 ),
+//                                                 SizedBox(width: 6.w),
+//                                                 Container(
+//                                                   padding: EdgeInsets.symmetric(
+//                                                     horizontal: 6.w,
+//                                                     vertical: 2.h,
+//                                                   ),
+//                                                   decoration: BoxDecoration(
+//                                                     color:
+//                                                         act.jurisdiction ==
+//                                                             'Central'
+//                                                         ? const Color(
+//                                                             0xFF0F4C81,
+//                                                           )
+//                                                         : const Color(
+//                                                             0xFF1B4332,
+//                                                           ),
+//                                                     borderRadius:
+//                                                         BorderRadius.circular(
+//                                                           4.r,
+//                                                         ),
+//                                                   ),
+//                                                   child: Text(
+//                                                     act.jurisdiction,
+//                                                     style: TextStyle(
+//                                                       color: Colors.white,
+//                                                       fontSize: 10.sp,
+//                                                       fontWeight:
+//                                                           FontWeight.bold,
+//                                                     ),
+//                                                   ),
+//                                                 ),
+//                                               ],
+//                                             ),
+//                                             SizedBox(height: 6.h),
+//                                             // Reference Module Button
+//                                             InkWell(
+//                                               onTap: () {
+//                                                 LegalMediaRedirectHelper.launchLegalMedia(
+//                                                   context: context,
+//                                                   urlString:
+//                                                       act
+//                                                           .referenceVideoUrl
+//                                                           .isNotEmpty
+//                                                       ? act.referenceVideoUrl
+//                                                       : topic.youtubeUrl,
+//                                                   isHindi: _isHindi,
+//                                                 );
+//                                               },
+//                                               child: Container(
+//                                                 padding: EdgeInsets.symmetric(
+//                                                   horizontal: 8.w,
+//                                                   vertical: 4.h,
+//                                                 ),
+//                                                 decoration: BoxDecoration(
+//                                                   color: const Color(
+//                                                     0xFFFDE8E8,
+//                                                   ),
+//                                                   borderRadius:
+//                                                       BorderRadius.circular(
+//                                                         6.r,
+//                                                       ),
+//                                                   border: Border.all(
+//                                                     color: const Color(
+//                                                       0xFFF87171,
+//                                                     ),
+//                                                   ),
+//                                                 ),
+//                                                 child: Row(
+//                                                   mainAxisSize:
+//                                                       MainAxisSize.min,
+//                                                   children: [
+//                                                     Icon(
+//                                                       Icons.play_circle_fill,
+//                                                       size: 14.sp,
+//                                                       color: const Color(
+//                                                         0xFFDC2626,
+//                                                       ),
+//                                                     ),
+//                                                     SizedBox(width: 4.w),
+//                                                     Text(
+//                                                       _isHindi
+//                                                           ? '📺 संदर्भ मॉड्यूल देखें'
+//                                                           : '📺 View Reference Module',
+//                                                       style: TextStyle(
+//                                                         color: const Color(
+//                                                           0xFFB91C1C,
+//                                                         ),
+//                                                         fontSize: 10.5.sp,
+//                                                         fontWeight:
+//                                                             FontWeight.bold,
+//                                                       ),
+//                                                     ),
+//                                                   ],
+//                                                 ),
+//                                               ),
+//                                             ),
+//                                           ],
+//                                         ),
+//                                       ),
+//                                       SizedBox(width: 8.w),
+//                                       Padding(
+//                                         padding: EdgeInsets.only(top: 8.h),
+//                                         child: Icon(
+//                                           Icons.arrow_forward_ios,
+//                                           size: 14.sp,
+//                                           color: const Color(0xFF0F4C81),
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// // ---------------------------------------------------------------------------
+// // Bottom Sheet displaying PDFs, Sections with individual YouTube links, and Case laws with videos
+// // ---------------------------------------------------------------------------
+// class ActDetailBottomSheet extends ConsumerStatefulWidget {
+//   final LegalActDetail act;
+//   final bool isHindi;
+//   const ActDetailBottomSheet({
+//     super.key,
+//     required this.act,
+//     this.isHindi = false,
+//   });
+
+//   @override
+//   ConsumerState<ActDetailBottomSheet> createState() =>
+//       _ActDetailBottomSheetState();
+// }
+
+// class _ActDetailBottomSheetState extends ConsumerState<ActDetailBottomSheet> {
+//   String _sectionSearchQuery = '';
+
+//   Future<void> _launchPdfUrl(String? urlString) async {
+//     if (urlString == null || urlString.trim().isEmpty) {
+//       if (mounted) {
+//         showErrorSnackBar(
+//           widget.isHindi
+//               ? 'पीडीएफ लिंक उपलब्ध नहीं है'
+//               : 'No PDF URL available',
+//           context,
+//         );
+//       }
+//       return;
+//     }
+//     try {
+//       final uri = Uri.parse(urlString.trim());
+//       if (await canLaunchUrl(uri)) {
+//         await launchUrl(uri, mode: LaunchMode.externalApplication);
+//       } else {
+//         if (mounted) {
+//           showErrorSnackBar('Could not open PDF', context);
+//         }
+//       }
+//     } catch (e) {
+//       log('Error opening PDF: $e');
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final lawAsync = ref.watch(getLawProvider);
+//     final List<LawContentItem> allItems = lawAsync.value?.data ?? [];
+
+//     final isCentral = widget.act.jurisdiction.toLowerCase() == 'central';
+
+//     // Filter API items by jurisdiction (Central vs State)
+//     final jurisdictionItems = allItems.where((item) {
+//       final itemState = (item.state ?? 'central').trim().toLowerCase();
+//       if (isCentral) {
+//         return itemState == 'central';
+//       } else {
+//         return itemState != 'central';
+//       }
+//     }).toList();
+
+//     // Separate PDFs from API
+//     final apiPdfItems = jurisdictionItems.where((i) {
+//       final isPdfType = i.type?.toLowerCase() == 'pdf';
+//       final hasPdfUrl = i.url != null && i.url!.toLowerCase().contains('.pdf');
+//       final isCloudinaryRaw = i.url != null && i.url!.contains('/raw/upload/');
+//       return isPdfType || hasPdfUrl || isCloudinaryRaw;
+//     }).toList();
+
+//     // Separate Videos from API
+//     final apiVideoItems = jurisdictionItems.where((i) {
+//       final isVideoType = i.type?.toLowerCase() == 'video';
+//       final isYoutube =
+//           i.url != null &&
+//           (i.url!.contains('youtu.be') || i.url!.contains('youtube.com'));
+//       return isVideoType || isYoutube;
+//     }).toList();
+
+//     // Search filter for API videos
+//     final filteredApiVideos = apiVideoItems.where((item) {
+//       if (_sectionSearchQuery.isEmpty) return true;
+//       final q = _sectionSearchQuery.toLowerCase();
+//       final titleMatch = item.title?.toLowerCase().contains(q) ?? false;
+//       final moduleMatch = item.lawModule?.toLowerCase().contains(q) ?? false;
+//       final secMatch = item.section?.toLowerCase().contains(q) ?? false;
+//       final catMatch = item.category?.toLowerCase().contains(q) ?? false;
+//       final descMatch = item.description?.toLowerCase().contains(q) ?? false;
+//       return titleMatch || moduleMatch || secMatch || catMatch || descMatch;
+//     }).toList();
+
+//     // Fallback mock sections filter
+//     final filteredSections = widget.act.sections
+//         .where(
+//           (sec) =>
+//               sec.sectionTitle.toLowerCase().contains(_sectionSearchQuery) ||
+//               sec.explanation.toLowerCase().contains(_sectionSearchQuery),
+//         )
+//         .toList();
+
+//     return Container(
+//       constraints: BoxConstraints(
+//         maxHeight: MediaQuery.of(context).size.height * 0.88,
+//       ),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+//       ),
+//       padding: EdgeInsets.all(18.w),
+//       child: SingleChildScrollView(
+//         child: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             Center(
+//               child: Container(
+//                 width: 40.w,
+//                 height: 4.h,
+//                 decoration: BoxDecoration(
+//                   color: Colors.grey[300],
+//                   borderRadius: BorderRadius.circular(2.r),
+//                 ),
+//               ),
+//             ),
+//             SizedBox(height: 14.h),
+//             Row(
+//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//               children: [
+//                 Expanded(
+//                   child: Text(
+//                     widget.act.actName,
+//                     style: TextStyle(
+//                       fontSize: 16.sp,
+//                       fontWeight: FontWeight.bold,
+//                       color: const Color(0xFF0F4C81),
+//                     ),
+//                   ),
+//                 ),
+//                 Container(
+//                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+//                   decoration: BoxDecoration(
+//                     color: widget.act.jurisdiction == 'Central'
+//                         ? const Color(0xFF0F4C81)
+//                         : const Color(0xFF1B4332),
+//                     borderRadius: BorderRadius.circular(6.r),
+//                   ),
+//                   child: Text(
+//                     widget.act.jurisdiction,
+//                     style: TextStyle(
+//                       color: Colors.white,
+//                       fontSize: 11.sp,
+//                       fontWeight: FontWeight.bold,
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 14.h),
+//             Text(
+//               widget.isHindi
+//                   ? 'आधिकारिक अधिनियम पीडीएफ डाउनलोड करें'
+//                   : 'Download Official Act PDF',
+//               style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+//             ),
+//             SizedBox(height: 8.h),
+//             Row(
+//               children: [
+//                 Expanded(
+//                   child: ElevatedButton.icon(
+//                     style: ElevatedButton.styleFrom(
+//                       padding: EdgeInsets.symmetric(vertical: 8.h),
+//                       backgroundColor: const Color(0xFF0F4C81),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(8.r),
+//                       ),
+//                     ),
+//                     icon: Icon(
+//                       Icons.picture_as_pdf,
+//                       color: Colors.white,
+//                       size: 16.sp,
+//                     ),
+//                     label: Text(
+//                       'English PDF',
+//                       style: TextStyle(color: Colors.white, fontSize: 11.5.sp),
+//                     ),
+//                     onPressed: () {
+//                       final url = apiPdfItems.isNotEmpty
+//                           ? apiPdfItems.first.url
+//                           : widget.act.englishPdfUrl;
+//                       _launchPdfUrl(url);
+//                     },
+//                   ),
+//                 ),
+//                 SizedBox(width: 10.w),
+//                 Expanded(
+//                   child: ElevatedButton.icon(
+//                     style: ElevatedButton.styleFrom(
+//                       padding: EdgeInsets.symmetric(vertical: 8.h),
+//                       backgroundColor: const Color(0xFF1B4332),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(8.r),
+//                       ),
+//                     ),
+//                     icon: Icon(
+//                       Icons.picture_as_pdf,
+//                       color: Colors.white,
+//                       size: 16.sp,
+//                     ),
+//                     label: Text(
+//                       'हिंदी पीडीएफ',
+//                       style: TextStyle(color: Colors.white, fontSize: 11.5.sp),
+//                     ),
+//                     onPressed: () {
+//                       final url = apiPdfItems.length > 1
+//                           ? apiPdfItems[1].url
+//                           : (apiPdfItems.isNotEmpty
+//                                 ? apiPdfItems.first.url
+//                                 : widget.act.hindiPdfUrl);
+//                       _launchPdfUrl(url);
+//                     },
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             SizedBox(height: 16.h),
+
+//             // Section Filter Search Bar Inside Bottom Sheet
+//             TextField(
+//               onChanged: (val) {
+//                 setState(() {
+//                   _sectionSearchQuery = val.toLowerCase();
+//                 });
+//               },
+//               style: TextStyle(fontSize: 13.sp, color: Colors.black87),
+//               decoration: InputDecoration(
+//                 isDense: true,
+//                 hintText: widget.isHindi
+//                     ? 'धाराएं खोजें (उदा. Section 103)...'
+//                     : 'Filter sections (e.g. Section 103)...',
+//                 hintStyle: TextStyle(fontSize: 12.sp, color: Colors.black45),
+//                 prefixIcon: Icon(
+//                   Icons.filter_list,
+//                   color: const Color(0xFF0F4C81),
+//                   size: 18.sp,
+//                 ),
+//                 prefixIconConstraints: BoxConstraints(
+//                   minWidth: 32.w,
+//                   minHeight: 32.h,
+//                 ),
+//                 contentPadding: EdgeInsets.symmetric(
+//                   vertical: 8.h,
+//                   horizontal: 12.w,
+//                 ),
+//                 filled: true,
+//                 fillColor: const Color(0xFFF0F4F8),
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(8.r),
+//                   borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
+//                 ),
+//                 enabledBorder: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(8.r),
+//                   borderSide: const BorderSide(color: Color(0xFFD0E1F9)),
+//                 ),
+//                 focusedBorder: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(8.r),
+//                   borderSide: const BorderSide(color: Color(0xFF0F4C81)),
+//                 ),
+//               ),
+//             ),
+//             SizedBox(height: 14.h),
+//             Text(
+//               widget.isHindi
+//                   ? 'प्रमुख धाराएं एवं वीडियो व्याख्याएं'
+//                   : 'Key Sections & Video Explanations',
+//               style: TextStyle(
+//                 fontSize: 13.5.sp,
+//                 fontWeight: FontWeight.bold,
+//                 color: const Color(0xFF0F4C81),
+//               ),
+//             ),
+//             SizedBox(height: 6.h),
+
+//             // Loading / Dynamic List from API
+//             if (lawAsync.isLoading)
+//               Center(
+//                 child: Padding(
+//                   padding: EdgeInsets.symmetric(vertical: 20.h),
+//                   child: const CircularProgressIndicator(
+//                     color: Color(0xFF0F4C81),
+//                   ),
+//                 ),
+//               )
+//             else if (filteredApiVideos.isNotEmpty)
+//               ...filteredApiVideos.map((item) {
+//                 final title =
+//                     (item.lawModule != null &&
+//                         item.lawModule!.trim().isNotEmpty)
+//                     ? item.lawModule!.trim()
+//                     : ((item.title != null && item.title!.trim().isNotEmpty)
+//                           ? item.title!.trim()
+//                           : 'Legal Video Explanation');
+
+//                 final subtitleParts = [
+//                   if (item.section != null && item.section!.trim().isNotEmpty)
+//                     item.section!.trim(),
+//                   if (item.category != null && item.category!.trim().isNotEmpty)
+//                     item.category!.trim(),
+//                 ];
+//                 final subtitle = subtitleParts.isNotEmpty
+//                     ? subtitleParts.join(' • ')
+//                     : (item.description ?? '');
+
+//                 return Card(
+//                   elevation: 1,
+//                   margin: EdgeInsets.only(bottom: 8.h),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(8.r),
+//                   ),
+//                   child: ListTile(
+//                     dense: true,
+//                     title: Text(
+//                       title,
+//                       style: TextStyle(
+//                         fontSize: 12.5.sp,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                     subtitle: subtitle.isNotEmpty
+//                         ? Text(
+//                             subtitle,
+//                             style: TextStyle(
+//                               fontSize: 11.5.sp,
+//                               color: Colors.black54,
+//                             ),
+//                           )
+//                         : null,
+//                     trailing: IconButton(
+//                       icon: const Icon(
+//                         Icons.play_circle_fill,
+//                         color: Color(0xFFCC0000),
+//                         size: 28,
+//                       ),
+//                       tooltip: 'Watch Section Video',
+//                       onPressed: () =>
+//                           LegalMediaRedirectHelper.launchLegalMedia(
+//                             context: context,
+//                             urlString: item.url,
+//                             isHindi: widget.isHindi,
+//                           ),
+//                     ),
+//                   ),
+//                 );
+//               })
+//             else
+//               // Fallback to mock sections if API list is empty or matches none
+//               ...filteredSections.map(
+//                 (sec) => Card(
+//                   elevation: 1,
+//                   margin: EdgeInsets.only(bottom: 8.h),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(8.r),
+//                   ),
+//                   child: ListTile(
+//                     dense: true,
+//                     title: Text(
+//                       sec.sectionTitle,
+//                       style: TextStyle(
+//                         fontSize: 12.5.sp,
+//                         fontWeight: FontWeight.bold,
+//                       ),
+//                     ),
+//                     subtitle: Text(
+//                       sec.explanation,
+//                       style: TextStyle(
+//                         fontSize: 11.5.sp,
+//                         color: Colors.black54,
+//                       ),
+//                     ),
+//                     trailing: IconButton(
+//                       icon: const Icon(
+//                         Icons.play_circle_fill,
+//                         color: Color(0xFFCC0000),
+//                         size: 28,
+//                       ),
+//                       tooltip: 'Watch Section Video',
+//                       onPressed: () =>
+//                           LegalMediaRedirectHelper.launchLegalMedia(
+//                             context: context,
+//                             urlString: sec.youtubeVideoUrl,
+//                             isHindi: widget.isHindi,
+//                           ),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+
+//             if (widget.act.landmarkCases.isNotEmpty) ...[
+//               SizedBox(height: 14.h),
+//               Text(
+//                 widget.isHindi
+//                     ? 'ऐतिहासिक फैसले एवं वीडियो व्याख्याएं'
+//                     : 'Landmark Cases & Video Explanations',
+//                 style: TextStyle(
+//                   fontSize: 13.5.sp,
+//                   fontWeight: FontWeight.bold,
+//                   color: const Color(0xFF0F4C81),
+//                 ),
+//               ),
+//               SizedBox(height: 6.h),
+//               ...widget.act.landmarkCases.map(
+//                 (c) => Card(
+//                   elevation: 1,
+//                   margin: EdgeInsets.only(bottom: 8.h),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(8.r),
+//                   ),
+//                   child: ListTile(
+//                     dense: true,
+//                     title: Text(
+//                       c.caseName,
+//                       style: TextStyle(
+//                         fontSize: 12.5.sp,
+//                         fontWeight: FontWeight.bold,
+//                         fontStyle: FontStyle.italic,
+//                       ),
+//                     ),
+//                     subtitle: Text(
+//                       c.summary,
+//                       style: TextStyle(
+//                         fontSize: 11.5.sp,
+//                         color: Colors.black54,
+//                       ),
+//                     ),
+//                     trailing: IconButton(
+//                       icon: const Icon(
+//                         Icons.play_circle_fill,
+//                         color: Color(0xFFCC0000),
+//                         size: 28,
+//                       ),
+//                       tooltip: 'Watch Case Video',
+//                       onPressed: () =>
+//                           LegalMediaRedirectHelper.launchLegalMedia(
+//                             context: context,
+//                             urlString: c.youtubeVideoUrl,
+//                             isHindi: widget.isHindi,
+//                           ),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//             SizedBox(height: 18.h),
+//             SizedBox(
+//               width: double.infinity,
+//               height: 42.h,
+//               child: OutlinedButton(
+//                 style: OutlinedButton.styleFrom(
+//                   side: const BorderSide(color: Color(0xFF0F4C81)),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(8.r),
+//                   ),
+//                 ),
+//                 onPressed: () => Navigator.pop(context),
+//                 child: Text(
+//                   widget.isHindi ? 'बंद करें' : 'Close',
+//                   style: TextStyle(
+//                     color: const Color(0xFF0F4C81),
+//                     fontWeight: FontWeight.bold,
+//                     fontSize: 13.5.sp,
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// // -------------------------------------------------------------------------
+// // ADMIN PORTAL SCREEN: Map YouTube Explainer URLs to Specific Sections & Cases
+// // -------------------------------------------------------------------------
+// class AdminVideoUploadScreen extends StatefulWidget {
+//   const AdminVideoUploadScreen({super.key});
+
+//   @override
+//   State<AdminVideoUploadScreen> createState() => _AdminVideoUploadScreenState();
+// }
+
+// class _AdminVideoUploadScreenState extends State<AdminVideoUploadScreen> {
+//   final _formKey = GlobalKey<FormState>();
+//   final TextEditingController _actController = TextEditingController();
+//   final TextEditingController _sectionController = TextEditingController();
+//   final TextEditingController _youtubeUrlController = TextEditingController();
+
+//   String? _selectedTargetType = 'Section';
+//   String _selectedJurisdiction = 'Central';
+
+//   void _saveVideoMapping() {
+//     if (_formKey.currentState!.validate()) {
+//       showDialog(
+//         context: context,
+//         builder: (context) => AlertDialog(
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(16.r),
+//           ),
+//           title: Text(
+//             'Success!',
+//             style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+//           ),
+//           content: Text(
+//             'YouTube video linked successfully for $_selectedTargetType: ${_sectionController.text} under [$_selectedJurisdiction] ${_actController.text}.',
+//             style: TextStyle(fontSize: 13.5.sp, height: 1.4),
+//           ),
+//           actions: [
+//             TextButton(
+//               onPressed: () {
+//                 Navigator.pop(context);
+//                 _actController.clear();
+//                 _sectionController.clear();
+//                 _youtubeUrlController.clear();
+//                 setState(() {
+//                   _selectedTargetType = 'Section';
+//                   _selectedJurisdiction = 'Central';
+//                 });
+//               },
+//               child: Text(
+//                 'OK',
+//                 style: TextStyle(
+//                   color: const Color(0xFF0F4C81),
+//                   fontSize: 14.sp,
+//                   fontWeight: FontWeight.bold,
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         backgroundColor: const Color(0xFF0F4C81),
+//         title: Text(
+//           'Admin Portal: Link YouTube Videos',
+//           style: TextStyle(
+//             color: Colors.white,
+//             fontSize: 16.sp,
+//             fontWeight: FontWeight.bold,
+//           ),
+//         ),
+//         leading: IconButton(
+//           icon: Icon(Icons.arrow_back, color: Colors.white, size: 24.sp),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//       ),
+//       body: SingleChildScrollView(
+//         padding: EdgeInsets.all(20.0.r),
+//         child: Form(
+//           key: _formKey,
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Text(
+//                 'Upload / Map Section Explainer Video',
+//                 style: TextStyle(
+//                   fontSize: 18.sp,
+//                   fontWeight: FontWeight.bold,
+//                   color: const Color(0xFF0F4C81),
+//                 ),
+//               ),
+//               SizedBox(height: 6.h),
+//               Text(
+//                 'Enter the target Act, Jurisdiction (Central/State) and Section/Case details along with your YouTube video link.',
+//                 style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+//               ),
+//               SizedBox(height: 20.h),
+//               DropdownButtonFormField<String>(
+//                 initialValue: _selectedJurisdiction,
+//                 style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                 decoration: InputDecoration(
+//                   labelText: 'Jurisdiction (Central or State)',
+//                   labelStyle: TextStyle(
+//                     fontSize: 13.5.sp,
+//                     color: Colors.black54,
+//                   ),
+//                   contentPadding: EdgeInsets.symmetric(
+//                     horizontal: 16.w,
+//                     vertical: 14.h,
+//                   ),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                   ),
+//                   enabledBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(color: Color(0xFFDCDFE4)),
+//                   ),
+//                   focusedBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(
+//                       color: Color(0xFF0F4C81),
+//                       width: 1.5,
+//                     ),
+//                   ),
+//                 ),
+//                 items: ['Central', 'State'].map((type) {
+//                   return DropdownMenuItem(
+//                     value: type,
+//                     child: Text(type, style: TextStyle(fontSize: 14.sp)),
+//                   );
+//                 }).toList(),
+//                 onChanged: (val) {
+//                   setState(() {
+//                     _selectedJurisdiction = val!;
+//                   });
+//                 },
+//               ),
+//               SizedBox(height: 16.h),
+//               DropdownButtonFormField<String>(
+//                 initialValue: _selectedTargetType,
+//                 style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                 decoration: InputDecoration(
+//                   labelText: 'Target Type',
+//                   labelStyle: TextStyle(
+//                     fontSize: 13.5.sp,
+//                     color: Colors.black54,
+//                   ),
+//                   contentPadding: EdgeInsets.symmetric(
+//                     horizontal: 16.w,
+//                     vertical: 14.h,
+//                   ),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                   ),
+//                   enabledBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(color: Color(0xFFDCDFE4)),
+//                   ),
+//                   focusedBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(
+//                       color: Color(0xFF0F4C81),
+//                       width: 1.5,
+//                     ),
+//                   ),
+//                 ),
+//                 items: ['Section', 'Landmark Case'].map((type) {
+//                   return DropdownMenuItem(
+//                     value: type,
+//                     child: Text(type, style: TextStyle(fontSize: 14.sp)),
+//                   );
+//                 }).toList(),
+//                 onChanged: (val) {
+//                   setState(() {
+//                     _selectedTargetType = val;
+//                   });
+//                 },
+//               ),
+//               SizedBox(height: 16.h),
+//               TextFormField(
+//                 controller: _actController,
+//                 style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                 decoration: InputDecoration(
+//                   labelText: 'Act Name (e.g. Bharatiya Nyaya Sanhita)',
+//                   labelStyle: TextStyle(
+//                     fontSize: 13.5.sp,
+//                     color: Colors.black54,
+//                   ),
+//                   contentPadding: EdgeInsets.symmetric(
+//                     horizontal: 16.w,
+//                     vertical: 14.h,
+//                   ),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                   ),
+//                   enabledBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(color: Color(0xFFDCDFE4)),
+//                   ),
+//                   focusedBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(
+//                       color: Color(0xFF0F4C81),
+//                       width: 1.5,
+//                     ),
+//                   ),
+//                 ),
+//                 validator: (val) =>
+//                     val == null || val.isEmpty ? 'Please enter Act name' : null,
+//               ),
+//               SizedBox(height: 16.h),
+//               TextFormField(
+//                 controller: _sectionController,
+//                 style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                 decoration: InputDecoration(
+//                   labelText: _selectedTargetType == 'Section'
+//                       ? 'Section Title (e.g. Section 103)'
+//                       : 'Case Name (e.g. D.K. Basu v. State)',
+//                   labelStyle: TextStyle(
+//                     fontSize: 13.5.sp,
+//                     color: Colors.black54,
+//                   ),
+//                   contentPadding: EdgeInsets.symmetric(
+//                     horizontal: 16.w,
+//                     vertical: 14.h,
+//                   ),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                   ),
+//                   enabledBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(color: Color(0xFFDCDFE4)),
+//                   ),
+//                   focusedBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(
+//                       color: Color(0xFF0F4C81),
+//                       width: 1.5,
+//                     ),
+//                   ),
+//                 ),
+//                 validator: (val) =>
+//                     val == null || val.isEmpty ? 'Please enter title' : null,
+//               ),
+//               SizedBox(height: 16.h),
+//               TextFormField(
+//                 controller: _youtubeUrlController,
+//                 style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+//                 decoration: InputDecoration(
+//                   labelText: 'YouTube Video URL',
+//                   labelStyle: TextStyle(
+//                     fontSize: 13.5.sp,
+//                     color: Colors.black54,
+//                   ),
+//                   hintText: 'https://www.youtube.com/watch?v=...',
+//                   hintStyle: TextStyle(fontSize: 13.sp, color: Colors.black45),
+//                   contentPadding: EdgeInsets.symmetric(
+//                     horizontal: 16.w,
+//                     vertical: 14.h,
+//                   ),
+//                   border: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                   ),
+//                   enabledBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(color: Color(0xFFDCDFE4)),
+//                   ),
+//                   focusedBorder: OutlineInputBorder(
+//                     borderRadius: BorderRadius.circular(12.r),
+//                     borderSide: const BorderSide(
+//                       color: Color(0xFF0F4C81),
+//                       width: 1.5,
+//                     ),
+//                   ),
+//                 ),
+//                 validator: (val) {
+//                   if (val == null ||
+//                       val.isEmpty ||
+//                       !val.contains('youtube.com')) {
+//                     return 'Please enter a valid YouTube link';
+//                   }
+//                   return null;
+//                 },
+//               ),
+//               SizedBox(height: 24.h),
+//               SizedBox(
+//                 width: double.infinity,
+//                 height: 48.h,
+//                 child: ElevatedButton(
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: const Color(0xFF0F4C81),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(12.r),
+//                     ),
+//                   ),
+//                   onPressed: _saveVideoMapping,
+//                   child: Text(
+//                     'Save & Publish Video Link',
+//                     style: TextStyle(
+//                       color: Colors.white,
+//                       fontWeight: FontWeight.bold,
+//                       fontSize: 15.sp,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// /// Dedicated DPDP Act Section 9 Minor In-App Sandbox Player.
+// /// Loads the educational video in an isolated no-cookie embed iframe,
+// /// strictly scrubbing recommendations, comments, and commercial trackers.
+// class ChildSandboxVideoPlayerScreen extends StatefulWidget {
+//   final String videoId;
+//   final String title;
+
+//   const ChildSandboxVideoPlayerScreen({
+//     super.key,
+//     required this.videoId,
+//     this.title = 'Legal Education Module',
+//   });
+
+//   @override
+//   State<ChildSandboxVideoPlayerScreen> createState() =>
+//       _ChildSandboxVideoPlayerScreenState();
+// }
+
+// class _ChildSandboxVideoPlayerScreenState
+//     extends State<ChildSandboxVideoPlayerScreen> {
+//   late final WebViewController _controller;
+//   bool _isLoading = true;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initController();
+//   }
+
+//   void _initController() {
+//     // Check if the videoId is a valid 11-character YouTube video ID.
+//     // If it's a dummy placeholder string (e.g. 'ConstitutionIntro'), use a verified
+//     // public domain educational video ID (Sansad TV - Indian Constitution) to prevent Error 153.
+//     final effectiveVideoId =
+//         (widget.videoId.length == 11 &&
+//             !widget.videoId.contains(RegExp(r'[^a-zA-Z0-9_-]')))
+//         ? widget.videoId
+//         : 'O1hclBvFpI4';
+
+//     final htmlContent =
+//         '''
+// <!DOCTYPE html>
+// <html>
+// <head>
+//   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+//   <meta name="referrer" content="strict-origin-when-cross-origin">
+//   <style>
+//     * { margin: 0; padding: 0; box-sizing: border-box; }
+//     body, html {
+//       width: 100%;
+//       height: 100%;
+//       background-color: #000000;
+//       display: flex;
+//       align-items: center;
+//       justify-content: center;
+//       overflow: hidden;
+//     }
+//     .video-container {
+//       position: relative;
+//       width: 100%;
+//       height: 100%;
+//       display: flex;
+//       align-items: center;
+//       justify-content: center;
+//       background-color: #000000;
+//     }
+//     iframe {
+//       width: 100%;
+//       height: 100%;
+//       border: 0;
+//     }
+//   </style>
+// </head>
+// <body>
+//   <div class="video-container">
+//     <iframe 
+//       src="https://www.youtube-nocookie.com/embed/$effectiveVideoId?rel=0&modestbranding=1&controls=1&iv_load_policy=3&playsinline=1" 
+//       referrerpolicy="strict-origin-when-cross-origin"
+//       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+//       allowfullscreen>
+//     </iframe>
+//   </div>
+// </body>
+// </html>
+// ''';
+
+//     _controller = WebViewController()
+//       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+//       ..setBackgroundColor(Colors.black)
+//       ..setNavigationDelegate(
+//         NavigationDelegate(
+//           onPageFinished: (_) {
+//             if (mounted) setState(() => _isLoading = false);
+//           },
+//           onNavigationRequest: (NavigationRequest request) {
+//             if (request.url.contains('youtube-nocookie.com') ||
+//                 request.url.contains('youtube.com') ||
+//                 request.url.contains('googlevideo.com') ||
+//                 request.url.startsWith('data:') ||
+//                 request.url.startsWith('about:')) {
+//               return NavigationDecision.navigate;
+//             }
+//             return NavigationDecision.prevent;
+//           },
+//         ),
+//       )
+//       ..loadHtmlString(
+//         htmlContent,
+//         baseUrl: 'https://www.youtube-nocookie.com',
+//       );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.black,
+//       appBar: AppBar(
+//         backgroundColor: const Color(0xFF002E29),
+//         foregroundColor: Colors.white,
+//         title: Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Text(
+//               widget.title,
+//               style: TextStyle(
+//                 fontSize: 14.sp,
+//                 fontWeight: FontWeight.bold,
+//                 color: Colors.white,
+//               ),
+//               maxLines: 1,
+//               overflow: TextOverflow.ellipsis,
+//             ),
+//             Row(
+//               children: [
+//                 Icon(Icons.shield, color: const Color(0xFF4ADE80), size: 12.sp),
+//                 SizedBox(width: 4.w),
+//                 Text(
+//                   'DPDP Sec 9 Protected • No Ads • No Suggestions',
+//                   style: TextStyle(
+//                     fontSize: 9.5.sp,
+//                     color: const Color(0xFF4ADE80),
+//                     fontWeight: FontWeight.w500,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ],
+//         ),
+//       ),
+//       body: SafeArea(
+//         child: Column(
+//           children: [
+//             // Standard 16:9 Aspect Ratio Video Player Container
+//             Container(
+//               color: Colors.black,
+//               width: double.infinity,
+//               child: AspectRatio(
+//                 aspectRatio: 16 / 9,
+//                 child: Stack(
+//                   children: [
+//                     WebViewWidget(controller: _controller),
+//                     if (_isLoading)
+//                       const Center(
+//                         child: CircularProgressIndicator(
+//                           color: Color(0xFFC5A038),
+//                         ),
+//                       ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//             // Information Section below the 16:9 player
+//             Expanded(
+//               child: SingleChildScrollView(
+//                 padding: EdgeInsets.all(16.w),
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text(
+//                       widget.title,
+//                       style: TextStyle(
+//                         fontSize: 15.sp,
+//                         fontWeight: FontWeight.bold,
+//                         color: Colors.white,
+//                       ),
+//                     ),
+//                     SizedBox(height: 12.h),
+//                     Container(
+//                       padding: EdgeInsets.all(12.w),
+//                       decoration: BoxDecoration(
+//                         color: const Color(0xFF002E29),
+//                         borderRadius: BorderRadius.circular(10.r),
+//                         border: Border.all(color: const Color(0xFF166534)),
+//                       ),
+//                       child: Row(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Icon(
+//                             Icons.verified_user,
+//                             color: const Color(0xFF4ADE80),
+//                             size: 20.sp,
+//                           ),
+//                           SizedBox(width: 10.w),
+//                           Expanded(
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 Text(
+//                                   'DPDP Act Section 9 Minor Sandbox',
+//                                   style: TextStyle(
+//                                     fontSize: 12.5.sp,
+//                                     fontWeight: FontWeight.bold,
+//                                     color: Colors.white,
+//                                   ),
+//                                 ),
+//                                 SizedBox(height: 4.h),
+//                                 Text(
+//                                   'This educational media is isolated from external YouTube recommendations, commercial ads, and tracking cookies.',
+//                                   style: TextStyle(
+//                                     fontSize: 11.sp,
+//                                     color: Colors.white70,
+//                                     height: 1.3,
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

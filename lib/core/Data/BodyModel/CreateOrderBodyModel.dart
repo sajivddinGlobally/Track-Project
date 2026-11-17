@@ -3,8 +3,8 @@ class CreateOrderBodyModel {
   final String? planName;
 
   CreateOrderBodyModel({
-    this.amount = 1,
-    this.planName = "Company Subscription",
+    this.amount = 49900,
+    this.planName = "Company Profile",
   });
 
   factory CreateOrderBodyModel.fromJson(Map<String, dynamic> json) =>
@@ -14,8 +14,8 @@ class CreateOrderBodyModel {
       );
 
   Map<String, dynamic> toJson() => {
-        "amount": amount ?? 1,
-        "planName": planName ?? "Company Subscription",
+        "amount": amount ?? 49900,
+        "planName": planName ?? "Company Profile",
       };
 }
 
