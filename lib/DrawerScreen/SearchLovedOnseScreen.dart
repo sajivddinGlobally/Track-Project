@@ -250,31 +250,56 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
 
     try {
       Position? position;
+
+      // 1. Check and request permission if needed
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+      } catch (_) {}
+
+      // 2. Fetch fresh high-accuracy position (uses Google Fused Location,
+      // giving sufficient time for the user to tap "Turn on" on the system dialog)
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            timeLimit: Duration(seconds: 8),
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 15),
           ),
         );
       } catch (_) {
-        position = await Geolocator.getLastKnownPosition();
+        // Fallback A: Cached position
+        try {
+          position = await Geolocator.getLastKnownPosition();
+        } catch (_) {}
+
+        // Fallback B: Quick low-accuracy (Cell/WiFi)
+        if (position == null) {
+          try {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.low,
+                timeLimit: Duration(seconds: 4),
+              ),
+            );
+          } catch (_) {}
+        }
       }
 
-      if (position == null) {
-        if (!mounted) return;
+      // If location is still unavailable, notify user but do NOT block SOS (Emergency Fail-safe)
+      if (position == null && mounted) {
         showErrorSnackBar(
           _isHindi
-              ? 'सटीक स्थान प्राप्त नहीं हो सका। कृपया जीपीएस चालू करें।'
-              : 'Could not fetch current location. Please turn on GPS.',
+              ? 'स्थान उपलब्ध नहीं है, बिना जीपीएस के आपातकालीन एसओएस भेजा जा रहा है...'
+              : 'GPS unavailable. Sending Emergency SOS without location...',
           context,
         );
-        return;
       }
 
       final body = TriggerSosBodyModel(
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitude: position?.latitude,
+        longitude: position?.longitude,
         triggerType: "APP_BUTTON",
         batteryPercentage: 70,
       );
