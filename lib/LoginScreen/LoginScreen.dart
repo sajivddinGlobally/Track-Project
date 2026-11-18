@@ -107,6 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           alert: true,
           badge: true,
           sound: true,
+          provisional: false,
         );
         // ignore: deprecated_member_use
         final fcmToken = await FirebaseMessaging.instance.getToken();
@@ -604,15 +605,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             alert: true,
                                             badge: true,
                                             sound: true,
+                                            provisional: false,
                                           );
                                       // ignore: deprecated_member_use
-                                      loginFcmToken = await FirebaseMessaging.instance.getToken();
+                                      loginFcmToken = await FirebaseMessaging
+                                          .instance
+                                          .getToken();
                                       if (loginFcmToken != null &&
                                           loginFcmToken.isNotEmpty) {
                                         final box = Hive.isBoxOpen("userdata")
                                             ? Hive.box("userdata")
                                             : await Hive.openBox("userdata");
-                                        await box.put('fcm_token', loginFcmToken);
+                                        await box.put(
+                                          'fcm_token',
+                                          loginFcmToken,
+                                        );
                                       }
                                     } catch (e) {
                                       log(
@@ -695,7 +702,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         "requiresAdultReconsent",
                                         requiresAdultReconsent,
                                       );
-                                      final cachedFcm = loginFcmToken ??
+                                      final cachedFcm =
+                                          loginFcmToken ??
                                           box.get('fcm_token')?.toString();
                                       if (cachedFcm != null &&
                                           cachedFcm.isNotEmpty) {

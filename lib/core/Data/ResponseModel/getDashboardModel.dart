@@ -134,7 +134,7 @@ class SystemAlertItem {
     factory SystemAlertItem.fromJson(Map<String, dynamic> json) => SystemAlertItem(
         type: json["type"]?.toString(),
         message: json["message"]?.toString(),
-        friendId: json["friendId"]?.toString(),
+        friendId: json["friendId"]?.toString() ?? json["userId"]?.toString(),
         friendName: json["friendName"]?.toString(),
         minutesRemaining: json["minutesRemaining"] is int
             ? json["minutesRemaining"]
@@ -161,6 +161,7 @@ class SystemAlertItem {
 }
 
 class LocationPermissionAlert {
+    String? friendId;
     bool? isExpiring;
     bool? isExpired;
     String? message;
@@ -169,6 +170,7 @@ class LocationPermissionAlert {
     bool? canRenew;
 
     LocationPermissionAlert({
+        this.friendId,
         this.isExpiring,
         this.isExpired,
         this.message,
@@ -179,6 +181,7 @@ class LocationPermissionAlert {
 
     factory LocationPermissionAlert.fromJson(Map<String, dynamic> json) =>
         LocationPermissionAlert(
+            friendId: json["friendId"]?.toString() ?? json["userId"]?.toString(),
             isExpiring: json["isExpiring"] == true || json["isExpiring"] == 'true',
             isExpired: json["isExpired"] == true || json["isExpired"] == 'true',
             message: json["message"]?.toString(),
@@ -190,6 +193,7 @@ class LocationPermissionAlert {
         );
 
     Map<String, dynamic> toJson() => {
+        "friendId": friendId,
         "isExpiring": isExpiring,
         "isExpired": isExpired,
         "message": message,

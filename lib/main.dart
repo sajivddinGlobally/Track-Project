@@ -49,24 +49,6 @@ void main() async {
 
 Future<void> _initFcmNotifications() async {
   try {
-    final messaging = FirebaseMessaging.instance;
-
-    // Explicitly request notification permissions on launch (critical for Android 13+ & iOS release builds)
-    try {
-      final settings = await messaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: true,
-        provisional: false,
-        sound: true,
-      );
-      log('[FCM] Permission status on launch: ${settings.authorizationStatus}');
-    } catch (e) {
-      log('[FCM] Error requesting notification permissions: $e');
-    }
-
     // Listen for token rotations (cache locally without syncing to backend on startup)
     // ignore: deprecated_member_use
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {

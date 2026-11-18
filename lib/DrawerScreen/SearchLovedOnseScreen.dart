@@ -92,6 +92,17 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
     return '$dateStr $timeStr';
   }
 
+  bool _isLocationActive(LocationSharingUser user) {
+    if (user.access == false) return false;
+    if (user.updatedAt == null) return false;
+    final now = DateTime.now().toUtc();
+    final updateUtc = user.updatedAt!.isUtc
+        ? user.updatedAt!
+        : user.updatedAt!.toUtc();
+    final diff = now.difference(updateUtc).abs();
+    return diff.inMinutes < 5;
+  }
+
   void _viewLocationOnGoogleMap(LocationSharingUser user) {
     final lat = user.latitude;
     final lng = user.longitude;
@@ -313,8 +324,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
     final lat = user.latitude;
     final lng = user.longitude;
     final hasCoordinates = lat != null && lng != null;
-    final isActive = user.access != false;
-    final canViewMap = isActive && hasCoordinates;
+    final hasAccess = user.access != false;
+    final isActive = _isLocationActive(user);
+    final canViewMap = hasAccess && hasCoordinates;
     final coordinatesText = hasCoordinates
         ? 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}'
         : (_isHindi ? 'स्थान उपलब्ध नहीं' : 'Location not available');
@@ -875,8 +887,9 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
         ? 'Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}'
         : (_isHindi ? 'स्थान उपलब्ध नहीं' : 'Location not available');
     // Server says whether this friend currently lets us see their location.
-    final isActive = user.access != false;
-    final canViewMap = isActive && hasCoordinates;
+    final hasAccess = user.access != false;
+    final isActive = _isLocationActive(user);
+    final canViewMap = hasAccess && hasCoordinates;
     final statusColor = isActive
         ? const Color(0xFF2E7D32)
         : const Color(0xFFC62828);
@@ -980,9 +993,13 @@ class _SearchLovedOnesScreenState extends ConsumerState<SearchLovedOnesScreen> {
                                   ? (_isHindi
                                         ? 'स्थान सक्रिय (लाइव)'
                                         : 'Location Active (Live)')
-                                  : (_isHindi
-                                        ? 'स्थान निष्क्रिय'
-                                        : 'Location Inactive'),
+                                  : (user.updatedAt != null
+                                        ? (_isHindi
+                                              ? 'स्थान निष्क्रिय (${_formatDateTime(user.updatedAt)})'
+                                              : 'Location Inactive (${_formatDateTime(user.updatedAt)})')
+                                        : (_isHindi
+                                              ? 'स्थान निष्क्रिय'
+                                              : 'Location Inactive')),
                               style: TextStyle(
                                 fontSize: 11.5.sp,
                                 fontWeight: FontWeight.w500,

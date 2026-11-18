@@ -37,8 +37,10 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<Position>? _locationSub;
+  Timer? _heartbeatTimer;
   static const double _minDistanceMeters = 5;
   static const Duration _minInterval = Duration(seconds: 3);
+  static const Duration _heartbeatInterval = Duration(minutes: 1);
   bool _askedAlwaysPermission = false;
   bool _isStarting = false;
   Position? _lastSent;
@@ -47,6 +49,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   bool _isExtendingPermissions = false;
   bool _isDismissingPermissions = false;
   bool _actionTakenInSession = false;
+  String? _loadingActionFriendId;
+  final Set<String> _selectedFriendIds = {};
+  final Set<String> _locallyHandledFriendIds = {};
 
   @override
   void initState() {
@@ -68,6 +73,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         '[Dashboard] Auto-refreshing dashboard due to FCM expiring notification',
       );
       _actionTakenInSession = false;
+      _locallyHandledFriendIds.clear();
       ref.invalidate(getDashbordProvider);
     }
   }
@@ -103,8 +109,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       final phone = box?.get('phone')?.toString();
 
       final socket = io.io(
-        // 'https://loveable-backend-5qi0.onrender.com',
-        'https://api.tracklovedones.com',
+        'https://loveable-backend-5qi0.onrender.com',
+        // 'https://api.tracklovedones.com',
         io.OptionBuilder()
             .setTransports(['websocket'])
             .enableAutoConnect()
@@ -168,6 +174,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   Future<void> _doStartLocationUpdates() async {
     await _locationSub?.cancel();
     _locationSub = null;
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return;
       final permission = await Geolocator.checkPermission();
@@ -201,6 +209,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         final lastPos = await Geolocator.getLastKnownPosition();
         if (lastPos != null) _sendLocation(lastPos);
       }
+      _startHeartbeatTimer();
     } catch (e) {
       debugPrint('Location stream failed: $e');
     }
@@ -242,6 +251,50 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     );
   }
 
+  void _startHeartbeatTimer() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) async {
+      if (!mounted) return;
+      // If a regular movement-based update was already sent recently (< 50 sec), skip this heartbeat
+      if (_lastSentAt != null &&
+          DateTime.now().difference(_lastSentAt!).inSeconds < 50) {
+        return;
+      }
+      await _sendHeartbeat();
+    });
+  }
+
+  Future<void> _sendHeartbeat() async {
+    try {
+      Position? pos = _lastSent;
+      pos ??= await Geolocator.getLastKnownPosition();
+      if (pos == null) {
+        try {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.low,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
+        } catch (_) {}
+      }
+      if (pos != null) {
+        _lastSent = pos;
+        _lastSentAt = DateTime.now();
+        log('[Location Heartbeat] sending ${pos.latitude}, ${pos.longitude}');
+        await ref
+            .read(authServiceProvider)
+            .updateUserLocationData(
+              latitude: pos.latitude,
+              longitude: pos.longitude,
+            );
+        log('[Location Heartbeat] sent OK');
+      }
+    } catch (e) {
+      log('[Location Heartbeat] FAILED: $e');
+    }
+  }
+
   Future<void> _sendLocation(Position position) async {
     // GPS can fire rapidly (drift, emulator): only send real movement.
     final last = _lastSent;
@@ -253,7 +306,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
         position.longitude,
       );
       final elapsed = DateTime.now().difference(_lastSentAt!);
-      if (moved < _minDistanceMeters || elapsed < _minInterval) {
+      final isStationaryHeartbeat = elapsed >= _heartbeatInterval;
+      if (!isStationaryHeartbeat &&
+          (moved < _minDistanceMeters || elapsed < _minInterval)) {
         log(
           '[Location] skipped: moved ${moved.toStringAsFixed(1)} m, '
           '${elapsed.inSeconds}s since last send',
@@ -279,6 +334,8 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
 
   @override
   void dispose() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
     FcmNotificationService.dashboardRefreshNotifier.removeListener(
       _onFcmDashboardRefresh,
     );
@@ -323,76 +380,101 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     if (mounted) setState(() {});
   }
 
-  Future<void> _handleExtendPermissions({BuildContext? dialogContext}) async {
+  Future<void> _executeLocationSharingAction({
+    required bool isRenew,
+    dynamic userIds,
+    bool isAll = false,
+    String? individualFriendId,
+    BuildContext? dialogContext,
+    void Function(void Function())? updateSheetState,
+    VoidCallback? onSuccess,
+  }) async {
     if (_isExtendingPermissions || _isDismissingPermissions) return;
     try {
       FlutterRingtonePlayer().stop();
     } catch (_) {}
-    setState(() => _isExtendingPermissions = true);
+
+    if (mounted) {
+      setState(() {
+        if (isRenew) {
+          _isExtendingPermissions = true;
+        } else {
+          _isDismissingPermissions = true;
+        }
+        _loadingActionFriendId = individualFriendId;
+      });
+    }
+    if (updateSheetState != null) {
+      updateSheetState(() {});
+    }
+
     try {
       final service = ref.read(authServiceProvider);
-      // Call backend dynamic action API to renew location access for next 24 hours
-      final res = await service.locationSharingActionData(
-        locationAccessRenew: true,
-      );
+      final res = isAll
+          ? await service.locationSharingActionData(
+              locationAccessRenewAll: isRenew ? true : null,
+              locationAccessDisableAll: !isRenew ? true : null,
+            )
+          : await service.locationSharingActionData(
+              locationAccessRenew: isRenew ? true : null,
+              locationAccessDisable: !isRenew ? true : null,
+              userIds: userIds,
+            );
 
-      await _recordAlertActionTaken();
+      if (userIds is String) {
+        _selectedFriendIds.remove(userIds);
+        _locallyHandledFriendIds.add(userIds);
+      } else if (userIds is List) {
+        for (final id in userIds) {
+          _selectedFriendIds.remove(id.toString());
+          _locallyHandledFriendIds.add(id.toString());
+        }
+      } else if (isAll) {
+        _selectedFriendIds.clear();
+        _locallyHandledFriendIds.clear();
+      }
+
+      if (isAll) {
+        await _recordAlertActionTaken();
+      } else {
+        _actionTakenInSession = false;
+      }
+
+      if (onSuccess != null) {
+        onSuccess();
+      }
+
       ref.invalidate(getDashbordProvider);
 
-      if (dialogContext != null && dialogContext.mounted) {
+      if (dialogContext != null && dialogContext.mounted && isAll) {
         Navigator.of(dialogContext).pop();
       }
 
       if (mounted) {
         showSuccessSnackBar(
           res.message ??
-              'Expiring location access was renewed for the next 24 hours.',
+              (isRenew
+                  ? 'Expiring location access was renewed.'
+                  : 'Location sharing was disabled for the selected friends.'),
           context,
         );
       }
     } catch (e) {
-      log('[Dashboard] Error extending permissions: $e');
+      log('[Dashboard] Error performing location sharing action: $e');
       if (mounted) {
-        showErrorSnackBar('Failed to extend permissions: $e', context);
+        showErrorSnackBar('Action failed: $e', context);
       }
     } finally {
-      if (mounted) setState(() => _isExtendingPermissions = false);
-    }
-  }
-
-  Future<void> _handleDismissPermissions({BuildContext? dialogContext}) async {
-    if (_isExtendingPermissions || _isDismissingPermissions) return;
-    try {
-      FlutterRingtonePlayer().stop();
-    } catch (_) {}
-    setState(() => _isDismissingPermissions = true);
-    try {
-      final service = ref.read(authServiceProvider);
-      // Call backend dynamic action API to disable location access for all friends
-      final res = await service.locationSharingActionData(
-        locationAccessDisable: true,
-      );
-
-      await _recordAlertActionTaken();
-      ref.invalidate(getDashbordProvider);
-
-      if (dialogContext != null && dialogContext.mounted) {
-        Navigator.of(dialogContext).pop();
-      }
-
       if (mounted) {
-        showSuccessSnackBar(
-          res.message ?? 'Location sharing was disabled for all friends.',
-          context,
-        );
+        setState(() {
+          _isExtendingPermissions = false;
+          _isDismissingPermissions = false;
+          _loadingActionFriendId = null;
+        });
       }
-    } catch (e) {
-      log('[Dashboard] Error dismissing permissions: $e');
-      if (mounted) {
-        showErrorSnackBar('Failed to disable location sharing: $e', context);
+      if (updateSheetState != null) {
+        updateSheetState(() {});
       }
-    } finally {
-      if (mounted) setState(() => _isDismissingPermissions = false);
     }
   }
 
@@ -414,6 +496,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       );
       if (mounted) {
         _actionTakenInSession = false;
+        _locallyHandledFriendIds.clear();
         ref.invalidate(getDashbordProvider);
       }
     }
@@ -429,6 +512,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     } else if (locAlert != null) {
       allItems.add(
         SystemAlertItem(
+          friendId: locAlert.friendId,
           message: locAlert.message,
           friendName: locAlert.friendName,
           minutesRemaining: locAlert.minutesRemaining,
@@ -437,6 +521,16 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
           canRenew: locAlert.canRenew,
         ),
       );
+    }
+
+    allItems.removeWhere(
+      (item) =>
+          item.friendId != null &&
+          _locallyHandledFriendIds.contains(item.friendId),
+    );
+
+    if (allItems.isEmpty) {
+      return const SizedBox.shrink();
     }
 
     final isExpired =
@@ -540,13 +634,13 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
             ],
           ),
 
-          // If multiple items, list each contact cleanly
-          if (count > 1) ...[
+          // List each contact cleanly
+          if (allItems.isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: Colors.white.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isExpired
@@ -561,7 +655,13 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                   final item = entry.value;
                   final itemExpired = item.isExpired == true;
                   final friendName = item.friendName ?? 'Contact';
+                  final friendId = item.friendId;
                   final minLeft = item.minutesRemaining;
+                  final isItemLoading =
+                      _loadingActionFriendId != null &&
+                      _loadingActionFriendId == friendId;
+                  final isSelected =
+                      friendId != null && _selectedFriendIds.contains(friendId);
 
                   return Column(
                     children: [
@@ -572,8 +672,37 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                           color: Colors.grey.shade300,
                         ),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
+                          if (count > 1 && friendId != null) ...[
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Checkbox(
+                                value: isSelected,
+                                activeColor: const Color(0xFF0B4F4A),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                onChanged:
+                                    (_isExtendingPermissions ||
+                                        _isDismissingPermissions)
+                                    ? null
+                                    : (val) {
+                                        setState(() {
+                                          if (val == true) {
+                                            _selectedFriendIds.add(friendId);
+                                          } else {
+                                            _selectedFriendIds.remove(friendId);
+                                          }
+                                        });
+                                      },
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           CircleAvatar(
                             radius: 12,
                             backgroundColor: const Color(0xFF0B4F4A),
@@ -644,11 +773,92 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                       fontSize: 11,
                                       color: Colors.black87,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ],
                             ),
                           ),
+                          if (friendId != null) ...[
+                            const SizedBox(width: 6),
+                            if (isItemLoading)
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF0B4F4A),
+                                ),
+                              )
+                            else ...[
+                              InkWell(
+                                onTap:
+                                    (_isExtendingPermissions ||
+                                        _isDismissingPermissions)
+                                    ? null
+                                    : () => _executeLocationSharingAction(
+                                        isRenew: true,
+                                        userIds: friendId,
+                                        individualFriendId: friendId,
+                                      ),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0B4F4A),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Renew',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap:
+                                    (_isExtendingPermissions ||
+                                        _isDismissingPermissions)
+                                    ? null
+                                    : () => _executeLocationSharingAction(
+                                        isRenew: false,
+                                        userIds: friendId,
+                                        individualFriendId: friendId,
+                                      ),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFEBEE),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFD32F2F),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Dismiss',
+                                    style: TextStyle(
+                                      color: Color(0xFFD32F2F),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ],
                       ),
                     ],
@@ -670,6 +880,80 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
             ),
           ),
           const SizedBox(height: 12),
+          if (_selectedFriendIds.isNotEmpty &&
+              _selectedFriendIds.length < count) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: ElevatedButton(
+                      onPressed:
+                          (_isExtendingPermissions || _isDismissingPermissions)
+                          ? null
+                          : () {
+                              final ids = _selectedFriendIds.toList();
+                              _executeLocationSharingAction(
+                                isRenew: true,
+                                userIds: ids.length == 1 ? ids.first : ids,
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0B4F4A),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      child: Text(
+                        'RENEW SELECTED (${_selectedFriendIds.length})',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 36,
+                    child: OutlinedButton(
+                      onPressed:
+                          (_isExtendingPermissions || _isDismissingPermissions)
+                          ? null
+                          : () {
+                              final ids = _selectedFriendIds.toList();
+                              _executeLocationSharingAction(
+                                isRenew: false,
+                                userIds: ids.length == 1 ? ids.first : ids,
+                              );
+                            },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFD32F2F),
+                        side: const BorderSide(color: Color(0xFFD32F2F)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                      child: Text(
+                        'DISMISS SELECTED (${_selectedFriendIds.length})',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           Row(
             children: [
               Expanded(
@@ -679,7 +963,10 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                     onPressed:
                         (_isExtendingPermissions || _isDismissingPermissions)
                         ? null
-                        : () => _handleExtendPermissions(),
+                        : () => _executeLocationSharingAction(
+                            isRenew: true,
+                            isAll: true,
+                          ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B4F4A),
                       foregroundColor: Colors.white,
@@ -689,7 +976,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-                    child: _isExtendingPermissions
+                    child:
+                        _isExtendingPermissions &&
+                            _loadingActionFriendId == null
                         ? const SizedBox(
                             width: 16,
                             height: 16,
@@ -718,7 +1007,10 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                     onPressed:
                         (_isExtendingPermissions || _isDismissingPermissions)
                         ? null
-                        : () => _handleDismissPermissions(),
+                        : () => _executeLocationSharingAction(
+                            isRenew: false,
+                            isAll: true,
+                          ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFFD32F2F),
                       side: const BorderSide(color: Color(0xFFD32F2F)),
@@ -727,7 +1019,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-                    child: _isDismissingPermissions
+                    child:
+                        _isDismissingPermissions &&
+                            _loadingActionFriendId == null
                         ? const SizedBox(
                             width: 16,
                             height: 16,
@@ -788,6 +1082,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     } else if (locAlert != null) {
       allItems.add(
         SystemAlertItem(
+          friendId: locAlert.friendId,
           message: locAlert.message,
           friendName: locAlert.friendName,
           minutesRemaining: locAlert.minutesRemaining,
@@ -798,10 +1093,15 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       );
     }
 
-    final isExpired =
-        allItems.any((item) => item.isExpired == true) ||
-        (locAlert?.isExpired == true);
-    final count = allItems.length;
+    allItems.removeWhere(
+      (item) =>
+          item.friendId != null &&
+          _locallyHandledFriendIds.contains(item.friendId),
+    );
+
+    if (allItems.isEmpty) {
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -810,6 +1110,10 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isExpired =
+                allItems.any((item) => item.isExpired == true) ||
+                (locAlert?.isExpired == true);
+            final count = allItems.length;
             return Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               constraints: BoxConstraints(
@@ -902,7 +1206,14 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                             ...allItems.map((item) {
                               final itemExpired = item.isExpired == true;
                               final friendName = item.friendName ?? 'Contact';
+                              final friendId = item.friendId;
                               final minLeft = item.minutesRemaining;
+                              final isItemLoading =
+                                  _loadingActionFriendId != null &&
+                                  _loadingActionFriendId == friendId;
+                              final isSelected =
+                                  friendId != null &&
+                                  _selectedFriendIds.contains(friendId);
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 10),
@@ -923,6 +1234,42 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                   children: [
                                     Row(
                                       children: [
+                                        if (count > 1 && friendId != null) ...[
+                                          SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: Checkbox(
+                                              value: isSelected,
+                                              activeColor: const Color(
+                                                0xFF0B4F4A,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              onChanged:
+                                                  (_isExtendingPermissions ||
+                                                      _isDismissingPermissions)
+                                                  ? null
+                                                  : (val) {
+                                                      setSheetState(() {
+                                                        if (val == true) {
+                                                          _selectedFriendIds
+                                                              .add(friendId);
+                                                        } else {
+                                                          _selectedFriendIds
+                                                              .remove(friendId);
+                                                        }
+                                                      });
+                                                      setState(() {});
+                                                    },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
                                         CircleAvatar(
                                           radius: 12,
                                           backgroundColor: const Color(
@@ -979,6 +1326,135 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                             ),
                                           ),
                                         ),
+                                        if (friendId != null) ...[
+                                          const SizedBox(width: 8),
+                                          if (isItemLoading)
+                                            const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xFF0B4F4A),
+                                              ),
+                                            )
+                                          else ...[
+                                            InkWell(
+                                              onTap:
+                                                  (_isExtendingPermissions ||
+                                                      _isDismissingPermissions)
+                                                  ? null
+                                                  : () => _executeLocationSharingAction(
+                                                      isRenew: true,
+                                                      userIds: friendId,
+                                                      individualFriendId:
+                                                          friendId,
+                                                      updateSheetState:
+                                                          setSheetState,
+                                                      onSuccess: () {
+                                                        setSheetState(() {
+                                                          allItems.removeWhere(
+                                                            (it) =>
+                                                                it.friendId ==
+                                                                friendId,
+                                                          );
+                                                        });
+                                                        if (allItems.isEmpty &&
+                                                            sheetContext
+                                                                .mounted) {
+                                                          Navigator.of(
+                                                            sheetContext,
+                                                          ).pop();
+                                                        }
+                                                      },
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFF0B4F4A,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  'Renew',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap:
+                                                  (_isExtendingPermissions ||
+                                                      _isDismissingPermissions)
+                                                  ? null
+                                                  : () => _executeLocationSharingAction(
+                                                      isRenew: false,
+                                                      userIds: friendId,
+                                                      individualFriendId:
+                                                          friendId,
+                                                      updateSheetState:
+                                                          setSheetState,
+                                                      onSuccess: () {
+                                                        setSheetState(() {
+                                                          allItems.removeWhere(
+                                                            (it) =>
+                                                                it.friendId ==
+                                                                friendId,
+                                                          );
+                                                        });
+                                                        if (allItems.isEmpty &&
+                                                            sheetContext
+                                                                .mounted) {
+                                                          Navigator.of(
+                                                            sheetContext,
+                                                          ).pop();
+                                                        }
+                                                      },
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFFFEBEE,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFD32F2F,
+                                                    ),
+                                                    width: 0.8,
+                                                  ),
+                                                ),
+                                                child: const Text(
+                                                  'Dismiss',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFD32F2F),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ],
                                     ),
                                     if (item.message != null &&
@@ -1019,6 +1495,115 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                     ),
 
                     const SizedBox(height: 16),
+                    if (_selectedFriendIds.isNotEmpty &&
+                        _selectedFriendIds.length < count) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: ElevatedButton(
+                                onPressed:
+                                    (_isExtendingPermissions ||
+                                        _isDismissingPermissions)
+                                    ? null
+                                    : () {
+                                        final ids = _selectedFriendIds.toList();
+                                        _executeLocationSharingAction(
+                                          isRenew: true,
+                                          userIds: ids.length == 1
+                                              ? ids.first
+                                              : ids,
+                                          dialogContext: sheetContext,
+                                          updateSheetState: setSheetState,
+                                          onSuccess: () {
+                                            setSheetState(() {
+                                              allItems.removeWhere(
+                                                (it) =>
+                                                    it.friendId != null &&
+                                                    ids.contains(it.friendId),
+                                              );
+                                            });
+                                            if (allItems.isEmpty &&
+                                                sheetContext.mounted) {
+                                              Navigator.of(sheetContext).pop();
+                                            }
+                                          },
+                                        );
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0B4F4A),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  'RENEW SELECTED (${_selectedFriendIds.length})',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: OutlinedButton(
+                                onPressed:
+                                    (_isExtendingPermissions ||
+                                        _isDismissingPermissions)
+                                    ? null
+                                    : () {
+                                        final ids = _selectedFriendIds.toList();
+                                        _executeLocationSharingAction(
+                                          isRenew: false,
+                                          userIds: ids.length == 1
+                                              ? ids.first
+                                              : ids,
+                                          dialogContext: sheetContext,
+                                          updateSheetState: setSheetState,
+                                          onSuccess: () {
+                                            setSheetState(() {
+                                              allItems.removeWhere(
+                                                (it) =>
+                                                    it.friendId != null &&
+                                                    ids.contains(it.friendId),
+                                              );
+                                            });
+                                            if (allItems.isEmpty &&
+                                                sheetContext.mounted) {
+                                              Navigator.of(sheetContext).pop();
+                                            }
+                                          },
+                                        );
+                                      },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFFD32F2F),
+                                  side: const BorderSide(
+                                    color: Color(0xFFD32F2F),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  'DISMISS SELECTED (${_selectedFriendIds.length})',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     Row(
                       children: [
                         Expanded(
@@ -1030,9 +1615,11 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                       _isDismissingPermissions)
                                   ? null
                                   : () async {
-                                      setSheetState(() {});
-                                      await _handleExtendPermissions(
+                                      await _executeLocationSharingAction(
+                                        isRenew: true,
+                                        isAll: true,
                                         dialogContext: sheetContext,
+                                        updateSheetState: setSheetState,
                                       );
                                     },
                               style: ElevatedButton.styleFrom(
@@ -1042,7 +1629,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: _isExtendingPermissions
+                              child:
+                                  _isExtendingPermissions &&
+                                      _loadingActionFriendId == null
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
@@ -1075,9 +1664,11 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                       _isDismissingPermissions)
                                   ? null
                                   : () async {
-                                      setSheetState(() {});
-                                      await _handleDismissPermissions(
+                                      await _executeLocationSharingAction(
+                                        isRenew: false,
+                                        isAll: true,
                                         dialogContext: sheetContext,
+                                        updateSheetState: setSheetState,
                                       );
                                     },
                               style: OutlinedButton.styleFrom(
@@ -1089,7 +1680,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: _isDismissingPermissions
+                              child:
+                                  _isDismissingPermissions &&
+                                      _loadingActionFriendId == null
                                   ? const SizedBox(
                                       width: 18,
                                       height: 18,
@@ -1165,7 +1758,6 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
   }
 
   bool _isHindi = false;
-
   bool _isSosLoading = false;
 
   void _sendHelpAlertToMembers() {

@@ -60,6 +60,15 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
 
   bool get _hi => widget.isHindi;
 
+  bool get _isLive {
+    if (!_connected) return false;
+    if (_updatedAt == null) return false;
+    final now = DateTime.now().toUtc();
+    final updateUtc =
+        _updatedAt!.isUtc ? _updatedAt! : _updatedAt!.toUtc();
+    return now.difference(updateUtc).abs().inMinutes < 5;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -659,16 +668,16 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
                                 Icon(
                                   Icons.circle,
                                   size: 10.sp,
-                                  color: _connected
+                                  color: _isLive
                                       ? const Color(0xFF2E7D32)
                                       : Colors.grey,
                                 ),
                                 SizedBox(width: 6.w),
                                 Text(
-                                  '${_connected ? (_hi ? 'लाइव सक्रिय' : 'Live Active') : (_hi ? 'ऑफलाइन' : 'Offline')}'
+                                  '${_isLive ? (_hi ? 'लाइव सक्रिय' : 'Live Active') : (_hi ? 'ऑफलाइन' : 'Offline')}'
                                   ' • ${_timeText(_updatedAt)}',
                                   style: TextStyle(
-                                    color: _connected
+                                    color: _isLive
                                         ? const Color(0xFF2E7D32)
                                         : Colors.grey,
                                     fontSize: 12.sp,

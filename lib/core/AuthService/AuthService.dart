@@ -389,11 +389,17 @@ class Authservice {
   Future<LocationSharingActionResModel> locationSharingActionData({
     bool? locationAccessDisable,
     bool? locationAccessRenew,
+    bool? locationAccessDisableAll,
+    bool? locationAccessRenewAll,
+    dynamic userIds,
   }) async {
     try {
       final body = LocationSharingActionBodyModel(
         locationAccessDisable: locationAccessDisable,
         locationAccessRenew: locationAccessRenew,
+        locationAccessDisableAll: locationAccessDisableAll,
+        locationAccessRenewAll: locationAccessRenewAll,
+        userIds: userIds,
       );
       final response = await api.locationSharingAction(body);
       return response;
