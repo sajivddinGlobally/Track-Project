@@ -458,7 +458,7 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
     } catch (e) {
       log('[Dashboard] Error performing location sharing action: $e');
       if (mounted) {
-        showErrorSnackBar('Action failed: $e', context);
+        // showErrorSnackBar('Action failed: $e', context);
       }
     } finally {
       if (mounted) {
@@ -1674,7 +1674,9 @@ class _DynamicDashboardScreenState extends ConsumerState<DynamicDashboardScreen>
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => NotificationScreen()),
+                MaterialPageRoute(
+                  builder: (context) => NotificationScreen(isHindi: _isHindi),
+                ),
               );
             },
             child: Icon(

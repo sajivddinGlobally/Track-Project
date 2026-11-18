@@ -7,6 +7,7 @@ import 'package:track_loved/DrawerScreen/provider/getBussinessProfileProvider.da
 import 'package:track_loved/complanyProfile/companyProfileScreen.dart';
 import 'package:track_loved/core/Data/ResponseModel/getBusinnesProfileModel.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
+import 'package:track_loved/HomeScreen/NotificationScreen.dart';
 
 class CompanyPendingVerificationView extends ConsumerWidget {
   final Datum datum;
@@ -55,7 +56,14 @@ class CompanyPendingVerificationView extends ConsumerWidget {
               onLanguageChanged!(value);
             }
           },
-          onNotificationPressed: () {},
+          onNotificationPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationScreen(isHindi: isHindi),
+              ),
+            );
+          },
         ),
         body: Container(
           width: double.infinity,
@@ -742,7 +750,14 @@ class CompanyProfileRequiredPlaceholder extends StatelessWidget {
           onLanguageChanged: (val) {
             if (onLanguageChanged != null) onLanguageChanged!(val);
           },
-          onNotificationPressed: () {},
+          onNotificationPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationScreen(isHindi: isHindi),
+              ),
+            );
+          },
         ),
         body: Container(
           width: double.infinity,

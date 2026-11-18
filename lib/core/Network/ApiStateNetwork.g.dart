@@ -12,7 +12,7 @@ part of 'ApiStateNetwork.dart';
 
 class _ApiStateNetwork implements ApiStateNetwork {
   _ApiStateNetwork(this._dio, {this.baseUrl, this.errorLogger}) {
-    baseUrl ??= 'https://ccs3kxs4-3002.inc1.devtunnels.ms';
+    baseUrl ??= 'https://api.tracklovedones.com';
   }
 
   final Dio _dio;
