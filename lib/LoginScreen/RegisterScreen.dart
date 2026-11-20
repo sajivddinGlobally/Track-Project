@@ -23,6 +23,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
   final _nameConatroller = TextEditingController();
   final _phoneConatroller = TextEditingController();
 
@@ -117,6 +118,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _parentPhoneController.dispose();
     _dobController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -439,11 +441,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         ),
                       ],
                       SizedBox(height: 18.h),
-
                       customTextField(
                         controller: _passwordController,
+                        focusNode: _passwordFocusNode,
                         labelText: 'Password',
-                        hintText: 'Enter password',
+                        hintText: 'e.g. Track@123',
                         prefixIcon: Icons.lock_outline,
                         obscureText: !isPasswordVisible,
                         showVisibilityIcon: true,
@@ -453,15 +455,50 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           });
                         },
                         validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
+                          if (value == null || value.isEmpty) {
                             return 'Please enter password';
                           }
-                          if (value.trim().length < 8) {
+
+                          if (value.length < 8) {
                             return 'Password must be at least 8 characters';
+                          }
+
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                            return 'Password must contain at least 1 capital letter (A-Z)';
+                          }
+
+                          if (!RegExp(r'[a-z]').hasMatch(value)) {
+                            return 'Password must contain at least 1 small letter (a-z)';
+                          }
+
+                          if (!RegExp(r'[0-9]').hasMatch(value)) {
+                            return 'Password must contain at least 1 number (0-9)';
+                          }
+
+                          if (!RegExp(
+                            r'[!@#$%^&*(),.?":{}|<>_\-+=/\\[\];~`]',
+                          ).hasMatch(value)) {
+                            return 'Password must contain at least 1 special character (!@#\$...)';
                           }
                           return null;
                         },
                       ),
+
+                      ListenableBuilder(
+                        listenable: Listenable.merge([
+                          _passwordFocusNode,
+                          _passwordController,
+                        ]),
+                        builder: (context, _) {
+                          final isFocused = _passwordFocusNode.hasFocus;
+                          final hasText = _passwordController.text.isNotEmpty;
+                          if (!isFocused && !hasText) {
+                            return const SizedBox.shrink();
+                          }
+                          return _buildPasswordRulesHelper();
+                        },
+                      ),
+
                       SizedBox(height: 16.h),
 
                       // Terms & Conditions (DPDPA) Consent Row
@@ -736,9 +773,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     String? Function(String?)? validator,
     bool readOnly = false,
     VoidCallback? onTap,
+    FocusNode? focusNode,
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       readOnly: readOnly,
       onTap: onTap,
       obscureText: obscureText,
@@ -797,6 +836,125 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         ),
         errorStyle: TextStyle(fontSize: 13.sp),
       ),
+    );
+  }
+
+  Widget _buildPasswordRulesHelper() {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _passwordController,
+      builder: (context, value, child) {
+        final text = value.text;
+        final hasLength = text.length >= 8;
+        final hasUpper = RegExp(r'[A-Z]').hasMatch(text);
+        final hasLower = RegExp(r'[a-z]').hasMatch(text);
+        final hasDigit = RegExp(r'[0-9]').hasMatch(text);
+        final hasSpecial = RegExp(
+          r'[!@#$%^&*(),.?":{}|<>_\-+=/\\[\];~`]',
+        ).hasMatch(text);
+        final allMet =
+            hasLength && hasUpper && hasLower && hasDigit && hasSpecial;
+
+        const greenColor = Color(0xFF00E676);
+        const goldColor = Color(0xFFC5A038);
+
+        return Container(
+          margin: EdgeInsets.only(top: 10.h),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
+          decoration: BoxDecoration(
+            color: allMet
+                ? greenColor.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(
+              color: allMet
+                  ? greenColor.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    allMet
+                        ? Icons.verified_user_rounded
+                        : Icons.info_outline_rounded,
+                    color: allMet ? greenColor : goldColor,
+                    size: 16.sp,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    allMet ? "Strong Password ✓" : "Password Requirements:",
+                    style: TextStyle(
+                      color: allMet ? greenColor : Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 7.w,
+                      vertical: 2.5.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: goldColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6.r),
+                      border: Border.all(
+                        color: goldColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      "Ex: Track@123",
+                      style: TextStyle(
+                        color: goldColor,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 9.h),
+              Wrap(
+                spacing: 12.w,
+                runSpacing: 6.h,
+                children: [
+                  _buildRuleChip("8+ Characters", hasLength),
+                  _buildRuleChip("1 Capital (A-Z)", hasUpper),
+                  _buildRuleChip("1 Small (a-z)", hasLower),
+                  _buildRuleChip("1 Number (0-9)", hasDigit),
+                  _buildRuleChip("1 Special (!@#\$)", hasSpecial),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRuleChip(String text, bool isMet) {
+    const greenColor = Color(0xFF00E676);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+          color: isMet ? greenColor : Colors.white38,
+          size: 13.5.sp,
+        ),
+        SizedBox(width: 4.w),
+        Text(
+          text,
+          style: TextStyle(
+            color: isMet ? greenColor : Colors.white60,
+            fontSize: 11.5.sp,
+            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
     );
   }
 }
