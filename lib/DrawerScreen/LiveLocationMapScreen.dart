@@ -15,8 +15,8 @@ import 'package:track_loved/core/Utils/AddressText.dart';
 import 'package:track_loved/core/Utils/showMessage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
 // const String kSocketBaseUrl = 'https://api.tracklovedones.com';
+const String kSocketBaseUrl = 'https://loveable-backend-5qi0.onrender.com';
 
 class LiveLocationMapScreen extends ConsumerStatefulWidget {
   final LocationSharingUser user;
@@ -37,6 +37,7 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
   final MapController _mapController = MapController();
   io.Socket? _socket;
   StreamSubscription<Position>? _myLocationSub;
+  Timer? _pollingTimer;
   final Dio _dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 4),
@@ -64,8 +65,7 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
     if (!_connected) return false;
     if (_updatedAt == null) return false;
     final now = DateTime.now().toUtc();
-    final updateUtc =
-        _updatedAt!.isUtc ? _updatedAt! : _updatedAt!.toUtc();
+    final updateUtc = _updatedAt!.isUtc ? _updatedAt! : _updatedAt!.toUtc();
     return now.difference(updateUtc).abs().inMinutes < 5;
   }
 
@@ -80,9 +80,22 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
     _startMyLocationTracking();
     _connect();
 
-    if (_position == null && widget.user.userId != null) {
+    if (widget.user.userId != null) {
       _fetchFriendLocation(widget.user.userId!);
     }
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    // 5-second smart backup polling ensures live movement even if socket drops or desyncs
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_disposed || !mounted) return;
+      final friendId = widget.user.userId;
+      if (friendId != null) {
+        _fetchFriendLocation(friendId);
+      }
+    });
   }
 
   Future<void> _startMyLocationTracking() async {
@@ -132,9 +145,19 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
       if (res.success == true && res.data?.location?.coordinates != null) {
         final coords = res.data!.location!.coordinates;
         if (coords.length >= 2) {
-          final lat = coords[1];
-          final lng = coords[0];
-          _moveTo(LatLng(lat, lng), res.data?.updatedAt);
+          final lat = (coords[1] as num).toDouble();
+          final lng = (coords[0] as num).toDouble();
+          final newPos = LatLng(lat, lng);
+          final newTime = res.data?.updatedAt;
+          if (_position == null ||
+              _position!.latitude != newPos.latitude ||
+              _position!.longitude != newPos.longitude ||
+              newTime != _updatedAt) {
+            log(
+              '[LiveLocationMap] Location updated via API: lat=$lat, lng=$lng, time=$newTime',
+            );
+            _moveTo(newPos, newTime);
+          }
         }
       }
     } catch (e) {
@@ -161,42 +184,100 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
     _socket = socket;
     log('[Socket] connecting to $kSocketBaseUrl for friend $friendId');
 
-    socket.on('friend_location_update', (dynamic data) {
-      log('[Socket] friend_location_update: $data');
-      if (data is! Map || data['userId']?.toString() != friendId) return;
-      final lat = (data['latitude'] as num?)?.toDouble();
-      final lng = (data['longitude'] as num?)?.toDouble();
+    void handleLocationUpdate(dynamic data) {
+      log('[Socket] location update event received: $data');
+      if (data is! Map) return;
+
+      final senderId =
+          data['userId']?.toString() ??
+          data['friendId']?.toString() ??
+          data['senderId']?.toString() ??
+          data['id']?.toString() ??
+          data['user']?['_id']?.toString() ??
+          data['user']?['id']?.toString();
+
+      if (senderId != null && senderId != friendId) return;
+
+      double? lat;
+      double? lng;
+
+      if (data['latitude'] != null && data['longitude'] != null) {
+        lat = (data['latitude'] as num?)?.toDouble();
+        lng = (data['longitude'] as num?)?.toDouble();
+      } else if (data['location'] is Map) {
+        final loc = data['location'] as Map;
+        if (loc['coordinates'] is List &&
+            (loc['coordinates'] as List).length >= 2) {
+          final coords = loc['coordinates'] as List;
+          lng = (coords[0] as num?)?.toDouble();
+          lat = (coords[1] as num?)?.toDouble();
+        } else if (loc['latitude'] != null && loc['longitude'] != null) {
+          lat = (loc['latitude'] as num?)?.toDouble();
+          lng = (loc['longitude'] as num?)?.toDouble();
+        }
+      } else if (data['coordinates'] is List &&
+          (data['coordinates'] as List).length >= 2) {
+        final coords = data['coordinates'] as List;
+        lng = (coords[0] as num?)?.toDouble();
+        lat = (coords[1] as num?)?.toDouble();
+      }
+
       if (lat == null || lng == null) return;
+      log('[Socket] Moving friend position to: lat=$lat, lng=$lng');
       _moveTo(
         LatLng(lat, lng),
-        DateTime.tryParse(data['updatedAt']?.toString() ?? ''),
+        DateTime.tryParse(data['updatedAt']?.toString() ?? '') ??
+            DateTime.now(),
       );
+    }
+
+    // Listen to standard and dynamic event channels:
+    socket.on('friend_location_update', handleLocationUpdate);
+    socket.on('friend_location_update_$friendId', handleLocationUpdate);
+    socket.on('location_update', handleLocationUpdate);
+    socket.on('location_update_$friendId', handleLocationUpdate);
+    socket.on('user_location_update', handleLocationUpdate);
+
+    // General listener to log all incoming events for easy debugging
+    socket.onAny((event, data) {
+      log('[Socket][onAny] Event: $event, Data: $data');
     });
 
     void subscribe() {
-      socket.emitWithAck(
-        'subscribe_friend_location',
-        {'friendId': friendId},
-        ack: (dynamic response) {
-          log('[Socket] subscribe ack: $response');
-          if (_disposed || !mounted || response is! Map) return;
-          if (response['success'] != true) {
-            setState(() => _error = response['message']?.toString());
-            return;
-          }
-          final location = (response['data'] as Map?)?['location'];
-          final coords = location is Map ? location['coordinates'] : null;
-          if (coords is List && coords.length >= 2) {
-            _moveTo(
-              LatLng(
-                (coords[1] as num).toDouble(),
-                (coords[0] as num).toDouble(),
-              ),
-              _updatedAt,
-            );
-          }
-        },
-      );
+      log('[Socket] Subscribing for friend: $friendId');
+      // 1. Direct emits without requiring ACK callback so client never hangs
+      socket.emit('subscribe_friend_location', {'friendId': friendId});
+      socket.emit('join_friend_location', {'friendId': friendId});
+      socket.emit('subscribe_location', {'friendId': friendId});
+
+      // 2. Also try emitWithAck if server happens to support it
+      try {
+        socket.emitWithAck(
+          'subscribe_friend_location',
+          {'friendId': friendId},
+          ack: (dynamic response) {
+            log('[Socket] subscribe ack: $response');
+            if (_disposed || !mounted || response is! Map) return;
+            if (response['success'] != true) {
+              setState(() => _error = response['message']?.toString());
+              return;
+            }
+            final location = (response['data'] as Map?)?['location'];
+            final coords = location is Map ? location['coordinates'] : null;
+            if (coords is List && coords.length >= 2) {
+              _moveTo(
+                LatLng(
+                  (coords[1] as num).toDouble(),
+                  (coords[0] as num).toDouble(),
+                ),
+                _updatedAt,
+              );
+            }
+          },
+        );
+      } catch (e) {
+        log('[Socket] emitWithAck error: $e');
+      }
     }
 
     socket.on('location_sharing_updated', (dynamic data) {
@@ -403,6 +484,8 @@ class _LiveLocationMapScreenState extends ConsumerState<LiveLocationMapScreen> {
   @override
   void dispose() {
     _disposed = true;
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
     _myLocationSub?.cancel();
     _socket?.clearListeners();
     _socket?.dispose();
