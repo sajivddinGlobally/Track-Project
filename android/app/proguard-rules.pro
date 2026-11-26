@@ -20,5 +20,8 @@
 -keep class io.inway.ringtone.player.** { *; }
 
 # Native application classes
--keep class com.example.track_loved.** { *; }
+-keep class com.trackLovedOne.** { *; }
 
+
+# Play Core (referenced by Flutter's deferred components; not used by this app)
+-dontwarn com.google.android.play.core.**

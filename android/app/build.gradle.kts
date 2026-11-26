@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.track_loved"
+    namespace = "com.trackLovedOne"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.track_loved"
+        applicationId = "com.trackLovedOne"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,12 +29,19 @@ android {
         multiDexEnabled = true
     }
 
-   signingConfigs {
+    signingConfigs {
         create("release") {
-            storeFile = file("C:/Users/Globally-04/Track_Loved/android/app/upload-keystore.jks")
+            // Relative to android/app/, so it works on any machine.
+            storeFile = file("upload-keystore.jks")
             storePassword = "123456"
             keyAlias = "track one"
             keyPassword = "123456"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

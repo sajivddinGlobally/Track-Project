@@ -1,41 +1,49 @@
 {
   "project_info": {
-    "project_number": "466509770539",
-    "project_id": "tracklovedones-4cd0d",
-    "storage_bucket": "tracklovedones-4cd0d.firebasestorage.app"
+    "project_number": "140830089565",
+    "project_id": "tracklovedone",
+    "storage_bucket": "tracklovedone.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:466509770539:android:8253dbd5a8b1a6aae35f6e",
+        "mobilesdk_app_id": "1:140830089565:android:538f7151a0877621c408b4",
         "android_client_info": {
-          "package_name": "com.example.track_loved"
+          "package_name": "com.trackLovedOne"
         }
       },
       "oauth_client": [
         {
-          "client_id": "466509770539-nkl4nnq3vcpq5m967g2f0b7ajfsu7ub7.apps.googleusercontent.com",
+          "client_id": "140830089565-qskfrct0lk44t3ck0b9a7rfunql27olf.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.track_loved",
-            "certificate_hash": "8c877291d6b57a9e2337df7b8c927f4946f90311"
+            "package_name": "com.trackLovedOne",
+            "certificate_hash": "7781a15695d13edcaeb13353b32944e6a451a93b"
           }
         },
         {
-          "client_id": "466509770539-u0mdd2p5ge1fr561lo78cm4hvpg5ev62.apps.googleusercontent.com",
+          "client_id": "140830089565-vdc4ekij2i2740dh94uaa3mhte6o4hv3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trackLovedOne",
+            "certificate_hash": "4fd81c79a500447413b80112e22b5294a61f2ecc"
+          }
+        },
+        {
+          "client_id": "140830089565-jb5gkg8vuidfecqrrosh7h4uf0nbbaov.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAkQeRdBUR-VJYM28ETn0AJhJLkpUcY6Yk"
+          "current_key": "AIzaSyB0STbpsBUVU6vmjD4RX15kdwTXg0z6j_E"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "466509770539-u0mdd2p5ge1fr561lo78cm4hvpg5ev62.apps.googleusercontent.com",
+              "client_id": "140830089565-jb5gkg8vuidfecqrrosh7h4uf0nbbaov.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

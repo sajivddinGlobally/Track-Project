@@ -1,4 +1,4 @@
-package com.example.track_loved
+package com.trackLovedOne
 
 import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity

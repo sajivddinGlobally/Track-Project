@@ -41,7 +41,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email'],
     serverClientId:
-        '466509770539-u0mdd2p5ge1fr561lo78cm4hvpg5ev62.apps.googleusercontent.com',
+        '140830089565-jb5gkg8vuidfecqrrosh7h4uf0nbbaov.apps.googleusercontent.com',
   );
 
   // Keychain / Keystore backed, and separate from Hive so that logout
@@ -331,15 +331,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: EdgeInsets.all(18.r),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                        width: 96.r,
+                        height: 96.r,
+                        padding: EdgeInsets.all(16.r),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.security,
-                          size: 54.sp,
-                          color: const Color(0xFFD4AF37),
+                        child: Image.asset(
+                          'assets/images/app_logo.png',
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
                       SizedBox(height: 18.h),
