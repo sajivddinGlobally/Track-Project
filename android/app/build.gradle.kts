@@ -29,16 +29,12 @@ android {
         multiDexEnabled = true
     }
 
-    buildTypes {
-        release {
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+   signingConfigs {
+        create("release") {
+            storeFile = file("C:/Users/Globally-04/Track_Loved/android/app/upload-keystore.jks")
+            storePassword = "123456"
+            keyAlias = "track one"
+            keyPassword = "123456"
         }
     }
 }
